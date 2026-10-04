@@ -91,16 +91,16 @@ A modern, animated, scroll-driven page that tells the community story:
 
 ```mermaid
 flowchart TD
-    A[Visitor lands on website] --> B[Join community: create account]
-    B --> C[Member home: Events | Projects]
-    C -->|Events| D[Browse upcoming events]
-    C -->|Projects| P[Browse GDGoC PSIT projects]
-    D --> E[Register for an event]
-    E --> F[Ticket with QR generated]
-    F --> G[(Registration saved)]
-    G --> H[Appears in Admin Panel]
-    H --> I[Event day: admin scans ticket QR]
-    I --> J[Attendance marked]
+    A["Visitor lands on website"] --> B["Join community: create account"]
+    B --> C["Member home: choose Events or Projects"]
+    C -->|Events| D["Browse upcoming events"]
+    C -->|Projects| P["Browse GDGoC PSIT projects"]
+    D --> E["Register for an event"]
+    E --> F["Ticket with QR generated"]
+    F --> G[("Registration saved")]
+    G --> H["Appears in Admin Panel"]
+    H --> I["Event day: admin scans ticket QR"]
+    I --> J["Attendance marked"]
 ```
 
 ### How Ticketing & Attendance Works
