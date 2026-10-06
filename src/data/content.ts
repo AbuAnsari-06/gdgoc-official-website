@@ -53,66 +53,21 @@ export const PANEL_EDGE: Record<GColor, string> = {
 };
 
 /* ------------------------------------------------------------------ */
-/*  HACKTOBER — the flagship event                                     */
+/*  HACKTOBER — the flagship event (formerly Hacktober)                */
+/*  Dates and status come from src/lib/oso.ts, the single source.      */
+/*  Copy below is DRAFT — pending club approval (see ROBOT_HERO_REPORT).*/
 /* ------------------------------------------------------------------ */
+
+import { OSO } from "../lib/oso";
 
 export const HACKTOBER = {
   name: "Open Source October",
-  edition: "Edition 03 · 2026",
-  dates: "Oct 3 – 4, 2026",
-  startISO: "2026-10-03T09:00:00+05:30",
-  endISO: "2026-10-04T18:00:00+05:30",
-  venue: "Innovation Lab · Block C · PSIT Kanpur",
-  tagline: "48 hours. 4 tracks. One campus-wide commit history.",
+  dates: OSO.dates,
+  startISO: OSO.startISO,
+  tagline: "24 days of open source. One campus-wide commit history.",
   intro:
-    "Our flagship hackathon. Two days of caffeine, pull requests and whiteboard arguments — teams of up to four ship a working build from scratch and demo it to a panel of mentors, alumni and industry folks. First-timers get a dedicated lane and a mentor on speed-dial.",
-  chips: ["36 hrs of hacking", "4 tracks", "Team ≤ 4", "₹25K prize pool", "Beginner lane"],
-  tracks: [
-    {
-      color: "gblue" as GColor,
-      title: "Web",
-      desc: "Full-stack apps, PWA experiments, anything that ships a URL by demo time.",
-      tools: ["React", "Next.js", "Firebase"],
-      detail: "Mentored by the web lead — bring a laptop, leave with a deployed URL.",
-    },
-    {
-      color: "ggreen" as GColor,
-      title: "AI / ML",
-      desc: "LLM apps, vision hacks, fine-tunes and smart agents with a real use case.",
-      tools: ["Vertex AI", "TensorFlow", "LangChain"],
-      detail: "GPU slots reserved for the weekend. Pitch a problem, not a model.",
-    },
-    {
-      color: "gyellow" as GColor,
-      title: "Mobile",
-      desc: "Android-first builds, Kotlin Multiplatform, offline-ready campus tools.",
-      tools: ["Kotlin", "Compose", "Flutter"],
-      detail: "Device lab open all night — test on real phones, not emulators.",
-    },
-    {
-      color: "gred" as GColor,
-      title: "Open Source",
-      desc: "Fix, extend or document a real OSS repo — merged PRs count as a build.",
-      tools: ["Git", "GitHub", "Good First Issues"],
-      detail: "Curated issue list drops at kickoff. A merged PR wins the track.",
-    },
-  ],
-  timeline: [
-    { day: "Day 01", color: "gblue" as GColor, time: "09:00", label: "Check-in + opening keynote", note: "Team badges, Wi-Fi keys, ground rules" },
-    { day: "Day 01", color: "gblue" as GColor, time: "11:00", label: "Hacking begins", note: "Track mentors assigned per team" },
-    { day: "Day 01", color: "gblue" as GColor, time: "16:00", label: "Mentor office hours", note: "15-min slots, bring your blockers" },
-    { day: "Day 01", color: "gblue" as GColor, time: "22:00", label: "Midnight snacks + lightning talks", note: "5-minute talks by the crew" },
-    { day: "Day 02", color: "gred" as GColor, time: "10:00", label: "Code-freeze warning", note: "Two hours to wrap the build" },
-    { day: "Day 02", color: "gred" as GColor, time: "14:00", label: "Demo hour", note: "3-min pitch + live demo per team" },
-    { day: "Day 02", color: "gred" as GColor, time: "16:30", label: "Judging", note: "Build quality · impact · craft" },
-    { day: "Day 02", color: "gred" as GColor, time: "18:00", label: "Awards + swag drop", note: "Trophies, goodies, stickers for all" },
-  ],
-  prizes: [
-    { color: "gyellow" as GColor, rank: "Winners", reward: "₹10,000 + swag box + 6-month mentorship", detail: "Judged on build quality, impact and the live demo — no slide decks." },
-    { color: "gblue" as GColor, rank: "Runners-up", reward: "₹5,000 + swag box + resume review", detail: "One spot decided by the mentor vote — the team that helped others most." },
-    { color: "ggreen" as GColor, rank: "Best first-timer build", reward: "Goodies + feature on the campus board", detail: "Exclusive to teams where nobody has shipped an event build before." },
-    { color: "gred" as GColor, rank: "Every finisher", reward: "Certificate + sticker pack + bragging rights", detail: "Demo something that runs and you walk away with the full kit." },
-  ],
+    "Open Source October, formerly Hacktober, runs all month. Contributions stay open from October 8 through October 31, 2026. Pick an issue, open a pull request, and add your name to the campus commit history.",
+  chips: ["Oct 8 to Oct 31, 2026", "Month-long", "Open contributions"],
 };
 
 /* ------------------------------------------------------------------ */
@@ -131,8 +86,8 @@ export interface Notice {
 export const NOTICES: Notice[] = [
   {
     color: "gyellow",
-    title: "Open Source October registrations: OPEN",
-    body: "Oct 3–4 · Innovation Lab, Block C. Teams up to 4, solo entries matched on day one. Beginner lane included.",
+    title: "Open Source October starts Oct 8",
+    body: "Month-long open contributions, Oct 8 to Oct 31, 2026. Pick an issue, open a pull request, and add your name to the campus commit history.",
     pinnedBy: "Events lead",
     date: "Sep 12",
     link: { label: "See event brief", target: "hacktober" },
@@ -169,7 +124,7 @@ export const NOTICES: Notice[] = [
 ];
 
 export const UPCOMING = [
-  { date: "Oct 03", label: "Open Source October kickoff", color: "gyellow" as GColor },
+  { date: "Oct 08", label: "Open Source October begins", color: "gyellow" as GColor },
   { date: "Oct 24", label: "Cloud Study Jam #2", color: "gblue" as GColor },
   { date: "Nov 07", label: "Android office hours", color: "ggreen" as GColor },
   { date: "Dec 14", label: "DevFest watch party", color: "gred" as GColor },

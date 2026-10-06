@@ -2,11 +2,9 @@ import { useEffect, useState } from "react";
 import { useReducedMotion } from "framer-motion";
 import Scene3D from "./Scene3D";
 import { Marquee, Reveal, usePointerParallax } from "./ui";
-import { useCountdown } from "../hooks/useCountdown";
 import { HACKTOBER, MARQUEE_WORDS, COLOR_HEX, type GColor } from "../data/content";
+import { osoStatusLabel, useOsoStatus } from "../lib/oso";
 import { scrollToId } from "../lib/scroll";
-
-const pad = (n: number) => String(n).padStart(2, "0");
 
 const LINES: { word: string; color: GColor }[] = [
   { word: "Learn.", color: "gblue" },
@@ -66,7 +64,7 @@ function TypedCommand({ text }: { text: string }) {
 }
 
 export default function Hero() {
-  const cd = useCountdown(HACKTOBER.startISO);
+  const oso = useOsoStatus();
   const driftRef = usePointerParallax<HTMLDivElement>();
 
   return (
@@ -142,26 +140,15 @@ export default function Hero() {
               style={{ borderTopColor: COLOR_HEX.ggreen, borderTopWidth: "10px" }}
             >
               <div className="flex items-center justify-between gap-6">
-                <span className="text-sm font-bold text-ink">
-                  {cd.past ? "Open Source October · wrapped" : "Open Source October drops in"}
-                </span>
+                <span className="text-sm font-bold text-ink">Open Source October</span>
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" className="text-ink transition-transform duration-300 group-hover:translate-x-1 group-hover:-translate-y-1" aria-hidden="true">
                   <path d="M7 17 17 7M9 7h8v8" />
                 </svg>
               </div>
               <div className="mt-3 flex items-baseline gap-4 font-display font-bold">
-                {cd.past ? (
-                  <span className="text-2xl text-ink">Recap soon</span>
-                ) : (
-                  <>
-                    <span className="text-3xl text-ink tabular-nums sm:text-4xl">{cd.d}<span className="ml-1 text-xs font-medium text-muted">D</span></span>
-                    <span className="text-3xl text-ink tabular-nums sm:text-4xl">{pad(cd.h)}<span className="ml-1 text-xs font-medium text-muted">H</span></span>
-                    <span className="text-3xl text-ink tabular-nums sm:text-4xl">{pad(cd.m)}<span className="ml-1 text-xs font-medium text-muted">M</span></span>
-                    <span className="w-14 text-3xl text-ink tabular-nums sm:text-4xl">{pad(cd.s)}<span className="ml-1 text-xs font-medium text-muted">S</span></span>
-                  </>
-                )}
+                <span className="text-2xl text-ink sm:text-3xl">{osoStatusLabel(oso)}</span>
               </div>
-              <p className="mt-2 font-mono text-[11px] text-muted">{HACKTOBER.dates} · {HACKTOBER.venue}</p>
+              <p className="mt-2 font-mono text-[11px] text-muted">{HACKTOBER.dates}</p>
             </button>
           </Reveal>
         </div>
