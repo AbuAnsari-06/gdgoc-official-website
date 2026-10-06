@@ -44,7 +44,7 @@ export default function Crew() {
             <SectionTag index="06" label="The crew" color="gblue" />
             <ScrambleHeading
               text="Humans behind the board"
-              className="mt-5 text-h2 heading-shadow heading-shadow-gblue"
+              className="mt-5 text-h2 heading-shadow heading-shadow-blue"
             />
           </div>
           <p className="max-w-sm text-[15px] leading-relaxed text-ink/80">

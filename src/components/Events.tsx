@@ -72,7 +72,7 @@ export default function Events() {
             <SectionTag index="04" label="Event log" color="ggreen" />
             <ScrambleHeading
               text="Past drops & sessions"
-              className="mt-5 text-h2 heading-shadow heading-shadow-ggreen"
+              className="mt-5 text-h2 heading-shadow heading-shadow-green"
             />
           </div>
           <p className="max-w-sm text-[15px] leading-relaxed text-ink/80">

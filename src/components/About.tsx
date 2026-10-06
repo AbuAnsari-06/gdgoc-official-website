@@ -21,7 +21,7 @@ export default function About() {
           {/* sticky intro column */}
           <div className="lg:sticky lg:top-28 lg:self-start">
             <SectionTag index="02" label="What we do" color="gblue" />
-            <h2 className="mt-6 text-h2 heading-shadow heading-shadow-gblue">
+            <h2 className="mt-6 text-h2 heading-shadow heading-shadow-blue">
               <LineReveal>The place where</LineReveal>
               <LineReveal delay={0.1}>PSIT ships</LineReveal>
               <LineReveal delay={0.2}>its builders.</LineReveal>

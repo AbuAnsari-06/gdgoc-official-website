@@ -78,7 +78,7 @@ export default function Join() {
             <SectionTag index="07" label="Join the crew" color="ggreen" />
             <ScrambleHeading
               text="Open a PR on your future"
-              className="mt-6 text-h2 heading-shadow heading-shadow-gyellow"
+              className="mt-6 text-h2 heading-shadow heading-shadow-yellow"
             />
             <p className="mt-6 max-w-md text-[15px] leading-relaxed text-ink/80">
               No gatekeeping, no "you need to know X first". If you're curious enough to show up on a Friday

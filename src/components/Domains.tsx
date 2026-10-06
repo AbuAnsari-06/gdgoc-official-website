@@ -59,7 +59,7 @@ export default function Domains() {
             <SectionTag index="05" label="Domains" color="gred" />
             <ScrambleHeading
               text="Pick your lane"
-              className="mt-5 text-h2 heading-shadow heading-shadow-gred"
+              className="mt-5 text-h2 heading-shadow heading-shadow-red"
             />
           </div>
           <p className="max-w-sm text-[15px] leading-relaxed text-ink/80">

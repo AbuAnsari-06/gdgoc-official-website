@@ -15,7 +15,7 @@ export default function NoticeBoard() {
             <SectionTag index="01" label="Campus board" color="gyellow" />
             <ScrambleHeading
               text="Pinned by the crew"
-              className="mt-5 text-h2 heading-shadow heading-shadow-gblue"
+              className="mt-5 text-h2 heading-shadow heading-shadow-blue"
             />
           </div>
           <p className="max-w-sm text-[15px] leading-relaxed text-ink/80">
