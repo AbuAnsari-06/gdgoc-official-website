@@ -1,4 +1,5 @@
 import { Marquee, Reveal, SectionTag, usePointerParallax } from "./ui";
+import Robot from "./Robot";
 import { HACKTOBER, MARQUEE_WORDS, COLOR_HEX, type GColor } from "../data/content";
 import { osoStatusLabel, useOsoStatus } from "../lib/oso";
 import { scrollToId } from "../lib/scroll";
@@ -86,7 +87,7 @@ export default function Hero() {
            is reserved so the layout never shifts. ---- */}
         <div ref={driftRef} className="relative">
           <div
-            className="hard-panel relative aspect-[4/5] w-full max-w-[560px] justify-self-center"
+            className="hard-panel relative aspect-square w-full max-w-[560px] justify-self-center"
             style={{
               background:
                 "radial-gradient(circle at 50% 28%, rgba(255,255,255,0.30), rgba(255,255,255,0) 62%), #4285F4",
@@ -105,19 +106,14 @@ export default function Hero() {
               </span>
             ))}
 
-            {/* contact shadow: the robot's soft ellipse on the stage floor */}
-            <span
-              data-drift="6"
-              aria-hidden="true"
-              className="pointer-events-none absolute bottom-6 left-1/2 z-[1] h-7 w-48 -translate-x-1/2 rounded-full bg-black/25 blur-[2px]"
-            />
-
-            {/* robot mount point — Byte stands here (Phase 5). Reserved so
-               the stage never reflows when the robot mounts. */}
+            {/* robot mount point — Byte stands on the stage floor and may
+               rise above the panel's top edge (breaking the frame). */}
             <div
               id="byte-stage"
-              className="absolute inset-x-0 bottom-0 z-[3] flex justify-center"
-            />
+              className="absolute inset-x-0 bottom-0 z-[3] flex h-[112%] items-end justify-center pb-5"
+            >
+              <Robot />
+            </div>
           </div>
 
           {/* event card, docked to the stage's lower-left. On lg it juts
@@ -126,6 +122,7 @@ export default function Hero() {
             <button
               type="button"
               onClick={() => scrollToId("hacktober")}
+              data-byte-event
               className="hard-surface group relative block w-full p-5 text-left"
               style={{ borderTopColor: COLOR_HEX.ggreen, borderTopWidth: "10px" }}
             >

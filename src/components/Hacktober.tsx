@@ -156,9 +156,11 @@ export default function Hacktober() {
 
             <Reveal>
               <div className="mt-12 flex flex-wrap items-center gap-4">
-                <ArrowLink onClick={() => scrollToId("join")} color="gyellow">
-                  Join the chapter
-                </ArrowLink>
+                <span data-byte-cta className="inline-flex">
+                  <ArrowLink onClick={() => scrollToId("join")} color="gyellow">
+                    Join the chapter
+                  </ArrowLink>
+                </span>
                 <ArrowLink ghost onClick={() => window.open("https://gdg.community.dev", "_blank", "noopener")} color="gblue">
                   Chapter page
                 </ArrowLink>
