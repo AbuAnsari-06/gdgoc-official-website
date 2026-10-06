@@ -7,7 +7,7 @@ import {
   ScrambleHeading,
   TiltCard,
 } from "./ui";
-import { HACKTOBER, COLOR_HEX } from "../data/content";
+import { HACKTOBER, COLOR_HEX, PANEL_HEX, WASH_HEX } from "../data/content";
 import { useCountdown } from "../hooks/useCountdown";
 import { scrollToId } from "../lib/scroll";
 import hacktoberPoster from "../assets/hacktober.jpg";
@@ -52,25 +52,21 @@ export default function Hacktober() {
   const cd = useCountdown(HACKTOBER.startISO);
 
   return (
-    <section id="hacktober" className="relative scroll-mt-20 overflow-hidden border-t border-line">
-      {/* ambient glows */}
-      <div className="pointer-events-none absolute top-40 -left-40 h-[480px] w-[480px] rounded-full bg-gred/[0.07] blur-[120px]" />
-      <div className="pointer-events-none absolute right-[-160px] bottom-0 h-[420px] w-[420px] rounded-full bg-gyellow/[0.06] blur-[120px]" />
-
-      {/* outline marquee */}
-      <Marquee duration={26} mask={false} className="border-b border-line py-6">
+    <section id="hacktober" data-wash="green" className="wash-section relative scroll-mt-20 overflow-hidden border-b-[3px] border-ink">
+      {/* title strip */}
+      <Marquee duration={26} mask={false} className="border-b-[3px] border-ink bg-bg py-6">
         {[0, 1].map((k) => (
           <span key={k} className="flex items-center">
-            <span className="text-outline px-8 font-display text-5xl font-black tracking-tight uppercase sm:text-7xl">
-              Hacktober
+            <span className="px-8 font-display text-5xl font-extrabold tracking-tight sm:text-7xl">
+              Open Source October
             </span>
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={COLOR_HEX.gyellow} strokeWidth="2.5">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={COLOR_HEX.ggreen} strokeWidth="3" aria-hidden="true">
               <path d="M12 2v20M2 12h20" />
             </svg>
-            <span className="px-8 font-display text-5xl font-black tracking-tight text-gyellow uppercase sm:text-7xl">
-              48H
+            <span className="border-y-[3px] border-ink bg-gyellow px-8 py-1 font-display text-5xl font-extrabold tracking-tight text-ink sm:text-7xl">
+              48 hours
             </span>
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={COLOR_HEX.gblue} strokeWidth="2.5">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={COLOR_HEX.gblue} strokeWidth="3" aria-hidden="true">
               <path d="M12 2v20M2 12h20" />
             </svg>
           </span>
@@ -82,32 +78,31 @@ export default function Hacktober() {
           {/* sticky poster + countdown */}
           <div className="lg:sticky lg:top-24 lg:self-start">
             <Reveal>
-              <div className="relative -rotate-1 border border-line transition-transform duration-500 hover:rotate-0">
-                <CornerFrame color={COLOR_HEX.gyellow} />
+              <div className="hard-surface rest-tilt-l relative overflow-hidden">
+                <CornerFrame color={COLOR_HEX.ggreen} />
                 <div className="relative aspect-[4/5] overflow-hidden">
                   <img
                     src={hacktoberPoster}
-                    alt="HACKTOBER 2026 event poster"
-                    className="animate-kenburns h-full w-full object-cover"
+                    alt="Open Source October 2026 event poster"
+                    className="h-full w-full object-cover"
                   />
-                  <div className="absolute inset-0 bg-gradient-to-t from-bg/80 via-transparent to-transparent" />
-                  <div className="absolute top-4 left-4 border border-gyellow/60 bg-bg/70 px-3 py-1.5 font-mono text-[10px] tracking-[0.25em] text-gyellow uppercase backdrop-blur-sm">
+                  <div className="absolute top-4 left-4 border-2 border-ink bg-bg px-3 py-1.5 text-xs font-bold text-ink">
                     {HACKTOBER.edition}
                   </div>
-                  <div className="absolute right-5 bottom-5 left-5">
-                    <p className="font-display text-2xl font-black text-ink sm:text-3xl">{HACKTOBER.dates}</p>
-                    <p className="mt-1 font-mono text-[11px] tracking-wider text-muted">{HACKTOBER.venue}</p>
+                  <div className="absolute right-0 bottom-0 left-0 border-t-[3px] border-ink bg-bg px-5 py-4">
+                    <p className="font-display text-2xl font-extrabold text-ink sm:text-3xl">{HACKTOBER.dates}</p>
+                    <p className="mt-1 text-xs font-semibold text-muted">{HACKTOBER.venue}</p>
                   </div>
                 </div>
               </div>
             </Reveal>
 
             <Reveal delay={0.15}>
-              <div className="mt-8 grid grid-cols-4 border border-line bg-panel/70">
+              <div className="mt-8 grid grid-cols-4 border-[3px] border-ink bg-bg">
                 {cd.past ? (
                   <div className="col-span-4 px-6 py-7 text-center">
-                    <p className="font-display text-xl font-bold text-gyellow uppercase">Hacktober wrapped</p>
-                    <p className="mt-1 font-mono text-xs text-muted">winners announced · recap dropping on the board</p>
+                    <p className="font-display text-xl font-extrabold text-ink">Open Source October wrapped</p>
+                    <p className="mt-1 text-sm text-muted">winners announced · recap dropping on the board</p>
                   </div>
                 ) : (
                   (
@@ -118,11 +113,10 @@ export default function Hacktober() {
                       { v: pad(cd.s), l: "secs", c: COLOR_HEX.ggreen },
                     ] as const
                   ).map((cell, i) => (
-                    <div key={cell.l} className={"px-2 py-6 text-center " + (i < 3 ? "border-r border-line" : "")}>
-                      <p className="font-display text-3xl font-black text-ink tabular-nums sm:text-4xl">{cell.v}</p>
-                      <p className="mt-2 font-mono text-[10px] tracking-[0.25em] uppercase" style={{ color: cell.c }}>
-                        {cell.l}
-                      </p>
+                    <div key={cell.l} className={"relative px-2 py-6 text-center " + (i < 3 ? "border-r-[3px] border-ink" : "")}>
+                      <span className="absolute inset-x-0 top-0 h-1.5" style={{ background: cell.c }} aria-hidden="true" />
+                      <p className="font-display text-3xl font-extrabold text-ink tabular-nums sm:text-4xl">{cell.v}</p>
+                      <p className="mt-2 text-[11px] font-semibold text-muted">{cell.l}</p>
                     </div>
                   ))
                 )}
@@ -132,18 +126,20 @@ export default function Hacktober() {
 
           {/* scrolling brief */}
           <div>
-            <SectionTag index="03" label="Flagship event" color="gyellow" />
+            <SectionTag index="03" label="Flagship event" color="ggreen" />
             <ScrambleHeading
-              text="HACKTOBER 2026"
-              className="mt-6 font-display text-5xl font-black tracking-tight uppercase sm:text-6xl xl:text-7xl"
+              text="Open Source October 2026"
+              className="mt-6 font-display text-[clamp(2.5rem,6vw,4.5rem)] leading-[1.02] font-extrabold tracking-tight"
             />
-            <p className="mt-5 font-display text-lg font-bold text-gyellow sm:text-xl">{HACKTOBER.tagline}</p>
-            <p className="mt-5 max-w-2xl text-[15px] leading-relaxed text-muted">{HACKTOBER.intro}</p>
+            <p className="mt-5 border-l-[6px] border-ggreen pl-4 font-display text-lg font-bold text-ink sm:text-xl">
+              {HACKTOBER.tagline}
+            </p>
+            <p className="mt-5 max-w-2xl text-[15px] leading-relaxed text-ink/80">{HACKTOBER.intro}</p>
 
             <Reveal>
               <div className="mt-7 flex flex-wrap gap-2.5">
                 {HACKTOBER.chips.map((c) => (
-                  <span key={c} className="border border-line2 px-3 py-1.5 font-mono text-[11px] tracking-[0.15em] text-ink/80 uppercase">
+                  <span key={c} className="border-2 border-ink bg-bg px-3 py-1.5 text-xs font-semibold text-ink">
                     {c}
                   </span>
                 ))}
@@ -152,23 +148,23 @@ export default function Hacktober() {
 
             {/* tracks — playing cards */}
             <div className="mt-16">
-              <p className="font-mono text-xs tracking-[0.3em] text-muted uppercase">// tracks · hover a card for intel</p>
+              <p className="font-mono text-xs text-muted">// tracks — hover a card for intel</p>
               <div className="mt-6 grid gap-5 sm:grid-cols-2">
                 {HACKTOBER.tracks.map((t, i) => (
                   <Reveal key={t.title} delay={i * 0.08}>
                     <TiltCard color={t.color} rank={`0${i + 1}`} details={t.detail} detailsLabel="Track intel" className="h-full">
                       <div className="flex h-full flex-col">
                         <span
-                          className="flex h-10 w-10 items-center justify-center border"
-                          style={{ borderColor: COLOR_HEX[t.color] + "66", background: COLOR_HEX[t.color] + "14" }}
+                          className="flex h-11 w-11 items-center justify-center border-[3px] border-ink"
+                          style={{ background: WASH_HEX[t.color] }}
                         >
                           <TrackIcon kind={t.title} color={COLOR_HEX[t.color]} />
                         </span>
-                        <h4 className="mt-5 font-display text-lg font-bold uppercase">{t.title}</h4>
-                        <p className="mt-2 text-[13px] leading-relaxed text-muted">{t.desc}</p>
-                        <div className="mt-auto flex flex-wrap gap-x-3 gap-y-1.5 pt-4">
+                        <h4 className="mt-5 font-display text-xl font-extrabold text-ink">{t.title}</h4>
+                        <p className="mt-2 text-[13px] leading-relaxed text-ink/75">{t.desc}</p>
+                        <div className="mt-auto flex flex-wrap gap-x-2 gap-y-2 pt-4">
                           {t.tools.map((tool) => (
-                            <span key={tool} className="font-mono text-[10px] tracking-wider" style={{ color: COLOR_HEX[t.color] }}>
+                            <span key={tool} className="border-2 border-ink bg-bg px-1.5 py-0.5 font-mono text-[11px] text-ink">
                               {tool}
                             </span>
                           ))}
@@ -182,25 +178,24 @@ export default function Hacktober() {
 
             {/* timeline */}
             <div className="mt-16">
-              <p className="font-mono text-xs tracking-[0.3em] text-muted uppercase">// the 48 hours</p>
-              <div className="mt-6 border-l border-line">
+              <p className="font-mono text-xs text-muted">// the 48 hours</p>
+              <div className="mt-6 border-l-[3px] border-ink">
                 {HACKTOBER.timeline.map((t, i) => {
                   const hex = COLOR_HEX[t.color];
                   return (
                     <Reveal key={`${t.time}-${t.label}`} delay={i * 0.04}>
-                      <div className="group relative py-4 pl-8 transition-all duration-300 hover:pl-10">
+                      <div className="relative py-4 pl-8">
                         <span
-                          className="absolute top-1/2 -left-[5px] h-2.5 w-2.5 -translate-y-1/2 rotate-45 transition-transform duration-300 group-hover:rotate-[135deg]"
+                          className="absolute top-1/2 -left-[8px] h-4 w-4 -translate-y-1/2 border-[3px] border-ink"
                           style={{ background: hex }}
+                          aria-hidden="true"
                         />
                         <div className="flex flex-wrap items-baseline gap-x-4 gap-y-1">
-                          <span className="font-mono text-xs text-muted">{t.day}</span>
-                          <span className="font-mono text-sm font-bold" style={{ color: hex }}>
-                            {t.time}
-                          </span>
-                          <span className="font-display text-base font-bold text-ink">{t.label}</span>
+                          <span className="text-xs font-semibold text-muted">{t.day}</span>
+                          <span className="font-mono text-sm font-bold text-ink">{t.time}</span>
+                          <span className="font-display text-lg font-extrabold text-ink">{t.label}</span>
                         </div>
-                        <p className="mt-1 text-sm text-muted">{t.note}</p>
+                        <p className="mt-1 text-sm text-ink/75">{t.note}</p>
                       </div>
                     </Reveal>
                   );
@@ -210,13 +205,16 @@ export default function Hacktober() {
 
             {/* prizes — playing cards */}
             <div className="mt-16">
-              <p className="font-mono text-xs tracking-[0.3em] text-muted uppercase">// the loot · hover for how to take it</p>
+              <p className="font-mono text-xs text-muted">// the loot — hover for how to take it</p>
               <div className="mt-6 grid gap-5 sm:grid-cols-2">
                 {HACKTOBER.prizes.map((p, i) => (
                   <Reveal key={p.rank} delay={i * 0.06}>
                     <TiltCard color={p.color} rank={`0${i + 1}`} details={p.detail} detailsLabel="How to take it" max={10} className="h-full">
                       <div className="flex h-full flex-col">
-                        <h4 className="font-display text-base font-black tracking-tight uppercase" style={{ color: COLOR_HEX[p.color] }}>
+                        <h4
+                          className="self-start border-2 border-ink px-2.5 py-1 font-display text-base font-extrabold text-ink"
+                          style={{ background: PANEL_HEX[p.color] }}
+                        >
                           {p.rank}
                         </h4>
                         <p className="mt-3 text-sm leading-relaxed text-ink/85">{p.reward}</p>

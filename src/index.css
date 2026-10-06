@@ -34,10 +34,10 @@
   --font-body: "Bricolage Grotesque", system-ui, sans-serif;
   --font-mono: "JetBrains Mono", ui-monospace, monospace;
 
-  /* ---- Hard offset shadows (flat, no blur) ---- */
-  --shadow-hard-sm: 3px 3px 0 var(--color-ink);
+  /* ---- Hard offset shadow (flat, no blur). Surfaces and buttons ramp
+     6px → 10px on lift and 3px on press; the edge colour is overridable
+     per element with --hard-edge. ---- */
   --shadow-hard: 6px 6px 0 var(--color-ink);
-  --shadow-hard-lg: 10px 10px 0 var(--color-ink);
 }
 
 /* ================= base ================= */
@@ -138,7 +138,8 @@ body {
 .hard-surface {
   border: 3px solid var(--color-ink);
   background: var(--color-bg);
-  box-shadow: var(--shadow-hard);
+  box-shadow: 6px 6px 0 var(--hard-edge, var(--color-ink));
+  transform: rotate(var(--rest, 0deg));
   transition:
     transform 0.18s cubic-bezier(0.22, 1, 0.36, 1),
     box-shadow 0.18s cubic-bezier(0.22, 1, 0.36, 1);
@@ -146,35 +147,29 @@ body {
 
 @media (hover: hover) and (pointer: fine) {
   .hard-surface:hover {
-    transform: translate(-4px, -4px);
-    box-shadow: var(--shadow-hard-lg);
+    transform: translate(-4px, -4px) rotate(0deg);
+    box-shadow: 10px 10px 0 var(--hard-edge, var(--color-ink));
   }
 }
 
 .hard-surface:active {
-  transform: translate(2px, 2px);
-  box-shadow: var(--shadow-hard-sm);
+  transform: translate(2px, 2px) rotate(0deg);
+  box-shadow: 3px 3px 0 var(--hard-edge, var(--color-ink));
 }
 
-/* a few cards rest at a slight angle and straighten on hover */
+/* a few cards rest at a slight angle and straighten as they lift */
 .rest-tilt-l {
-  transform: rotate(-1deg);
+  --rest: -1deg;
 }
 .rest-tilt-r {
-  transform: rotate(1deg);
-}
-@media (hover: hover) and (pointer: fine) {
-  .rest-tilt-l:hover,
-  .rest-tilt-r:hover {
-    transform: rotate(0deg);
-  }
+  --rest: 1deg;
 }
 
 /* ---------- buttons ---------- */
 
 .hard-button {
   border: 3px solid var(--color-ink);
-  box-shadow: var(--shadow-hard);
+  box-shadow: 6px 6px 0 var(--hard-edge, var(--color-ink));
   transition:
     transform 0.16s cubic-bezier(0.22, 1, 0.36, 1),
     box-shadow 0.16s cubic-bezier(0.22, 1, 0.36, 1),
@@ -184,13 +179,13 @@ body {
 @media (hover: hover) and (pointer: fine) {
   .hard-button:hover {
     transform: translate(-3px, -3px);
-    box-shadow: var(--shadow-hard-lg);
+    box-shadow: 10px 10px 0 var(--hard-edge, var(--color-ink));
   }
 }
 
 .hard-button:active {
   transform: translate(2px, 2px);
-  box-shadow: var(--shadow-hard-sm);
+  box-shadow: 3px 3px 0 var(--hard-edge, var(--color-ink));
 }
 
 /* ---------- links: thick underline that draws in ---------- */
@@ -223,15 +218,6 @@ body {
 .wash-section {
   background-color: var(--wash, var(--color-bg));
   transition: background-color 0.6s ease;
-}
-
-/* ---------- scroll progress (four flat bands, no gradient) ---------- */
-
-.progress-bar {
-  display: flex;
-  height: 100%;
-  width: 100%;
-  transform-origin: left center;
 }
 
 /* ---------- hero wordmark letters ---------- */

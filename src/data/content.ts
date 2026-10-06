@@ -17,13 +17,39 @@ export const INK_SOFT = "#BDC1C6";
 
 /* Text colour that is legible on a block of each accent colour.
    Ink passes AA on blue (4.5:1), yellow (9.4:1) and green (5.3:1).
-   On red, ink is 4.1:1 — large or bold text only, otherwise use a
-   white/tint panel inside the colour block. */
+   On red, ink is 4.1:1 — large or bold text only, otherwise the red
+   block takes a tint sub-panel (see PANEL_HEX below). */
 export const ON_COLOR: Record<GColor, string> = {
   gblue: INK,
   gred: INK,
   gyellow: INK,
   ggreen: INK,
+};
+
+/* Section washes / tints — mirror --color-wash-* in src/index.css. */
+export const WASH_HEX: Record<GColor, string> = {
+  gblue: "#E8F0FE",
+  gred: "#FCE8E6",
+  gyellow: "#FEF7E0",
+  ggreen: "#E6F4EA",
+};
+
+/* Fill for an accent block that carries body copy. Blue, yellow and green
+   are AA-legible with ink. Red is not (ink 4.1:1, white 3.9:1), so it
+   falls back to its wash with a bright red edge — the tint-panel rule. */
+export const PANEL_HEX: Record<GColor, string> = {
+  gblue: "#4285F4",
+  gred: "#FCE8E6",
+  gyellow: "#FBBC04",
+  ggreen: "#34A853",
+};
+
+/* Border/edge colour that keeps a tinted panel identifiable as red. */
+export const PANEL_EDGE: Record<GColor, string> = {
+  gblue: "#4285F4",
+  gred: "#EA4335",
+  gyellow: "#FBBC04",
+  ggreen: "#34A853",
 };
 
 /* ------------------------------------------------------------------ */

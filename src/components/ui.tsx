@@ -3,20 +3,98 @@ import {
   useRef,
   useState,
   type CSSProperties,
-  type MouseEvent as ReactMouseEvent,
   type ReactNode,
 } from "react";
-import {
-  motion,
-  useInView,
-  useMotionTemplate,
-  useMotionValue,
-  useReducedMotion,
-  useSpring,
-} from "framer-motion";
+import { motion, useInView, useReducedMotion } from "framer-motion";
 import { cn } from "../utils/cn";
-import { COLOR_HEX, type GColor } from "../data/content";
+import { COLOR_HEX, ON_COLOR, PANEL_EDGE, PANEL_HEX, type GColor } from "../data/content";
+
 import { useScramble } from "../hooks/useScramble";
+
+/* ---------------- pointer capability ---------------- */
+
+/** True only on devices with a fine pointer that can hover. */
+export function useFinePointer() {
+  const [fine, setFine] = useState(
+    () =>
+      typeof window !== "undefined" &&
+      window.matchMedia("(hover: hover) and (pointer: fine)").matches
+  );
+  useEffect(() => {
+    const mq = window.matchMedia("(hover: hover) and (pointer: fine)");
+    const onChange = () => setFine(mq.matches);
+    mq.addEventListener("change", onChange);
+    return () => mq.removeEventListener("change", onChange);
+  }, []);
+  return fine;
+}
+
+/**
+ * Short magnetic pull toward the pointer, only while the pointer is
+ * within ~40px of the element. rAF-throttled, passive listener.
+ * Returns a ref to attach and the current offset to apply as a transform.
+ */
+export function useMagnetic<T extends HTMLElement>(strength = 0.28, radius = 40) {
+  const ref = useRef<T>(null);
+  const [offset, setOffset] = useState({ x: 0, y: 0 });
+  const fine = useFinePointer();
+  const reduced = useReducedMotion();
+
+  useEffect(() => {
+    const el = ref.current;
+    if (!el || !fine || reduced) {
+      setOffset({ x: 0, y: 0 });
+      return;
+    }
+    let frame = 0;
+    const onMove = (e: PointerEvent) => {
+      if (frame) return;
+      frame = requestAnimationFrame(() => {
+        frame = 0;
+        const r = el.getBoundingClientRect();
+        const cx = r.left + r.width / 2;
+        const cy = r.top + r.height / 2;
+        const dx = e.clientX - cx;
+        const dy = e.clientY - cy;
+        const inside = Math.abs(dx) < r.width / 2 + radius && Math.abs(dy) < r.height / 2 + radius;
+        setOffset(inside ? { x: dx * strength, y: dy * strength } : { x: 0, y: 0 });
+      });
+    };
+    window.addEventListener("pointermove", onMove, { passive: true });
+    return () => {
+      window.removeEventListener("pointermove", onMove);
+      if (frame) cancelAnimationFrame(frame);
+    };
+  }, [fine, reduced, strength, radius]);
+
+  return { ref, offset };
+}
+
+/**
+ * Four-colour confetti burst from the centre of an element.
+ * Squares are appended to the body and removed once the animation ends.
+ */
+export function burstConfetti(el: HTMLElement | null, colors: string[]): void {
+  if (!el) return;
+  if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+  const r = el.getBoundingClientRect();
+  const cx = r.left + r.width / 2;
+  const cy = r.top + r.height / 2;
+  for (let i = 0; i < 18; i++) {
+    const bit = document.createElement("span");
+    const angle = (Math.PI * 2 * i) / 18 + Math.random() * 0.4;
+    const dist = 60 + Math.random() * 90;
+    bit.className = "confetti-bit";
+    bit.style.left = `${cx}px`;
+    bit.style.top = `${cy}px`;
+    bit.style.background = colors[i % colors.length];
+    bit.style.setProperty("--dx", `${Math.cos(angle) * dist}px`);
+    bit.style.setProperty("--dy", `${Math.sin(angle) * dist + 40}px`);
+    bit.style.setProperty("--rot", `${Math.round(Math.random() * 540 - 270)}deg`);
+    document.body.appendChild(bit);
+    window.setTimeout(() => bit.remove(), 900);
+  }
+}
 
 /* ---------------- Reveal on scroll ---------------- */
 
@@ -25,19 +103,21 @@ export function Reveal({
   delay = 0,
   y = 30,
   className,
+  animate = false,
 }: {
   children: ReactNode;
   delay?: number;
   y?: number;
   className?: string;
+  animate?: boolean;
 }) {
   return (
     <motion.div
       className={className}
-      initial={{ opacity: 0, y }}
-      whileInView={{ opacity: 1, y: 0 }}
+      initial={animate ? { opacity: 0, y } : false}
+      whileInView={animate ? { opacity: 1, y: 0 } : undefined}
       viewport={{ once: true, margin: "-70px" }}
-      transition={{ duration: 0.75, delay, ease: [0.22, 1, 0.36, 1] }}
+      transition={{ duration: 0.6, delay, ease: [0.22, 1, 0.36, 1] }}
     >
       {children}
     </motion.div>
@@ -48,26 +128,13 @@ export function Reveal({
 
 export function LineReveal({
   children,
-  delay = 0,
   className,
 }: {
   children: ReactNode;
   delay?: number;
   className?: string;
 }) {
-  return (
-    <span className={cn("block overflow-hidden", className)}>
-      <motion.span
-        className="block"
-        initial={{ y: "110%" }}
-        whileInView={{ y: 0 }}
-        viewport={{ once: true, margin: "-60px" }}
-        transition={{ duration: 0.9, delay, ease: [0.22, 1, 0.36, 1] }}
-      >
-        {children}
-      </motion.span>
-    </span>
-  );
+  return <span className={cn("block", className)}>{children}</span>;
 }
 
 /* ---------------- Section tag ---------------- */
@@ -84,17 +151,14 @@ export function SectionTag({
   className?: string;
 }) {
   return (
-    <div
-      className={cn(
-        "flex items-center gap-3 font-mono text-[11px] uppercase tracking-[0.3em] text-muted",
-        className
-      )}
-    >
-      <span className="inline-block h-2.5 w-2.5" style={{ background: COLOR_HEX[color] }} />
-      <span>
-        {index} / {label}
-      </span>
-      <span className="hidden h-px w-16 bg-line sm:block" />
+    <div className={cn("flex items-center gap-3 text-sm font-semibold text-ink", className)}>
+      <span
+        className="inline-block h-3 w-3 border-2 border-ink"
+        style={{ background: COLOR_HEX[color] }}
+        aria-hidden="true"
+      />
+      <span className="text-muted">{index}</span>
+      <span>{label}</span>
     </div>
   );
 }
@@ -170,7 +234,11 @@ export function Marquee({
   mask?: boolean;
 }) {
   return (
-    <div className={cn("marquee overflow-hidden", mask && "marquee-mask", className)}>
+    <div
+      className={cn("marquee overflow-hidden", mask && "marquee-mask", className)}
+      tabIndex={0}
+      aria-label="Scrolling ticker — pause with focus"
+    >
       <div
         className="marquee-track flex w-max items-center"
         style={{ "--marquee-dur": `${duration}s` } as CSSProperties}
@@ -189,10 +257,10 @@ export function Marquee({
 export function GdgMark({ size = 22 }: { size?: number }) {
   return (
     <svg width={size} height={size} viewBox="0 0 32 32" fill="none" aria-hidden="true">
-      <circle cx="7.5" cy="16" r="6" fill={COLOR_HEX.gblue} />
-      <path d="M16 3.5 26.5 16 16 28.5Z" fill={COLOR_HEX.gred} />
-      <rect x="2" y="2" width="28" height="28" rx="14" fill="none" stroke={COLOR_HEX.gyellow} strokeWidth="2.4" strokeDasharray="4 6" />
-      <circle cx="25" cy="25" r="5" fill={COLOR_HEX.ggreen} />
+      <rect x="1.5" y="1.5" width="29" height="29" fill="none" stroke={COLOR_HEX.gyellow} strokeWidth="3" />
+      <rect x="6" y="6" width="20" height="20" fill={COLOR_HEX.gblue} />
+      <path d="M16 6 26 16 16 26 6 16Z" fill={COLOR_HEX.gred} />
+      <rect x="12" y="12" width="8" height="8" fill={COLOR_HEX.ggreen} />
     </svg>
   );
 }
@@ -218,11 +286,15 @@ export function ArrowLink({
       type="button"
       onClick={onClick}
       className={cn(
-        "group inline-flex items-center gap-3 px-6 py-3.5 font-mono text-xs font-bold uppercase tracking-[0.2em] transition-all duration-300",
-        ghost ? "border border-line2 text-ink hover:border-ink" : "text-bg",
+        "hard-button group inline-flex items-center gap-3 px-6 py-3.5 font-display text-[15px] font-bold text-ink",
+        ghost ? "bg-bg" : "",
         className
       )}
-      style={ghost ? undefined : { background: hex }}
+      style={
+        ghost
+          ? ({ "--hard-edge": hex } as CSSProperties)
+          : { background: PANEL_HEX[color], color: ON_COLOR[color] }
+      }
     >
       {children}
       <svg
@@ -231,8 +303,8 @@ export function ArrowLink({
         viewBox="0 0 24 24"
         fill="none"
         stroke="currentColor"
-        strokeWidth="2.4"
-        className="transition-transform duration-300 group-hover:translate-x-1.5"
+        strokeWidth="2.6"
+        className="transition-transform duration-300 group-hover:translate-x-1"
       >
         <path d="M5 12h14M13 6l6 6-6 6" />
       </svg>
@@ -289,57 +361,15 @@ export function SuitGlyph({ suit, size = 14, className }: { suit: Suit; size?: n
 }
 
 /**
- * Pointer-tracked 3D tilt + glare. Returns props to spread on the card.
- * Honors prefers-reduced-motion (no tilt, content still reveals).
- */
-export function useTilt(max = 8) {
-  const reduced = useReducedMotion();
-  const [hover, setHover] = useState(false);
-  const rx = useMotionValue(0);
-  const ry = useMotionValue(0);
-  const px = useMotionValue(50);
-  const py = useMotionValue(50);
-  const srx = useSpring(rx, { stiffness: 170, damping: 16, mass: 0.4 });
-  const sry = useSpring(ry, { stiffness: 170, damping: 16, mass: 0.4 });
-  const glare = useMotionTemplate`radial-gradient(circle at ${px}% ${py}%, rgba(233,240,255,0.13), transparent 52%)`;
-
-  const onMouseEnter = () => setHover(true);
-  const onMouseMove = (e: ReactMouseEvent<HTMLDivElement>) => {
-    if (reduced) return;
-    const r = e.currentTarget.getBoundingClientRect();
-    const x = (e.clientX - r.left) / r.width;
-    const y = (e.clientY - r.top) / r.height;
-    px.set(x * 100);
-    py.set(y * 100);
-    ry.set((x - 0.5) * max * 2);
-    rx.set((0.5 - y) * max * 2);
-  };
-  const onMouseLeave = () => {
-    setHover(false);
-    rx.set(0);
-    ry.set(0);
-    px.set(50);
-    py.set(50);
-  };
-
-  return {
-    hover,
-    bind: { onMouseEnter, onMouseMove, onMouseLeave },
-    style: { rotateX: srx, rotateY: sry, transformStyle: "preserve-3d" as const },
-    glare,
-  };
-}
-
-/**
- * Playing-card style container: double frame, corner rank + suit,
- * pointer glare and an intel panel that slides up on hover.
+ * Flat hard-edged card: solid colour bar, corner rank + suit chip and an
+ * intel panel that slides up on hover. The pointer-tracked 3D tilt and
+ * glare were replaced by the shared card lift (see .hard-surface).
  */
 export function TiltCard({
   color,
   rank,
   details,
   detailsLabel = "INTEL",
-  max = 8,
   className,
   children,
 }: {
@@ -353,55 +383,47 @@ export function TiltCard({
 }) {
   const hex = COLOR_HEX[color];
   const suit = SUIT_FOR[color];
-  const { hover, bind, style, glare } = useTilt(max);
+  const [hover, setHover] = useState(false);
 
   return (
-    <div className={cn("[perspective:1100px]", className)}>
-      <motion.div
-        {...bind}
-        style={style}
-        className="relative h-full overflow-hidden border border-line2 bg-panel transition-colors duration-300"
+    <div
+      className={cn("hard-surface relative h-full overflow-hidden", className)}
+      onMouseEnter={() => setHover(true)}
+      onMouseLeave={() => setHover(false)}
+    >
+      {/* colour bar */}
+      <span className="absolute inset-x-0 top-0 h-2" style={{ background: hex }} aria-hidden="true" />
+
+      {/* corner index — accent chip so the rank stays legible in ink */}
+      <div
+        className="absolute top-5 left-4 z-[4] flex flex-col items-center gap-0.5 border-2 border-ink px-1.5 py-1"
+        style={{ background: PANEL_HEX[color], color: ON_COLOR[color] }}
+        aria-hidden="true"
       >
-        <span className="pointer-events-none absolute inset-0" style={{ boxShadow: `inset 0 0 0 1px ${hover ? hex + "55" : "transparent"}` }} />
-        {/* inner frame */}
-        <span
-          className="pointer-events-none absolute inset-2 border transition-colors duration-500"
-          style={{ borderColor: hover ? hex + "99" : "#202938" }}
-        />
-        {/* glare */}
-        <motion.span
-          className="pointer-events-none absolute inset-0 z-[3]"
-          style={{ background: glare, opacity: hover ? 1 : 0, transition: "opacity 300ms" }}
-        />
-        {/* corner indices */}
-        <div
-          className="absolute top-3.5 left-3.5 z-[4] flex flex-col items-center gap-0.5 transition-transform duration-300"
-          style={{ color: hex, transform: hover ? "scale(1.15)" : "scale(1)" }}
+        <span className="font-display text-sm leading-none font-extrabold">{rank}</span>
+        <SuitGlyph suit={suit} size={9} />
+      </div>
+
+      {/* content */}
+      <div className="relative z-[2] h-full px-5 pt-16 pb-7">{children}</div>
+
+      {/* hover intel panel */}
+      {details && (
+        <motion.div
+          initial={false}
+          animate={{ y: hover ? 0 : "101%" }}
+          transition={{ duration: 0.28, ease: [0.22, 1, 0.36, 1] }}
+          className="absolute inset-x-0 bottom-0 z-[5] border-t-[3px] px-5 py-4"
+          style={{
+            background: PANEL_HEX[color],
+            borderTopColor: PANEL_EDGE[color],
+            color: ON_COLOR[color],
+          }}
         >
-          <span className="font-display text-sm leading-none font-black">{rank}</span>
-          <SuitGlyph suit={suit} size={9} />
-        </div>
-        <div className="absolute right-3.5 bottom-3 z-[4] rotate-180" style={{ color: hex }}>
-          <SuitGlyph suit={suit} size={15} />
-        </div>
-
-        {/* content */}
-        <div className="relative z-[2] h-full pt-11 pr-6 pb-7 pl-11">{children}</div>
-
-        {/* hover intel panel */}
-        {details && (
-          <motion.div
-            initial={false}
-            animate={{ y: hover ? 0 : "101%" }}
-            transition={{ duration: 0.38, ease: [0.22, 1, 0.36, 1] }}
-            className="absolute inset-x-0 bottom-0 z-[5] px-6 py-4"
-            style={{ background: hex }}
-          >
-            <p className="font-mono text-[9px] font-bold tracking-[0.28em] text-bg/60 uppercase">{detailsLabel}</p>
-            <p className="mt-1 text-[13px] leading-snug font-semibold text-bg">{details}</p>
-          </motion.div>
-        )}
-      </motion.div>
+          <p className="font-display text-[11px] font-bold opacity-70">{detailsLabel}</p>
+          <p className="mt-1 text-[13px] leading-snug font-semibold">{details}</p>
+        </motion.div>
+      )}
     </div>
   );
 }

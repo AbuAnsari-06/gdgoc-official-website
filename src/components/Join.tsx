@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { ArrowLink, Reveal, SectionTag, ScrambleHeading } from "./ui";
-import { COLOR_HEX, type GColor } from "../data/content";
+import { COLOR_HEX, PANEL_HEX, type GColor } from "../data/content";
 import { cn } from "../utils/cn";
 
 const TRACKS: { label: string; color: GColor }[] = [
@@ -16,7 +16,7 @@ const TRACKS: { label: string; color: GColor }[] = [
 const PERKS = [
   { color: "gblue" as GColor, text: "Weekly hands-on sessions — no lecture slides, ever" },
   { color: "gred" as GColor, text: "Mentor reviews on your projects and pull requests" },
-  { color: "gyellow" as GColor, text: "First dibs on HACKTOBER teams, swag drops and DevFest" },
+  { color: "gyellow" as GColor, text: "First dibs on Open Source October teams, swag drops and DevFest" },
   { color: "ggreen" as GColor, text: "A direct line into the pan-India GDG community" },
 ];
 
@@ -60,21 +60,20 @@ export default function Join() {
   };
 
   const inputCls =
-    "w-full border border-line bg-bg px-4 py-3.5 font-mono text-sm text-ink placeholder:text-muted/60 transition-colors duration-300 focus:border-gyellow focus:outline-none";
+    "w-full border-[3px] border-ink bg-bg px-4 py-3.5 font-mono text-sm text-ink placeholder:text-muted transition-colors duration-300 focus:bg-panel focus:outline-none";
 
   return (
-    <section id="join" className="relative scroll-mt-20 overflow-hidden border-t border-line">
-      <div className="pointer-events-none absolute bottom-0 -left-40 h-[460px] w-[460px] rounded-full bg-ggreen/[0.06] blur-[120px]" />
+    <section id="join" data-wash="green" className="wash-section relative scroll-mt-20 overflow-hidden border-b-[3px] border-ink">
       <div className="relative mx-auto max-w-7xl px-5 py-24 sm:px-8 lg:py-32">
         <div className="grid gap-14 lg:grid-cols-2 lg:gap-20">
           {/* pitch */}
           <div>
             <SectionTag index="07" label="Join the crew" color="ggreen" />
             <ScrambleHeading
-              text="OPEN A PR ON YOUR FUTURE"
-              className="mt-6 font-display text-4xl leading-[1.1] font-black tracking-tight uppercase sm:text-5xl xl:text-6xl"
+              text="Open a PR on your future"
+              className="mt-6 font-display text-[clamp(2.25rem,5.5vw,4rem)] leading-[1.02] font-extrabold tracking-tight"
             />
-            <p className="mt-6 max-w-md text-[15px] leading-relaxed text-muted">
+            <p className="mt-6 max-w-md text-[15px] leading-relaxed text-ink/80">
               No gatekeeping, no "you need to know X first". If you're curious enough to show up on a Friday
               evening, you're our kind of person. Drop your details and the crew will pull you in before the
               next drop.
@@ -84,7 +83,11 @@ export default function Join() {
               {PERKS.map((p, i) => (
                 <Reveal key={p.text} delay={i * 0.06}>
                   <li className="flex items-start gap-3.5 text-sm text-ink/85">
-                    <span className="mt-1 h-2.5 w-2.5 shrink-0" style={{ background: COLOR_HEX[p.color] }} />
+                    <span
+                      className="mt-0.5 h-3.5 w-3.5 shrink-0 border-2 border-ink"
+                      style={{ background: COLOR_HEX[p.color] }}
+                      aria-hidden="true"
+                    />
                     {p.text}
                   </li>
                 </Reveal>
@@ -103,14 +106,14 @@ export default function Join() {
 
           {/* form */}
           <Reveal delay={0.15}>
-            <div className="relative border border-line bg-panel p-7 sm:p-9">
-              <div className="flex items-center justify-between border-b border-line pb-5">
-                <p className="font-mono text-[11px] tracking-[0.25em] text-muted uppercase">join --crew=you</p>
+            <div className="relative border-[3px] border-ink bg-bg p-7 shadow-hard sm:p-9">
+              <div className="flex items-center justify-between border-b-[3px] border-ink pb-5">
+                <p className="font-mono text-xs text-muted">join --crew=you</p>
                 <span className="flex gap-1.5">
-                  <span className="h-2 w-2 rounded-full bg-gblue" />
-                  <span className="h-2 w-2 rounded-full bg-gred" />
-                  <span className="h-2 w-2 rounded-full bg-gyellow" />
-                  <span className="h-2 w-2 rounded-full bg-ggreen" />
+                  <span className="h-3 w-3 border-2 border-ink bg-gblue" aria-hidden="true" />
+                  <span className="h-3 w-3 border-2 border-ink bg-gred" aria-hidden="true" />
+                  <span className="h-3 w-3 border-2 border-ink bg-gyellow" aria-hidden="true" />
+                  <span className="h-3 w-3 border-2 border-ink bg-ggreen" aria-hidden="true" />
                 </span>
               </div>
 
@@ -118,9 +121,9 @@ export default function Join() {
                 {submitted ? (
                   <motion.div
                     key="success"
-                    initial={{ opacity: 0, scale: 0.94 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    exit={{ opacity: 0, scale: 0.96 }}
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
                     transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
                     className="flex min-h-[420px] flex-col items-center justify-center py-10 text-center"
                   >
@@ -136,19 +139,19 @@ export default function Join() {
                         transition={{ duration: 0.5, delay: 0.5, ease: "easeOut" }}
                       />
                     </svg>
-                    <p className="mt-6 font-display text-2xl font-black uppercase">
+                    <p className="mt-6 font-display text-2xl font-extrabold text-ink">
                       You're in the queue, {name.trim().split(" ")[0]}
                     </p>
-                    <p className="mt-3 max-w-xs text-sm leading-relaxed text-muted">
-                      Watch <span className="text-ink">{email}</span> — the crew sends onboarding before the
+                    <p className="mt-3 max-w-xs text-sm leading-relaxed text-ink/80">
+                      Watch <span className="font-semibold text-ink">{email}</span> — the crew sends onboarding before the
                       next meetup. Meanwhile, the board is yours to explore.
                     </p>
                     <button
                       type="button"
                       onClick={reset}
-                      className="link-slide mt-8 font-mono text-[11px] tracking-[0.2em] text-gyellow uppercase"
+                      className="link-draw mt-8 text-sm font-bold text-ink"
                     >
-                      submit another response
+                      Submit another response
                     </button>
                   </motion.div>
                 ) : (
@@ -156,7 +159,7 @@ export default function Join() {
                     key="form"
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
-                    exit={{ opacity: 0, scale: 0.97 }}
+                    exit={{ opacity: 0 }}
                     transition={{ duration: 0.35 }}
                     className="flex flex-col gap-5 pt-7"
                     onSubmit={(e) => {
@@ -165,8 +168,8 @@ export default function Join() {
                     }}
                   >
                     <div>
-                      <label htmlFor="join-name" className="mb-2 block font-mono text-[10px] tracking-[0.25em] text-muted uppercase">
-                        full name
+                      <label htmlFor="join-name" className="mb-2 block text-sm font-semibold text-ink">
+                        Full name
                       </label>
                       <input
                         id="join-name"
@@ -178,12 +181,12 @@ export default function Join() {
                         placeholder="Ada Lovelace"
                         className={cn(inputCls, errors.name && "border-gred")}
                       />
-                      {errors.name && <p className="mt-1.5 font-mono text-[11px] text-gred">{errors.name}</p>}
+                      {errors.name && <p className="mt-1.5 font-mono text-[11px] font-bold text-ink">{errors.name}</p>}
                     </div>
 
                     <div>
-                      <label htmlFor="join-email" className="mb-2 block font-mono text-[10px] tracking-[0.25em] text-muted uppercase">
-                        campus email
+                      <label htmlFor="join-email" className="mb-2 block text-sm font-semibold text-ink">
+                        Campus email
                       </label>
                       <input
                         id="join-email"
@@ -196,12 +199,12 @@ export default function Join() {
                         placeholder="you@psit.ac.in"
                         className={cn(inputCls, errors.email && "border-gred")}
                       />
-                      {errors.email && <p className="mt-1.5 font-mono text-[11px] text-gred">{errors.email}</p>}
+                      {errors.email && <p className="mt-1.5 font-mono text-[11px] font-bold text-ink">{errors.email}</p>}
                     </div>
 
                     <div>
-                      <label htmlFor="join-year" className="mb-2 block font-mono text-[10px] tracking-[0.25em] text-muted uppercase">
-                        year
+                      <label htmlFor="join-year" className="mb-2 block text-sm font-semibold text-ink">
+                        Year
                       </label>
                       <select id="join-year" value={year} onChange={(e) => setYear(e.target.value)} className={cn(inputCls, "appearance-none")}>
                         {YEARS.map((y) => (
@@ -213,9 +216,7 @@ export default function Join() {
                     </div>
 
                     <div>
-                      <p className="mb-2.5 font-mono text-[10px] tracking-[0.25em] text-muted uppercase">
-                        tracks you vibe with
-                      </p>
+                      <p className="mb-2.5 text-sm font-semibold text-ink">Tracks you vibe with</p>
                       <div className="flex flex-wrap gap-2">
                         {TRACKS.map((t) => {
                           const active = tracks.includes(t.label);
@@ -226,29 +227,29 @@ export default function Join() {
                               type="button"
                               onClick={() => toggleTrack(t.label)}
                               className={cn(
-                                "border px-3.5 py-2 font-mono text-[11px] tracking-[0.12em] uppercase transition-all duration-300",
-                                active ? "text-bg" : "border-line2 text-muted hover:border-ink hover:text-ink"
+                                "border-2 border-ink px-3.5 py-2 text-sm font-semibold text-ink transition-colors duration-200",
+                                active ? "" : "bg-bg hover:bg-panel"
                               )}
-                              style={active ? { background: hex, borderColor: hex } : undefined}
+                              style={active ? { background: PANEL_HEX[t.color], borderColor: hex } : undefined}
                             >
                               {t.label}
                             </button>
                           );
                         })}
                       </div>
-                      {errors.tracks && <p className="mt-1.5 font-mono text-[11px] text-gred">{errors.tracks}</p>}
+                      {errors.tracks && <p className="mt-1.5 font-mono text-[11px] font-bold text-ink">{errors.tracks}</p>}
                     </div>
 
                     <button
                       type="submit"
-                      className="group mt-2 flex items-center justify-center gap-3 bg-gyellow px-6 py-4 font-mono text-xs font-bold tracking-[0.22em] text-bg uppercase transition-all duration-300 hover:-translate-y-0.5 hover:shadow-[0_14px_36px_-12px_rgba(251,188,5,0.45)]"
+                      className="hard-button group mt-2 flex items-center justify-center gap-3 bg-gyellow px-6 py-4 font-display text-base font-extrabold text-ink"
                     >
-                      request to join
-                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" className="transition-transform duration-300 group-hover:translate-x-1.5">
+                      Request to join
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" className="transition-transform duration-300 group-hover:translate-x-1" aria-hidden="true">
                         <path d="M5 12h14M13 6l6 6-6 6" />
                       </svg>
                     </button>
-                    <p className="text-center font-mono text-[10px] tracking-widest text-muted/70 uppercase">
+                    <p className="text-center text-[11px] font-semibold text-muted">
                       no spam · one onboarding mail · unsubscribe anytime
                     </p>
                   </motion.form>
