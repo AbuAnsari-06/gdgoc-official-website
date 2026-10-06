@@ -35,6 +35,22 @@ export default function App() {
     };
   }, []);
 
+  /* effect 4: each section picks up its tint wash as it enters view */
+  useEffect(() => {
+    const sections = Array.from(document.querySelectorAll<HTMLElement>("main > section"));
+    if (sections.length === 0) return;
+    const io = new IntersectionObserver(
+      (entries) => {
+        for (const entry of entries) {
+          if (entry.isIntersecting) entry.target.classList.add("is-in");
+        }
+      },
+      { rootMargin: "-20% 0px -20% 0px" }
+    );
+    for (const s of sections) io.observe(s);
+    return () => io.disconnect();
+  }, []);
+
   return (
     <MotionConfig reducedMotion="user">
       <div className="relative min-h-screen bg-bg font-body text-ink">

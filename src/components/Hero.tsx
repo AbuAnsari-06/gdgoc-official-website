@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
+import { useReducedMotion } from "framer-motion";
 import Scene3D from "./Scene3D";
-import { Marquee, Reveal } from "./ui";
-import { useScramble } from "../hooks/useScramble";
+import { Marquee, Reveal, usePointerParallax } from "./ui";
 import { useCountdown } from "../hooks/useCountdown";
 import { HACKTOBER, MARQUEE_WORDS, COLOR_HEX, type GColor } from "../data/content";
 import { scrollToId } from "../lib/scroll";
@@ -14,42 +14,106 @@ const LINES: { word: string; color: GColor }[] = [
   { word: "Grow.", color: "ggreen" },
 ];
 
-function ScrambleLine({ word, color, delay }: { word: string; color: GColor; delay: number }) {
-  const [active, setActive] = useState(false);
-  useEffect(() => {
-    const id = window.setTimeout(() => setActive(true), delay);
-    return () => window.clearTimeout(id);
-  }, [delay]);
-  const out = useScramble(word, active, 30);
+/* ---- effect 1: the wordmark letters drop in, then the command types ---- */
+
+const TOTAL_LETTERS = LINES.reduce((n, l) => n + l.word.length, 0);
+const LETTER_STEP = 600 / TOTAL_LETTERS; // the whole wordmark lands in ~600ms
+const TYPE_START = 620;
+const COMMAND = "init --campus=PSIT_Kanpur";
+
+function DropLine({ word, color, offset }: { word: string; color: GColor; offset: number }) {
   return (
-    <span className="block leading-[1.02]" style={{ color: COLOR_HEX[color] }}>
-      {out || "\u00A0"}
+    <span className="block leading-[0.95]" style={{ color: COLOR_HEX[color] }} aria-label={word}>
+      {word.split("").map((ch, i) => (
+        <span
+          key={`${ch}-${i}`}
+          className="letter"
+          style={{ animationDelay: `${Math.round((offset + i) * LETTER_STEP)}ms` }}
+          aria-hidden="true"
+        >
+          {ch}
+        </span>
+      ))}
     </span>
   );
 }
 
+function TypedCommand({ text }: { text: string }) {
+  const reduced = useReducedMotion();
+  const [n, setN] = useState(() => (reduced ? text.length : 0));
+
+  useEffect(() => {
+    if (reduced) {
+      setN(text.length);
+      return;
+    }
+    let i = 0;
+    let interval = 0;
+    const start = window.setTimeout(() => {
+      interval = window.setInterval(() => {
+        i += 1;
+        setN(i);
+        if (i >= text.length) window.clearInterval(interval);
+      }, 38);
+    }, TYPE_START);
+    return () => {
+      window.clearTimeout(start);
+      window.clearInterval(interval);
+    };
+  }, [reduced, text]);
+
+  return <span className="font-bold">{text.slice(0, n)}</span>;
+}
+
 export default function Hero() {
   const cd = useCountdown(HACKTOBER.startISO);
+  const driftRef = usePointerParallax<HTMLDivElement>();
 
   return (
     <section id="top" className="relative flex min-h-screen flex-col overflow-hidden">
       {/* ambient 3D background — kept, dimmed so the wordmark leads */}
       <Scene3D className="absolute inset-0 z-0 opacity-40" />
 
-      <div className="relative z-10 mx-auto flex w-full max-w-7xl flex-1 flex-col justify-center px-5 pt-28 pb-16 sm:px-8">
-        {/* terminal eyebrow */}
+      <div
+        ref={driftRef}
+        className="relative z-10 mx-auto flex w-full max-w-7xl flex-1 flex-col justify-center px-5 pt-28 pb-16 sm:px-8"
+      >
+        {/* effect 2: the signature brackets drift with the pointer */}
+        <span
+          data-drift="18"
+          aria-hidden="true"
+          className="pointer-events-none absolute top-24 left-2 font-mono text-3xl font-bold text-ink select-none sm:text-5xl"
+        >
+          &lt;/&gt;
+        </span>
+        <span
+          data-drift="28"
+          aria-hidden="true"
+          className="pointer-events-none absolute right-2 bottom-28 font-mono text-4xl font-bold text-gblue select-none sm:text-6xl"
+        >
+          &lt;/&gt;
+        </span>
+        {/* terminal eyebrow — types out after the wordmark lands */}
         <Reveal delay={0.1} y={16}>
-          <p className="font-mono text-xs text-ink sm:text-sm">
-            <span className="text-muted">&lt;/&gt;/gdgc-psit $</span>{" "}
-            <span className="font-bold">init --campus=PSIT_Kanpur</span>
-            <span className="animate-caret ml-1 inline-block h-3.5 w-[7px] translate-y-[2px] bg-gblue" />
+          <p className="font-mono text-xs text-ink sm:text-sm" aria-label={`gdgc-psit $ ${COMMAND}`}>
+            <span className="text-muted" aria-hidden="true">
+              &lt;/&gt;/gdgc-psit $
+            </span>{" "}
+            <span aria-hidden="true">
+              <TypedCommand text={COMMAND} />
+            </span>
+            <span className="animate-caret ml-1 inline-block h-3.5 w-[7px] translate-y-[2px] bg-gblue" aria-hidden="true" />
           </p>
         </Reveal>
 
         <h1 className="mt-6 font-display text-[clamp(3rem,12vw,6.5rem)] leading-[0.95] font-extrabold tracking-tight">
-          <ScrambleLine word={LINES[0].word} color={LINES[0].color} delay={250} />
-          <ScrambleLine word={LINES[1].word} color={LINES[1].color} delay={650} />
-          <ScrambleLine word={LINES[2].word} color={LINES[2].color} delay={1050} />
+          <DropLine word={LINES[0].word} color={LINES[0].color} offset={0} />
+          <DropLine word={LINES[1].word} color={LINES[1].color} offset={LINES[0].word.length} />
+          <DropLine
+            word={LINES[2].word}
+            color={LINES[2].color}
+            offset={LINES[0].word.length + LINES[1].word.length}
+          />
         </h1>
 
         <div className="mt-8 flex flex-col gap-8 lg:flex-row lg:items-end lg:justify-between">
@@ -114,7 +178,7 @@ export default function Hero() {
 
       {/* tech marquee */}
       <div className="relative z-10 border-y-[3px] border-ink bg-panel">
-        <Marquee duration={30}>
+        <Marquee duration={52}>
           {MARQUEE_WORDS.map((w, i) => {
             const colors: GColor[] = ["gblue", "gred", "gyellow", "ggreen"];
             return (

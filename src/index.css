@@ -213,11 +213,28 @@ body {
   transform: scaleX(1);
 }
 
-/* ---------- section washes (set per-section by IntersectionObserver) ---- */
+/* ---------- section washes (toggled per-section by IntersectionObserver) ---- */
 
 .wash-section {
+  background-color: var(--color-bg);
+  transition: background-color 0.55s ease;
+}
+
+.wash-section[data-wash="blue"] {
+  --wash: var(--color-wash-blue);
+}
+.wash-section[data-wash="red"] {
+  --wash: var(--color-wash-red);
+}
+.wash-section[data-wash="yellow"] {
+  --wash: var(--color-wash-yellow);
+}
+.wash-section[data-wash="green"] {
+  --wash: var(--color-wash-green);
+}
+
+.wash-section.is-in {
   background-color: var(--wash, var(--color-bg));
-  transition: background-color 0.6s ease;
 }
 
 /* ---------- hero wordmark letters ---------- */
@@ -231,6 +248,28 @@ body {
 .letter {
   display: inline-block;
   animation: letter-drop 0.42s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+/* ---------- Open Source October sticker ---------- */
+
+@keyframes sticker-wiggle {
+  0% { transform: rotate(-7deg); }
+  25% { transform: rotate(5deg); }
+  50% { transform: rotate(-4deg); }
+  75% { transform: rotate(3deg); }
+  100% { transform: rotate(-2deg); }
+}
+
+.sticker {
+  transform: rotate(-2deg);
+  animation: sticker-wiggle 0.7s ease-in-out 0.9s 1;
+  transition: transform 0.25s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .sticker:hover {
+    transform: rotate(-6deg);
+  }
 }
 
 /* ---------- confetti burst ---------- */
@@ -280,5 +319,9 @@ body {
   }
   .confetti-bit {
     display: none;
+  }
+  .sticker {
+    animation: none !important;
+    transform: rotate(-2deg) !important;
   }
 }

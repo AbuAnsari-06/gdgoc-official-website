@@ -1,6 +1,6 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { ArrowLink, Reveal, SectionTag, ScrambleHeading } from "./ui";
+import { ArrowLink, Reveal, SectionTag, ScrambleHeading, burstConfetti, useMagnetic } from "./ui";
 import { COLOR_HEX, PANEL_HEX, type GColor } from "../data/content";
 import { cn } from "../utils/cn";
 
@@ -35,6 +35,9 @@ export default function Join() {
   const [tracks, setTracks] = useState<string[]>([]);
   const [errors, setErrors] = useState<FormErrors>({});
   const [submitted, setSubmitted] = useState(false);
+  const ctaRef = useRef<HTMLButtonElement>(null);
+  /* effect 6: short magnetic pull on the primary CTA (fine pointers only) */
+  const magnet = useMagnetic<HTMLSpanElement>(0.22, 36);
 
   const toggleTrack = (label: string) => {
     setTracks((t) => (t.includes(label) ? t.filter((x) => x !== label) : [...t, label]));
@@ -47,7 +50,11 @@ export default function Join() {
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) next.email = "// valid email required";
     if (tracks.length === 0) next.tracks = "// pick at least one track";
     setErrors(next);
-    if (Object.keys(next).length === 0) setSubmitted(true);
+    if (Object.keys(next).length === 0) {
+      setSubmitted(true);
+      /* effect 11: four-colour confetti burst on the primary CTA */
+      burstConfetti(ctaRef.current, [COLOR_HEX.gblue, COLOR_HEX.gred, COLOR_HEX.gyellow, COLOR_HEX.ggreen]);
+    }
   };
 
   const reset = () => {
@@ -240,15 +247,26 @@ export default function Join() {
                       {errors.tracks && <p className="mt-1.5 font-mono text-[11px] font-bold text-ink">{errors.tracks}</p>}
                     </div>
 
-                    <button
-                      type="submit"
-                      className="hard-button group mt-2 flex items-center justify-center gap-3 bg-gyellow px-6 py-4 font-display text-base font-extrabold text-ink"
+                    <span
+                      ref={magnet.ref}
+                      className="block w-full"
+                      style={
+                        magnet.offset.x || magnet.offset.y
+                          ? { transform: `translate3d(${magnet.offset.x}px, ${magnet.offset.y}px, 0)` }
+                          : undefined
+                      }
                     >
-                      Request to join
-                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" className="transition-transform duration-300 group-hover:translate-x-1" aria-hidden="true">
-                        <path d="M5 12h14M13 6l6 6-6 6" />
-                      </svg>
-                    </button>
+                      <button
+                        ref={ctaRef}
+                        type="submit"
+                        className="hard-button group mt-2 flex w-full items-center justify-center gap-3 bg-gyellow px-6 py-4 font-display text-base font-extrabold text-ink"
+                      >
+                        Request to join
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" className="transition-transform duration-300 group-hover:translate-x-1" aria-hidden="true">
+                          <path d="M5 12h14M13 6l6 6-6 6" />
+                        </svg>
+                      </button>
+                    </span>
                     <p className="text-center text-[11px] font-semibold text-muted">
                       no spam · one onboarding mail · unsubscribe anytime
                     </p>

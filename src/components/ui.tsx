@@ -46,28 +46,96 @@ export function useMagnetic<T extends HTMLElement>(strength = 0.28, radius = 40)
       setOffset({ x: 0, y: 0 });
       return;
     }
+    const state = { x: 0, y: 0, in: false };
     let frame = 0;
+    const apply = () => setOffset((o) => (o.x === state.x && o.y === state.y ? o : { x: state.x, y: state.y }));
     const onMove = (e: PointerEvent) => {
       if (frame) return;
       frame = requestAnimationFrame(() => {
         frame = 0;
         const r = el.getBoundingClientRect();
-        const cx = r.left + r.width / 2;
-        const cy = r.top + r.height / 2;
-        const dx = e.clientX - cx;
-        const dy = e.clientY - cy;
+        const dx = e.clientX - (r.left + r.width / 2);
+        const dy = e.clientY - (r.top + r.height / 2);
         const inside = Math.abs(dx) < r.width / 2 + radius && Math.abs(dy) < r.height / 2 + radius;
-        setOffset(inside ? { x: dx * strength, y: dy * strength } : { x: 0, y: 0 });
+        if (!inside) {
+          if (state.in) {
+            state.in = false;
+            state.x = 0;
+            state.y = 0;
+            apply();
+          }
+          return;
+        }
+        state.in = true;
+        state.x = Math.round(dx * strength);
+        state.y = Math.round(dy * strength);
+        apply();
       });
     };
     window.addEventListener("pointermove", onMove, { passive: true });
     return () => {
       window.removeEventListener("pointermove", onMove);
       if (frame) cancelAnimationFrame(frame);
+      setOffset((o) => (o.x === 0 && o.y === 0 ? o : { x: 0, y: 0 }));
     };
   }, [fine, reduced, strength, radius]);
 
   return { ref, offset };
+}
+
+/**
+ * Lerped pointer parallax for decorative elements marked with
+ * `data-drift="<depth>"`. Writes transforms straight to the DOM inside a
+ * rAF loop so no React render is triggered. Fine pointers only.
+ */
+export function usePointerParallax<T extends HTMLElement>(defaultDepth = 14) {
+  const ref = useRef<T>(null);
+  const fine = useFinePointer();
+  const reduced = useReducedMotion();
+
+  useEffect(() => {
+    const el = ref.current;
+    if (!el || !fine || reduced) return;
+    const targets = Array.from(el.querySelectorAll<HTMLElement>("[data-drift]"));
+    if (targets.length === 0) return;
+    let tx = 0;
+    let ty = 0;
+    let cx = 0;
+    let cy = 0;
+    let frame = 0;
+    let alive = true;
+    let lastX = 0;
+    let lastY = 0;
+    const onMove = (e: PointerEvent) => {
+      tx = (e.clientX / window.innerWidth - 0.5) * 2;
+      ty = (e.clientY / window.innerHeight - 0.5) * 2;
+    };
+    const tick = () => {
+      cx += (tx - cx) * 0.07;
+      cy += (ty - cy) * 0.07;
+      const rx = Math.round(cx * 100) / 100;
+      const ry = Math.round(cy * 100) / 100;
+      if (rx !== lastX || ry !== lastY) {
+        lastX = rx;
+        lastY = ry;
+        for (const t of targets) {
+          const depth = Number(t.dataset.drift) || defaultDepth;
+          t.style.transform = `translate3d(${(rx * depth).toFixed(2)}px, ${(ry * depth).toFixed(2)}px, 0)`;
+        }
+      }
+      if (alive) frame = requestAnimationFrame(tick);
+    };
+    window.addEventListener("pointermove", onMove, { passive: true });
+    frame = requestAnimationFrame(tick);
+    return () => {
+      alive = false;
+      cancelAnimationFrame(frame);
+      window.removeEventListener("pointermove", onMove);
+      for (const t of targets) t.style.transform = "";
+    };
+  }, [defaultDepth, fine, reduced]);
+
+  return ref;
 }
 
 /**
@@ -281,34 +349,42 @@ export function ArrowLink({
   ghost?: boolean;
 }) {
   const hex = COLOR_HEX[color];
+  const { ref, offset } = useMagnetic<HTMLSpanElement>();
   return (
-    <button
-      type="button"
-      onClick={onClick}
-      className={cn(
-        "hard-button group inline-flex items-center gap-3 px-6 py-3.5 font-display text-[15px] font-bold text-ink",
-        ghost ? "bg-bg" : "",
-        className
-      )}
-      style={
-        ghost
-          ? ({ "--hard-edge": hex } as CSSProperties)
-          : { background: PANEL_HEX[color], color: ON_COLOR[color] }
-      }
+    <span
+      ref={ref}
+      className="inline-block"
+      style={offset.x || offset.y ? { transform: `translate3d(${offset.x}px, ${offset.y}px, 0)` } : undefined}
     >
-      {children}
-      <svg
-        width="14"
-        height="14"
-        viewBox="0 0 24 24"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="2.6"
-        className="transition-transform duration-300 group-hover:translate-x-1"
+      <button
+        type="button"
+        onClick={onClick}
+        className={cn(
+          "hard-button group inline-flex items-center gap-3 px-6 py-3.5 font-display text-[15px] font-bold text-ink",
+          ghost ? "bg-bg" : "",
+          className
+        )}
+        style={
+          ghost
+            ? ({ "--hard-edge": hex } as CSSProperties)
+            : { background: PANEL_HEX[color], color: ON_COLOR[color] }
+        }
       >
-        <path d="M5 12h14M13 6l6 6-6 6" />
-      </svg>
-    </button>
+        {children}
+        <svg
+          width="14"
+          height="14"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2.6"
+          className="transition-transform duration-300 group-hover:translate-x-1"
+          aria-hidden="true"
+        >
+          <path d="M5 12h14M13 6l6 6-6 6" />
+        </svg>
+      </button>
+    </span>
   );
 }
 

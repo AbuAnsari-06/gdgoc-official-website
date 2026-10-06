@@ -80,6 +80,10 @@ export default function Hacktober() {
             <Reveal>
               <div className="hard-surface rest-tilt-l relative overflow-hidden">
                 <CornerFrame color={COLOR_HEX.ggreen} />
+                {/* effect 8: the rename sticker wiggles once, tilts on hover */}
+                <span className="sticker absolute top-20 right-4 z-[3] border-[3px] border-ink bg-gyellow px-3 py-1.5 font-display text-xs font-extrabold text-ink sm:text-sm">
+                  Formerly Hacktober
+                </span>
                 <div className="relative aspect-[4/5] overflow-hidden">
                   <img
                     src={hacktoberPoster}

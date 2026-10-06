@@ -57,7 +57,7 @@ export const PANEL_EDGE: Record<GColor, string> = {
 /* ------------------------------------------------------------------ */
 
 export const HACKTOBER = {
-  name: "HACKTOBER",
+  name: "Open Source October",
   edition: "Edition 03 · 2026",
   dates: "Oct 3 – 4, 2026",
   startISO: "2026-10-03T09:00:00+05:30",
@@ -131,7 +131,7 @@ export interface Notice {
 export const NOTICES: Notice[] = [
   {
     color: "gyellow",
-    title: "HACKTOBER registrations: OPEN",
+    title: "Open Source October registrations: OPEN",
     body: "Oct 3–4 · Innovation Lab, Block C. Teams up to 4, solo entries matched on day one. Beginner lane included.",
     pinnedBy: "Events lead",
     date: "Sep 12",
@@ -169,7 +169,7 @@ export const NOTICES: Notice[] = [
 ];
 
 export const UPCOMING = [
-  { date: "Oct 03", label: "HACKTOBER kickoff", color: "gyellow" as GColor },
+  { date: "Oct 03", label: "Open Source October kickoff", color: "gyellow" as GColor },
   { date: "Oct 24", label: "Cloud Study Jam #2", color: "gblue" as GColor },
   { date: "Nov 07", label: "Android office hours", color: "ggreen" as GColor },
   { date: "Dec 14", label: "DevFest watch party", color: "gred" as GColor },
@@ -207,7 +207,7 @@ export const PILLARS = [
     index: "03",
     color: "gyellow" as GColor,
     title: "Build",
-    body: "HACKTOBER, semester sprints and open-source Fridays. Real builds, real deadlines, real code reviews from mentors who have shipped for a living.",
+    body: "Open Source October, semester sprints and open-source Fridays. Real builds, real deadlines, real code reviews from mentors who have shipped for a living.",
   },
   {
     index: "04",
@@ -365,14 +365,9 @@ export const EVENTS: PastEvent[] = [
   },
 ];
 
-export const MARQUEE_WORDS = [
-  "OPEN SOURCE",
-  "ANDROID",
-  "WEB",
-  "CLOUD",
-  "GENAI",
-  "HACKTOBER",
-  "DEVFEST",
-  "UI/UX",
-  "STUDY JAMS",
+/* The hero ticker shows real event names, derived from the event log and
+   the upcoming calendar so the list can never drift from the data. */
+export const MARQUEE_WORDS: string[] = [
+  ...EVENTS.map((e) => e.title),
+  ...UPCOMING.map((u) => u.label),
 ];
