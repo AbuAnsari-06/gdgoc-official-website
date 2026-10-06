@@ -461,6 +461,9 @@ export default function Robot() {
       className="byte-root"
       aria-label={`Say hi to ${ROBOT_NAME}`}
       title={`Say hi to ${ROBOT_NAME}`}
+      data-cursor-style="dashed"
+      data-cursor-label="poke"
+      data-cursor-color="#4285F4"
     >
       <div className="byte-wrap">
         <div className="byte-bubble" ref={bubbleRef} hidden>

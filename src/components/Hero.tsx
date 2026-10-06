@@ -123,6 +123,8 @@ export default function Hero() {
               type="button"
               onClick={() => scrollToId("hacktober")}
               data-byte-event
+              data-cursor-color="#34A853"
+              data-cursor-label="Open"
               className="hard-surface group relative block w-full p-5 text-left"
               style={{ borderTopColor: COLOR_HEX.ggreen, borderTopWidth: "10px" }}
             >

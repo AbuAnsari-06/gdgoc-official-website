@@ -385,6 +385,127 @@ body {
   }
 }
 
+/* ---------- custom cursor (fine pointers only) ---------- */
+
+/* html.cursor-on is added by the Cursor component AFTER it mounts, so a
+   JS failure never leaves the user without a cursor. Native cursor is
+   kept for text entry / media surfaces. */
+html.cursor-on,
+html.cursor-on * {
+  cursor: none !important;
+}
+html.cursor-on input,
+html.cursor-on textarea,
+html.cursor-on select,
+html.cursor-on [contenteditable],
+html.cursor-on video,
+html.cursor-on iframe {
+  cursor: auto !important;
+}
+
+.cursor-layer {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.25s ease;
+}
+
+.cursor-dot {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 8px;
+  height: 8px;
+  margin: -4px 0 0 -4px;
+  border-radius: 50%;
+  background: var(--color-ink);
+  will-change: transform;
+}
+
+.cursor-ring {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 36px;
+  height: 36px;
+  margin: -18px 0 0 -18px;
+  border: 2.5px solid var(--color-ink);
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  will-change: transform;
+  transition: background-color 0.15s ease, border-color 0.15s ease;
+}
+.cursor-ring-dashed {
+  border-style: dashed;
+  animation: cursor-spin 7s linear infinite;
+}
+@keyframes cursor-spin {
+  to { rotate: 360deg; }
+}
+.cursor-label {
+  font-family: var(--font-display);
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  color: var(--color-ink);
+  opacity: 0;
+  transition: opacity 0.15s ease;
+  text-transform: none;
+  user-select: none;
+}
+
+.cursor-trail {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 7px;
+  height: 7px;
+  margin: -3.5px 0 0 -3.5px;
+  border: 1.5px solid var(--color-ink);
+  will-change: transform, opacity;
+  opacity: 0;
+}
+
+.cursor-ripple {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 14px;
+  height: 14px;
+  margin: -7px 0 0 -7px;
+  border: 3px solid;
+  border-radius: 50%;
+  animation: cursor-ripple 0.55s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+@keyframes cursor-ripple {
+  from { transform: scale(0.4); opacity: 0.9; }
+  to { transform: scale(3.2); opacity: 0; }
+}
+
+.cursor-bit {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 8px;
+  height: 8px;
+  margin: -4px 0 0 -4px;
+  border: 1.5px solid var(--color-ink);
+  animation: cursor-bit 0.6s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+@keyframes cursor-bit {
+  from { transform: translate(0, 0) rotate(0deg) scale(1); opacity: 1; }
+  to { transform: translate(var(--dx), var(--dy)) rotate(var(--rot)) scale(0.2); opacity: 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cursor-layer {
+    display: none;
+  }
+}
+
 /* ---------- links: thick underline that draws in ---------- */
 
 .link-draw {

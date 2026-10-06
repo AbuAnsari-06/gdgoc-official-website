@@ -156,7 +156,7 @@ export default function Hacktober() {
 
             <Reveal>
               <div className="mt-12 flex flex-wrap items-center gap-4">
-                <span data-byte-cta className="inline-flex">
+                <span data-byte-cta data-cursor-color="#FBBC04" data-cursor-label="Join" className="inline-flex">
                   <ArrowLink onClick={() => scrollToId("join")} color="gyellow">
                     Join the chapter
                   </ArrowLink>

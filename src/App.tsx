@@ -12,6 +12,7 @@ import Domains from "./components/Domains";
 import Crew from "./components/Crew";
 import Join from "./components/Join";
 import Footer from "./components/Footer";
+import Cursor from "./components/Cursor";
 import { setLenis } from "./lib/scroll";
 
 export default function App() {
@@ -67,6 +68,7 @@ export default function App() {
           <Join />
         </main>
         <Footer />
+        <Cursor />
         <div className="noise-overlay" aria-hidden="true" />
       </div>
     </MotionConfig>
