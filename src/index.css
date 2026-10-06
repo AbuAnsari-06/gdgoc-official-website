@@ -203,6 +203,13 @@ body {
   box-shadow: 3px 3px 0 var(--hard-edge, var(--color-ink));
 }
 
+/* the hero stage: flat brand-blue panel, ink border, hard shadow. No
+   lift states - it is scenery, not a control. */
+.hard-panel {
+  border: 3px solid var(--color-ink);
+  box-shadow: 10px 10px 0 var(--color-ink);
+}
+
 /* a few cards rest at a slight angle and straighten as they lift */
 .rest-tilt-l {
   --rest: -1deg;

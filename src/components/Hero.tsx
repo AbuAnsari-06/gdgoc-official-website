@@ -1,7 +1,4 @@
-import { useEffect, useState } from "react";
-import { useReducedMotion } from "framer-motion";
-import Scene3D from "./Scene3D";
-import { Marquee, Reveal, usePointerParallax } from "./ui";
+import { Marquee, Reveal, SectionTag, usePointerParallax } from "./ui";
 import { HACKTOBER, MARQUEE_WORDS, COLOR_HEX, type GColor } from "../data/content";
 import { osoStatusLabel, useOsoStatus } from "../lib/oso";
 import { scrollToId } from "../lib/scroll";
@@ -12,12 +9,10 @@ const LINES: { word: string; color: GColor }[] = [
   { word: "Grow.", color: "ggreen" },
 ];
 
-/* ---- effect 1: the wordmark letters drop in, then the command types ---- */
+/* ---- effect 1: the wordmark letters drop in ---- */
 
 const TOTAL_LETTERS = LINES.reduce((n, l) => n + l.word.length, 0);
 const LETTER_STEP = 600 / TOTAL_LETTERS; // the whole wordmark lands in ~600ms
-const TYPE_START = 620;
-const COMMAND = "init --campus=PSIT_Kanpur";
 
 function DropLine({ word, color, offset }: { word: string; color: GColor; offset: number }) {
   return (
@@ -36,32 +31,13 @@ function DropLine({ word, color, offset }: { word: string; color: GColor; offset
   );
 }
 
-function TypedCommand({ text }: { text: string }) {
-  const reduced = useReducedMotion();
-  const [n, setN] = useState(() => (reduced ? text.length : 0));
-
-  useEffect(() => {
-    if (reduced) {
-      setN(text.length);
-      return;
-    }
-    let i = 0;
-    let interval = 0;
-    const start = window.setTimeout(() => {
-      interval = window.setInterval(() => {
-        i += 1;
-        setN(i);
-        if (i >= text.length) window.clearInterval(interval);
-      }, 38);
-    }, TYPE_START);
-    return () => {
-      window.clearTimeout(start);
-      window.clearInterval(interval);
-    };
-  }, [reduced, text]);
-
-  return <span className="font-bold">{text.slice(0, n)}</span>;
-}
+/* Glyph stickers on the stage: brand colours, gentle pointer parallax. */
+const GLYPHS: { text: string; color: GColor; cls: string; depth: number }[] = [
+  { text: "<>", color: "gyellow", cls: "top-6 left-6 text-4xl", depth: 22 },
+  { text: "{ }", color: "gred", cls: "top-24 right-8 text-3xl", depth: 14 },
+  { text: "#", color: "ggreen", cls: "bottom-40 left-10 text-3xl", depth: 18 },
+  { text: "PR", color: "gblue", cls: "top-1/2 right-16 text-3xl", depth: 26 },
+];
 
 export default function Hero() {
   const oso = useOsoStatus();
@@ -69,53 +45,25 @@ export default function Hero() {
 
   return (
     <section id="top" className="relative flex min-h-screen flex-col overflow-hidden">
-      {/* ambient 3D background — kept, dimmed so the wordmark leads */}
-      <Scene3D className="absolute inset-0 z-0 opacity-40" />
+      <div className="relative z-10 mx-auto grid w-full max-w-7xl flex-1 items-center gap-12 px-5 pt-28 pb-10 sm:px-8 lg:grid-cols-[1.05fr_0.95fr] lg:gap-10">
+        {/* ---- left: wordmark column ---- */}
+        <div>
+          {/* tab label replaces the old terminal eyebrow */}
+          <Reveal delay={0.1} y={16}>
+            <SectionTag label="Google Developer Group on Campus" color="gblue" />
+          </Reveal>
 
-      <div
-        ref={driftRef}
-        className="relative z-10 mx-auto flex w-full max-w-7xl flex-1 flex-col justify-center px-5 pt-28 pb-16 sm:px-8"
-      >
-        {/* effect 2: the signature brackets drift with the pointer */}
-        <span
-          data-drift="18"
-          aria-hidden="true"
-          className="pointer-events-none absolute top-24 left-2 font-mono text-3xl font-bold text-ink select-none sm:text-5xl"
-        >
-          &lt;/&gt;
-        </span>
-        <span
-          data-drift="28"
-          aria-hidden="true"
-          className="pointer-events-none absolute right-2 bottom-28 font-mono text-4xl font-bold text-gblue select-none sm:text-6xl"
-        >
-          &lt;/&gt;
-        </span>
-        {/* terminal eyebrow — types out after the wordmark lands */}
-        <Reveal delay={0.1} y={16}>
-          <p className="font-mono text-xs text-ink sm:text-sm" aria-label={`gdgc-psit $ ${COMMAND}`}>
-            <span className="text-muted" aria-hidden="true">
-              &lt;/&gt;/gdgc-psit $
-            </span>{" "}
-            <span aria-hidden="true">
-              <TypedCommand text={COMMAND} />
-            </span>
-            <span className="animate-caret ml-1 inline-block h-3.5 w-[7px] translate-y-[2px] bg-gblue" aria-hidden="true" />
-          </p>
-        </Reveal>
+          <h1 className="text-h1 heading-shadow heading-shadow-ink mt-6">
+            <DropLine word={LINES[0].word} color={LINES[0].color} offset={0} />
+            <DropLine word={LINES[1].word} color={LINES[1].color} offset={LINES[0].word.length} />
+            <DropLine
+              word={LINES[2].word}
+              color={LINES[2].color}
+              offset={LINES[0].word.length + LINES[1].word.length}
+            />
+          </h1>
 
-        <h1 className="text-h1 heading-shadow heading-shadow-ink mt-6">
-          <DropLine word={LINES[0].word} color={LINES[0].color} offset={0} />
-          <DropLine word={LINES[1].word} color={LINES[1].color} offset={LINES[0].word.length} />
-          <DropLine
-            word={LINES[2].word}
-            color={LINES[2].color}
-            offset={LINES[0].word.length + LINES[1].word.length}
-          />
-        </h1>
-
-        <div className="mt-8 flex flex-col gap-8 lg:flex-row lg:items-end lg:justify-between">
-          <Reveal delay={0.35} className="max-w-xl">
+          <Reveal delay={0.35} className="mt-8 max-w-xl">
             <p className="text-base leading-relaxed text-muted sm:text-lg">
               The <span className="font-semibold text-ink">Google Developer Groups on Campus</span> chapter of
               PSIT, Kanpur - a crew of students who learn in public, build loudly and ship open source.
@@ -130,13 +78,55 @@ export default function Hero() {
               </span>
             </div>
           </Reveal>
+        </div>
 
-          {/* HACKTOBER countdown card */}
-          <Reveal delay={0.5}>
+        {/* ---- right: the stage. Flat blue panel, 3px ink border, hard
+           shadow, radial lighting. The robot (next phase) stands here and
+           may rise above the panel top, so nothing clips it. Aspect ratio
+           is reserved so the layout never shifts. ---- */}
+        <div ref={driftRef} className="relative">
+          <div
+            className="hard-panel relative aspect-[4/5] w-full max-w-[560px] justify-self-center"
+            style={{
+              background:
+                "radial-gradient(circle at 50% 28%, rgba(255,255,255,0.30), rgba(255,255,255,0) 62%), #4285F4",
+            }}
+          >
+            {/* glyph stickers */}
+            {GLYPHS.map((g) => (
+              <span
+                key={g.text}
+                data-drift={g.depth}
+                aria-hidden="true"
+                className={`pointer-events-none absolute z-[2] select-none font-display font-extrabold ${g.cls}`}
+                style={{ color: COLOR_HEX[g.color], textShadow: "3px 3px 0 var(--color-ink)" }}
+              >
+                {g.text}
+              </span>
+            ))}
+
+            {/* contact shadow: the robot's soft ellipse on the stage floor */}
+            <span
+              data-drift="6"
+              aria-hidden="true"
+              className="pointer-events-none absolute bottom-6 left-1/2 z-[1] h-7 w-48 -translate-x-1/2 rounded-full bg-black/25 blur-[2px]"
+            />
+
+            {/* robot mount point — Byte stands here (Phase 5). Reserved so
+               the stage never reflows when the robot mounts. */}
+            <div
+              id="byte-stage"
+              className="absolute inset-x-0 bottom-0 z-[3] flex justify-center"
+            />
+          </div>
+
+          {/* event card, docked to the stage's lower-left. On lg it juts
+             out of the panel; below lg it flows underneath. */}
+          <Reveal delay={0.5} className="lg:absolute lg:-bottom-8 lg:-left-6 lg:z-[4] lg:max-w-[320px]">
             <button
               type="button"
               onClick={() => scrollToId("hacktober")}
-              className="hard-surface group relative block w-full p-5 text-left sm:w-auto"
+              className="hard-surface group relative block w-full p-5 text-left"
               style={{ borderTopColor: COLOR_HEX.ggreen, borderTopWidth: "10px" }}
             >
               <div className="flex items-center justify-between gap-6">
@@ -146,7 +136,7 @@ export default function Hero() {
                 </svg>
               </div>
               <div className="mt-3 flex items-baseline gap-4 font-display font-bold">
-                <span className="text-2xl text-ink sm:text-3xl">{osoStatusLabel(oso)}</span>
+                <span className="text-xl text-ink sm:text-2xl">{osoStatusLabel(oso)}</span>
               </div>
               <p className="mt-2 font-mono text-[11px] text-muted">{HACKTOBER.dates}</p>
             </button>
@@ -154,13 +144,10 @@ export default function Hero() {
         </div>
       </div>
 
-      {/* scroll cue */}
+      {/* scroll cue: bar only, no text label */}
       <div className="relative z-10 mx-auto mb-4 flex w-full max-w-7xl items-center justify-between px-5 sm:px-8">
-        <div className="flex items-center gap-3 font-mono text-xs text-muted">
-          <span className="inline-block h-8 w-[3px] bg-ink" aria-hidden="true" />
-          scroll to explore
-        </div>
-        <span className="hidden font-mono text-xs text-muted sm:block">EST. 2023 · PSIT Kanpur</span>
+        <span className="inline-block h-8 w-[3px] bg-ink" aria-hidden="true" />
+        <span className="hidden font-mono text-xs text-muted sm:block">PSIT Kanpur</span>
       </div>
 
       {/* tech marquee */}
