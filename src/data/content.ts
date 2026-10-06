@@ -1,11 +1,29 @@
 export type GColor = "gblue" | "gred" | "gyellow" | "ggreen";
 
-/* The Google four: blue · red · yellow · green */
+/* The Google four: blue · red · yellow · green.
+   This object is the JS-side token surface for the four brand hues;
+   src/index.css mirrors the same values in its @theme block. */
 export const COLOR_HEX: Record<GColor, string> = {
   gblue: "#4285F4",
   gred: "#EA4335",
   gyellow: "#FBBC05",
   ggreen: "#34A853",
+};
+
+/* Neutral ink values, mirroring --color-ink / --color-line2 in src/index.css.
+   Used by the WebGL scene, which cannot read CSS custom properties. */
+export const INK = "#202124";
+export const INK_SOFT = "#BDC1C6";
+
+/* Text colour that is legible on a block of each accent colour.
+   Ink passes AA on blue (4.5:1), yellow (9.4:1) and green (5.3:1).
+   On red, ink is 4.1:1 — large or bold text only, otherwise use a
+   white/tint panel inside the colour block. */
+export const ON_COLOR: Record<GColor, string> = {
+  gblue: INK,
+  gred: INK,
+  gyellow: INK,
+  ggreen: INK,
 };
 
 /* ------------------------------------------------------------------ */

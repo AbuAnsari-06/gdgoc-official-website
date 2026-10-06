@@ -189,10 +189,10 @@ export function Marquee({
 export function GdgMark({ size = 22 }: { size?: number }) {
   return (
     <svg width={size} height={size} viewBox="0 0 32 32" fill="none" aria-hidden="true">
-      <circle cx="7.5" cy="16" r="6" fill="#4285F4" />
-      <path d="M16 3.5 26.5 16 16 28.5Z" fill="#EA4335" />
-      <rect x="2" y="2" width="28" height="28" rx="14" fill="none" stroke="#FBBC05" strokeWidth="2.4" strokeDasharray="4 6" />
-      <circle cx="25" cy="25" r="5" fill="#34A853" />
+      <circle cx="7.5" cy="16" r="6" fill={COLOR_HEX.gblue} />
+      <path d="M16 3.5 26.5 16 16 28.5Z" fill={COLOR_HEX.gred} />
+      <rect x="2" y="2" width="28" height="28" rx="14" fill="none" stroke={COLOR_HEX.gyellow} strokeWidth="2.4" strokeDasharray="4 6" />
+      <circle cx="25" cy="25" r="5" fill={COLOR_HEX.ggreen} />
     </svg>
   );
 }
@@ -242,7 +242,7 @@ export function ArrowLink({
 
 /* ---------------- Corner ticks for framed panels ---------------- */
 
-export function CornerFrame({ className, color = "#2b3548" }: { className?: string; color?: string }) {
+export function CornerFrame({ className, color = "var(--color-ink)" }: { className?: string; color?: string }) {
   return (
     <>
       <span className={cn("pointer-events-none absolute -top-px -left-px h-4 w-4 border-t-2 border-l-2", className)} style={{ borderColor: color }} />
