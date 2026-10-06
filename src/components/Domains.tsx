@@ -59,11 +59,11 @@ export default function Domains() {
             <SectionTag index="05" label="Domains" color="gred" />
             <ScrambleHeading
               text="Pick your lane"
-              className="mt-5 font-display text-[clamp(2.25rem,5.5vw,4rem)] leading-[1.02] font-extrabold tracking-tight"
+              className="mt-5 text-h2 heading-shadow heading-shadow-gred"
             />
           </div>
           <p className="max-w-sm text-[15px] leading-relaxed text-ink/80">
-            Six cards in the stack, one per lane. They pile up as you scroll — hover any of them for session
+            Six cards in the stack, one per lane. They pile up as you scroll - hover any of them for session
             intel.
           </p>
         </div>
@@ -78,7 +78,7 @@ export default function Domains() {
                   <TiltCard color={d.color} rank={`0${i + 1}`} details={d.detail} detailsLabel="Lane intel" max={4}>
                     <div className="flex h-full flex-col gap-5 sm:flex-row sm:items-start sm:justify-between">
                       <div className="max-w-2xl">
-                        <h3 className="font-display text-2xl font-extrabold tracking-tight text-ink sm:text-3xl">
+                        <h3 className="text-h3 text-ink">
                           {d.title}
                         </h3>
                         <p className="mt-3 text-sm leading-relaxed text-ink/75 sm:text-[15px]">{d.blurb}</p>

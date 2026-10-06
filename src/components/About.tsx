@@ -21,17 +21,13 @@ export default function About() {
           {/* sticky intro column */}
           <div className="lg:sticky lg:top-28 lg:self-start">
             <SectionTag index="02" label="What we do" color="gblue" />
-            <h2 className="mt-6 font-display text-[clamp(2.25rem,5.5vw,4rem)] leading-[1.02] font-extrabold tracking-tight">
+            <h2 className="mt-6 text-h2 heading-shadow heading-shadow-gblue">
               <LineReveal>The place where</LineReveal>
-              <LineReveal delay={0.1}>
-                <span className="text-gblue">PSIT ships</span>
-              </LineReveal>
-              <LineReveal delay={0.2}>
-                <span className="text-gred">its builders.</span>
-              </LineReveal>
+              <LineReveal delay={0.1}>PSIT ships</LineReveal>
+              <LineReveal delay={0.2}>its builders.</LineReveal>
             </h2>
             <p className="mt-7 max-w-md text-[15px] leading-relaxed text-ink/80">
-              GDGoC PSIT is the campus chapter of Google Developer Groups — run entirely by students. We turn
+              GDGoC PSIT is the campus chapter of Google Developer Groups - run entirely by students. We turn
               lecture-hall theory into working software through study jams, hackathons and a crew that reviews
               your first PR like it's their own.
             </p>
@@ -72,10 +68,7 @@ export default function About() {
                         style={{ background: PANEL_HEX[p.color] }}
                       >
                         {p.index}
-                      </span>
-                      <h3 className="font-display text-[clamp(1.75rem,4vw,2.75rem)] font-extrabold tracking-tight text-ink">
-                        {p.title}
-                      </h3>
+                      </span>                      <h3 className="text-h3 text-ink">{p.title}</h3>
                     </div>
                     <p className="mt-4 max-w-lg pl-5 text-[15px] leading-relaxed text-ink/80 sm:pl-20">{p.body}</p>
                   </div>

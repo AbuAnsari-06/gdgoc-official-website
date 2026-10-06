@@ -208,26 +208,23 @@ export function LineReveal({
 /* ---------------- Section tag ---------------- */
 
 export function SectionTag({
-  index,
   label,
   color = "gblue",
   className,
 }: {
-  index: string;
+  /** Kept in the prop signature for call-site compatibility; no longer rendered. */
+  index?: string;
   label: string;
   color?: GColor;
   className?: string;
 }) {
   return (
-    <div className={cn("flex items-center gap-3 text-sm font-semibold text-ink", className)}>
-      <span
-        className="inline-block h-3 w-3 border-2 border-ink"
-        style={{ background: COLOR_HEX[color] }}
-        aria-hidden="true"
-      />
-      <span className="text-muted">{index}</span>
-      <span>{label}</span>
-    </div>
+    <span
+      className={cn("tab-label bg-panel text-sm text-ink sm:text-base", className)}
+      style={{ background: COLOR_HEX[color] }}
+    >
+      {label}
+    </span>
   );
 }
 
@@ -305,7 +302,7 @@ export function Marquee({
     <div
       className={cn("marquee overflow-hidden", mask && "marquee-mask", className)}
       tabIndex={0}
-      aria-label="Scrolling ticker — pause with focus"
+      aria-label="Scrolling ticker - pause with focus"
     >
       <div
         className="marquee-track flex w-max items-center"

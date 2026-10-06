@@ -104,7 +104,7 @@ export default function Hero() {
           </p>
         </Reveal>
 
-        <h1 className="mt-6 font-display text-[clamp(3rem,12vw,6.5rem)] leading-[0.95] font-extrabold tracking-tight">
+        <h1 className="text-h1 heading-shadow heading-shadow-ink mt-6">
           <DropLine word={LINES[0].word} color={LINES[0].color} offset={0} />
           <DropLine word={LINES[1].word} color={LINES[1].color} offset={LINES[0].word.length} />
           <DropLine
@@ -118,7 +118,7 @@ export default function Hero() {
           <Reveal delay={0.35} className="max-w-xl">
             <p className="text-base leading-relaxed text-muted sm:text-lg">
               The <span className="font-semibold text-ink">Google Developer Groups on Campus</span> chapter of
-              PSIT, Kanpur — a crew of students who learn in public, build loudly and ship open source.
+              PSIT, Kanpur - a crew of students who learn in public, build loudly and ship open source.
             </p>
             <div className="mt-5 flex flex-wrap items-center gap-3">
               <span className="flex items-center gap-2 border-2 border-ink px-3 py-1.5 text-xs font-semibold text-ink">

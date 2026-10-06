@@ -75,7 +75,7 @@ export default function Hacktober() {
             <SectionTag index="03" label="Flagship event" color="ggreen" />
             <ScrambleHeading
               text="Open Source October 2026"
-              className="mt-6 font-display text-[clamp(2.5rem,6vw,4.5rem)] leading-[1.02] font-extrabold tracking-tight"
+              className="mt-6 text-h2 heading-shadow heading-shadow-ggreen"
             />
             <p className="mt-5 border-l-[6px] border-ggreen pl-4 font-display text-lg font-bold text-ink sm:text-xl">
               {HACKTOBER.tagline}

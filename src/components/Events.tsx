@@ -72,11 +72,11 @@ export default function Events() {
             <SectionTag index="04" label="Event log" color="ggreen" />
             <ScrambleHeading
               text="Past drops & sessions"
-              className="mt-5 font-display text-[clamp(2.25rem,5.5vw,4rem)] leading-[1.02] font-extrabold tracking-tight"
+              className="mt-5 text-h2 heading-shadow heading-shadow-ggreen"
             />
           </div>
           <p className="max-w-sm text-[15px] leading-relaxed text-ink/80">
-            Six cards from the deck we've played so far — workshops, study jams, watch parties and PR nights.
+            Six cards from the deck we've played so far - workshops, study jams, watch parties and PR nights.
             Hover any card for its session report.
           </p>
         </div>

@@ -34,6 +34,23 @@
   --font-body: "Bricolage Grotesque", system-ui, sans-serif;
   --font-mono: "JetBrains Mono", ui-monospace, monospace;
 
+  /* ---- Display type scale (sentence case, Bricolage 800). Fluid clamps:
+     H1 ~4rem to 12rem, H2 ~3rem to 7rem, H3 ~1.6rem to 2.4rem. The hero
+     stacks three H1 lines, so its clamp tops out under the 12rem ceiling
+     to keep the whole hero inside the viewport. ---- */
+  --text-h1: clamp(4rem, 10vw, 10rem);
+  --text-h1--line-height: 0.9;
+  --text-h1--letter-spacing: -0.045em;
+  --text-h1--font-weight: 800;
+  --text-h2: clamp(3rem, 7vw, 7rem);
+  --text-h2--line-height: 0.9;
+  --text-h2--letter-spacing: -0.045em;
+  --text-h2--font-weight: 800;
+  --text-h3: clamp(1.6rem, 2.6vw, 2.4rem);
+  --text-h3--line-height: 1.05;
+  --text-h3--letter-spacing: -0.03em;
+  --text-h3--font-weight: 800;
+
   /* ---- Hard offset shadow (flat, no blur). Surfaces and buttons ramp
      6px → 10px on lift and 3px on press; the edge colour is overridable
      per element with --hard-edge. ---- */
@@ -131,6 +148,35 @@ body {
 
 .animate-caret {
   animation: blink-caret 1.1s step-end infinite;
+}
+
+/* ---------- display headings: ink text, hard accent offset shadow ---------- */
+
+/* Signature treatment: solid ink display type with a hard (blur-free)
+   offset shadow in the section's accent colour. Shadow size is in em so
+   it scales with the type. Never combine with gradients. */
+.heading-shadow {
+  color: var(--color-ink);
+  text-shadow: 0.045em 0.045em 0 var(--heading-accent, var(--color-gblue));
+}
+.heading-shadow-blue { --heading-accent: var(--color-gblue); }
+.heading-shadow-red { --heading-accent: var(--color-gred); }
+.heading-shadow-yellow { --heading-accent: var(--color-gyellow); }
+.heading-shadow-green { --heading-accent: var(--color-ggreen); }
+/* Hero variant: the wordmark keeps its per-word brand colours (inline
+   styles win over the ink colour here) and gets the ink hard shadow. */
+.heading-shadow-ink { --heading-accent: var(--color-ink); }
+
+/* The tab label replaces numbered mono eyebrows: solid accent tab,
+   3px ink border, bold sentence-case text, no numbers. */
+.tab-label {
+  display: inline-flex;
+  align-items: center;
+  border: 3px solid var(--color-ink);
+  padding: 0.3rem 0.75rem;
+  font-weight: 800;
+  letter-spacing: 0.01em;
+  box-shadow: 3px 3px 0 var(--color-ink);
 }
 
 /* ---------- hard surfaces: lift, sink, rest ---------- */

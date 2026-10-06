@@ -15,11 +15,11 @@ export default function NoticeBoard() {
             <SectionTag index="01" label="Campus board" color="gyellow" />
             <ScrambleHeading
               text="Pinned by the crew"
-              className="mt-5 font-display text-[clamp(2.25rem,5.5vw,4rem)] leading-[1.02] font-extrabold tracking-tight"
+              className="mt-5 text-h2 heading-shadow heading-shadow-gblue"
             />
           </div>
           <p className="max-w-sm text-[15px] leading-relaxed text-ink/80">
-            The live notice board of the chapter. Registrations, meetups, office hours — if it matters this
+            The live notice board of the chapter. Registrations, meetups, office hours - if it matters this
             week, it's pinned here.
           </p>
         </div>

@@ -14,7 +14,7 @@ const TRACKS: { label: string; color: GColor }[] = [
 ];
 
 const PERKS = [
-  { color: "gblue" as GColor, text: "Weekly hands-on sessions — no lecture slides, ever" },
+  { color: "gblue" as GColor, text: "Weekly hands-on sessions - no lecture slides, ever" },
   { color: "gred" as GColor, text: "Mentor reviews on your projects and pull requests" },
   { color: "gyellow" as GColor, text: "First dibs on Open Source October teams, swag drops and DevFest" },
   { color: "ggreen" as GColor, text: "A direct line into the pan-India GDG community" },
@@ -78,7 +78,7 @@ export default function Join() {
             <SectionTag index="07" label="Join the crew" color="ggreen" />
             <ScrambleHeading
               text="Open a PR on your future"
-              className="mt-6 font-display text-[clamp(2.25rem,5.5vw,4rem)] leading-[1.02] font-extrabold tracking-tight"
+              className="mt-6 text-h2 heading-shadow heading-shadow-gyellow"
             />
             <p className="mt-6 max-w-md text-[15px] leading-relaxed text-ink/80">
               No gatekeeping, no "you need to know X first". If you're curious enough to show up on a Friday
@@ -150,7 +150,7 @@ export default function Join() {
                       You're in the queue, {name.trim().split(" ")[0]}
                     </p>
                     <p className="mt-3 max-w-xs text-sm leading-relaxed text-ink/80">
-                      Watch <span className="font-semibold text-ink">{email}</span> — the crew sends onboarding before the
+                      Watch <span className="font-semibold text-ink">{email}</span> - the crew sends onboarding before the
                       next meetup. Meanwhile, the board is yours to explore.
                     </p>
                     <button

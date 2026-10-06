@@ -44,7 +44,7 @@ export default function Crew() {
             <SectionTag index="06" label="The crew" color="gblue" />
             <ScrambleHeading
               text="Humans behind the board"
-              className="mt-5 font-display text-[clamp(2.25rem,5.5vw,4rem)] leading-[1.02] font-extrabold tracking-tight"
+              className="mt-5 text-h2 heading-shadow heading-shadow-gblue"
             />
           </div>
           <p className="max-w-sm text-[15px] leading-relaxed text-ink/80">
@@ -52,7 +52,7 @@ export default function Crew() {
             <code className="border-2 border-ink bg-bg px-1.5 py-0.5 font-mono text-xs text-ink">
               src/data/members.ts
             </code>{" "}
-            — add a name there and the deck updates itself.
+            Add a name there and the deck updates itself.
           </p>
         </div>
 

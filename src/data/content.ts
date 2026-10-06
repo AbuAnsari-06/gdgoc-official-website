@@ -150,7 +150,7 @@ export const PILLARS = [
     index: "01",
     color: "gblue" as GColor,
     title: "Learn",
-    body: "Study jams, bootcamps and zero-to-hero tracks. We run hands-on sessions on web, Android, cloud and GenAI — no slide-deck lectures, you ship something every single session.",
+    body: "Study jams, bootcamps and zero-to-hero tracks. We run hands-on sessions on web, Android, cloud and GenAI - no slide-deck lectures, you ship something every single session.",
   },
   {
     index: "02",
@@ -229,7 +229,7 @@ export const DOMAINS: Domain[] = [
   {
     color: "ggreen",
     title: "Open Source",
-    blurb: "First-PR nights, good-first-issue hunts and GSoC prep. Your commit history is your resume — we help you start it.",
+    blurb: "First-PR nights, good-first-issue hunts and GSoC prep. Your commit history is your resume - we help you start it.",
     tools: ["Git", "GitHub", "GSoC"],
     detail: "PR reviews within 24h · GSoC prep circle starts January",
     icon: "oss",
@@ -258,7 +258,7 @@ export const EVENTS: PastEvent[] = [
     color: "gblue",
     date: "Aug 22, 2026",
     turnout: "120 devs",
-    note: "From git init to a merged PR in three hours. Branches, conflicts, rebases — demystified live.",
+    note: "From git init to a merged PR in three hours. Branches, conflicts, rebases - demystified live.",
     detail: "Outcome: 74 first commits pushed before the session ended.",
     image:
       "https://images.pexels.com/photos/16070143/pexels-photo-16070143.jpeg?auto=compress&cs=tinysrgb&fit=crop&h=627&w=1200",
@@ -269,7 +269,7 @@ export const EVENTS: PastEvent[] = [
     color: "gred",
     date: "Jul 18, 2026",
     turnout: "90 devs",
-    note: "Prompting, RAG and a live Vertex AI walkthrough — everyone left with a working chatbot.",
+    note: "Prompting, RAG and a live Vertex AI walkthrough - everyone left with a working chatbot.",
     detail: "Outcome: 61 skill badges claimed in one sitting.",
     image:
       "https://images.pexels.com/photos/29627312/pexels-photo-29627312.jpeg?auto=compress&cs=tinysrgb&fit=crop&h=627&w=1200",
@@ -292,7 +292,7 @@ export const EVENTS: PastEvent[] = [
     date: "Dec 14, 2025",
     turnout: "200 devs",
     note: "Keynotes on the big screen, live reactions, swag drop for the top contributors of the semester.",
-    detail: "Outcome: biggest room we've ever filled — auditorium at capacity.",
+    detail: "Outcome: biggest room we've ever filled - auditorium at capacity.",
     image:
       "https://images.pexels.com/photos/8199151/pexels-photo-8199151.jpeg?auto=compress&cs=tinysrgb&fit=crop&h=627&w=1200",
   },
@@ -313,7 +313,7 @@ export const EVENTS: PastEvent[] = [
     color: "ggreen",
     date: "Sep 27, 2025",
     turnout: "85 devs",
-    note: "Kotlin basics to a working Compose UI — the 'hello campus' app is still on half our phones.",
+    note: "Kotlin basics to a working Compose UI - the 'hello campus' app is still on half our phones.",
     detail: "Outcome: 85 APKs sideloaded by 7 PM the same day.",
     image:
       "https://images.pexels.com/photos/6804068/pexels-photo-6804068.jpeg?auto=compress&cs=tinysrgb&fit=crop&h=627&w=1200",
