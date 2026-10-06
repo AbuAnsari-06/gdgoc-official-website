@@ -255,7 +255,7 @@ export default function Nav() {
           >
             <div className="flex min-h-full flex-col justify-center pt-16 pb-16">
               <p className="px-6 pt-4 pb-3 font-mono text-xs text-muted sm:px-12 lg:px-20">
-                // navigate the board
+                Navigate the board
               </p>
               <nav className="border-t-[3px] border-ink">
                 {NAV_ITEMS.map((item, i) => (

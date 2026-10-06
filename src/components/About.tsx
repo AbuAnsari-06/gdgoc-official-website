@@ -2,7 +2,7 @@ import { LineReveal, SectionTag } from "./ui";
 import { PILLARS, COLOR_HEX, PANEL_HEX } from "../data/content";
 
 const CODE: { text: string; cls: string }[] = [
-  { text: "// chapter.config.ts", cls: "text-muted" },
+  { text: "chapter.config.ts", cls: "text-muted" },
   { text: "export default {", cls: "text-ink" },
   { text: '  campus: "PSIT · Kanpur, IN",', cls: "text-ink" },
   { text: '  motto: ["learn", "connect", "grow"],', cls: "text-ink" },

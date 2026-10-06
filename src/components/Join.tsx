@@ -46,9 +46,9 @@ export default function Join() {
 
   const submit = () => {
     const next: FormErrors = {};
-    if (name.trim().length < 2) next.name = "// name required";
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) next.email = "// valid email required";
-    if (tracks.length === 0) next.tracks = "// pick at least one track";
+    if (name.trim().length < 2) next.name = "Name required";
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) next.email = "Valid email required";
+    if (tracks.length === 0) next.tracks = "Pick at least one track";
     setErrors(next);
     if (Object.keys(next).length === 0) {
       setSubmitted(true);

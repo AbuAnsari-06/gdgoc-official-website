@@ -65,7 +65,7 @@ export default function Footer() {
           </div>
 
           <div>
-            <p className="font-mono text-xs text-muted">// navigate</p>
+            <p className="font-mono text-xs font-semibold text-muted">Navigate</p>
             <ul className="mt-5 space-y-3">
               {NAV.map((n) => (
                 <li key={n.id}>
@@ -78,7 +78,7 @@ export default function Footer() {
           </div>
 
           <div>
-            <p className="font-mono text-xs text-muted">// find us</p>
+            <p className="font-mono text-xs font-semibold text-muted">Find us</p>
             <ul className="mt-5 space-y-3">
               {EXTERNALS.map((e) => (
                 <li key={e.label}>
