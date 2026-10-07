@@ -1,0 +1,119 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="robots" content="noindex" />
+    <meta name="theme-color" content="#FFFFFF" />
+    <title>Page not found, GDGoC PSIT</title>
+    <link rel="icon" href="/brand/gdg/favicon.ico" sizes="any" />
+    <link rel="apple-touch-icon" sizes="180x180" href="/brand/gdg/icons/apple-touch-icon-180.png" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400..800&family=JetBrains+Mono:wght@400;500;700&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      :root {
+        --ink: #202124;
+        --bg: #ffffff;
+        --panel: #f8f9fa;
+        --gblue: #4285f4;
+        --gred: #ea4335;
+        --gyellow: #fbbc04;
+        --ggreen: #34a853;
+      }
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        min-height: 100dvh;
+        display: grid;
+        place-items: center;
+        padding: 24px;
+        background: var(--bg);
+        color: var(--ink);
+        font-family: "Bricolage Grotesque", system-ui, sans-serif;
+        font-weight: 500;
+        -webkit-font-smoothing: antialiased;
+      }
+      ::selection { background: var(--gyellow); color: var(--ink); }
+      .card {
+        width: 100%;
+        max-width: 620px;
+        border: 3px solid var(--ink);
+        background: var(--panel);
+        box-shadow: 10px 10px 0 var(--ink);
+      }
+      .stripes { display: flex; height: 12px; border-bottom: 3px solid var(--ink); }
+      .stripes span { flex: 1; }
+      .stripes span:nth-child(1) { background: var(--gblue); }
+      .stripes span:nth-child(2) { background: var(--gred); }
+      .stripes span:nth-child(3) { background: var(--gyellow); }
+      .stripes span:nth-child(4) { background: var(--ggreen); }
+      .body { padding: 32px 28px 34px; }
+      .lockup { display: block; width: 236px; height: auto; max-width: 100%; }
+      .tab {
+        display: inline-block;
+        margin-top: 26px;
+        border: 3px solid var(--ink);
+        background: var(--gyellow);
+        color: var(--ink);
+        padding: 6px 13px;
+        font-size: 15px;
+        font-weight: 800;
+        box-shadow: 3px 3px 0 var(--ink);
+      }
+      h1 {
+        margin: 18px 0 0;
+        font-size: clamp(2.6rem, 8vw, 4.2rem);
+        line-height: 0.92;
+        letter-spacing: -0.03em;
+        font-weight: 800;
+        text-shadow: 0.03em 0.03em 0 var(--gblue);
+      }
+      p { margin: 16px 0 0; font-size: 16px; line-height: 1.6; max-width: 46ch; }
+      a.home {
+        display: inline-flex;
+        align-items: center;
+        gap: 10px;
+        margin-top: 26px;
+        border: 3px solid var(--ink);
+        background: var(--gyellow);
+        color: var(--ink);
+        padding: 13px 20px;
+        font-weight: 800;
+        font-size: 16px;
+        text-decoration: none;
+        box-shadow: 6px 6px 0 var(--ink);
+        transition: transform 0.16s cubic-bezier(0.22, 1, 0.36, 1), box-shadow 0.16s cubic-bezier(0.22, 1, 0.36, 1);
+      }
+      a.home:hover { transform: translate(-3px, -3px); box-shadow: 10px 10px 0 var(--ink); }
+      a.home:active { transform: translate(2px, 2px); box-shadow: 3px 3px 0 var(--ink); }
+      a:focus-visible { outline: 3px solid var(--ink); outline-offset: 3px; }
+      @media (prefers-reduced-motion: reduce) {
+        a.home, a.home:hover, a.home:active { transition: none; transform: none; box-shadow: 6px 6px 0 var(--ink); }
+      }
+    </style>
+  </head>
+  <body>
+    <main class="card">
+      <div class="stripes" aria-hidden="true"><span></span><span></span><span></span><span></span></div>
+      <div class="body">
+        <img class="lockup" src="/brand/gdg/gdg-lockup-1line-black.svg" alt="Google Developer Groups" width="236" height="24" />
+        <span class="tab">Google Developer Groups on Campus</span>
+        <h1>Nothing here.</h1>
+        <p>
+          This page does not exist, or it moved. The board, the crew and Open Source October are all
+          back on the home page.
+        </p>
+        <a class="home" href="/">
+          Back to GDGoC PSIT
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" aria-hidden="true">
+            <path d="M5 12h14M13 6l6 6-6 6" />
+          </svg>
+        </a>
+      </div>
+    </main>
+  </body>
+</html>

@@ -179,6 +179,53 @@ body {
   box-shadow: 3px 3px 0 var(--color-ink);
 }
 
+/* ---------- hero glyph stickers ---------- */
+
+/* Flat white plate, 3px ink border, hard shadow, ink glyph. The accent
+   only ever appears on the top edge - a yellow glyph on white would be
+   1.6:1, so glyphs are always ink. */
+.glyph-plate {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 46px;
+  height: 46px;
+  padding: 0 10px;
+  border: 3px solid var(--color-ink);
+  border-top-width: 7px;
+  border-top-color: var(--glyph-accent, var(--color-ink));
+  background: var(--color-bg);
+  color: var(--color-ink);
+  box-shadow: 4px 4px 0 var(--color-ink);
+  font-size: 1.35rem;
+  line-height: 1;
+}
+
+/* ---------- official GDG marks ---------- */
+
+/* The mark is never recoloured, skewed, rotated or animated. The wrapper
+   only pads it (clear space) and, for the plate variant, gives it a
+   white ground so it can sit on a saturated block. */
+.gdg-logo {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  line-height: 0;
+}
+
+.gdg-logo img {
+  display: block;
+  max-width: none;
+  height: auto;
+}
+
+.gdg-logo-plate {
+  background: var(--color-bg);
+  border: 3px solid var(--color-ink);
+  box-shadow: 4px 4px 0 var(--color-ink);
+}
+
 /* ---------- hard surfaces: lift, sink, rest ---------- */
 
 .hard-surface {

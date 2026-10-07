@@ -6,6 +6,7 @@ import {
   SectionTag,
   ScrambleHeading,
 } from "./ui";
+import GdgLogo from "./GdgLogo";
 import { HACKTOBER, COLOR_HEX } from "../data/content";
 import { OSO, osoStatusLabel, useOsoStatus } from "../lib/oso";
 import { scrollToId } from "../lib/scroll";
@@ -70,6 +71,11 @@ export default function Hacktober() {
                       );
                     })}
                   </div>
+                </div>
+                {/* official lockup in the poster corner, flat and unmodified;
+                   decorative here, the hero and footer carry the alt text */}
+                <div className="absolute bottom-5 left-6">
+                  <GdgLogo variant="lockup" size={148} alt="" clear={0} />
                 </div>
               </div>
             </Reveal>

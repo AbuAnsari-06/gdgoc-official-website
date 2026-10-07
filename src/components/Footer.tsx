@@ -1,4 +1,5 @@
-import { GdgMark, Marquee } from "./ui";
+import { Marquee } from "./ui";
+import GdgLogo from "./GdgLogo";
 import { scrollToId, scrollToTop } from "../lib/scroll";
 
 const NAV = [
@@ -43,15 +44,9 @@ export default function Footer() {
       <div className="mx-auto max-w-7xl px-5 py-16 sm:px-8">
         <div className="grid gap-12 md:grid-cols-[1.2fr_1fr_1fr]">
           <div>
-            <div className="flex items-center gap-3">
-              <GdgMark size={28} />
-              <span className="font-display text-lg font-extrabold">
-                GDGoC<span className="text-gblue">·</span>PSIT
-              </span>
-              <span className="font-mono text-sm text-muted" aria-hidden="true">
-                &lt;/&gt;
-              </span>
-            </div>
+            {/* the official lockup on the light plate; the chapter name is
+               set in site type beside it, never redrawn into the artwork */}
+            <GdgLogo variant="lockup" size={228} alt="Google Developer Groups" clear={0.1} />
             <p className="mt-5 max-w-sm text-sm leading-relaxed text-ink/80">
               Google Developer Groups on Campus, PSIT Kanpur. A student-run chapter where people learn
               together, build loudly and ship open source.

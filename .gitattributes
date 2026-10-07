@@ -1,0 +1,6 @@
+# Official brand artwork must stay byte-identical to the published files, so
+# git never rewrites line endings or applies text diffs to it.
+public/brand/gdg/*.svg -text
+public/brand/gdg/*.png binary
+public/brand/gdg/*.ico binary
+public/brand/gdg/icons/* binary

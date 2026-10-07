@@ -1,4 +1,6 @@
+import type { CSSProperties } from "react";
 import { Marquee, Reveal, SectionTag, usePointerParallax } from "./ui";
+import GdgLogo from "./GdgLogo";
 import Robot from "./Robot";
 import { HACKTOBER, MARQUEE_WORDS, COLOR_HEX, type GColor } from "../data/content";
 import { osoStatusLabel, useOsoStatus } from "../lib/oso";
@@ -32,12 +34,14 @@ function DropLine({ word, color, offset }: { word: string; color: GColor; offset
   );
 }
 
-/* Glyph stickers on the stage: brand colours, gentle pointer parallax. */
-const GLYPHS: { text: string; color: GColor; cls: string; depth: number }[] = [
-  { text: "<>", color: "gyellow", cls: "top-6 left-6 text-4xl", depth: 22 },
-  { text: "{ }", color: "gred", cls: "top-24 right-8 text-3xl", depth: 14 },
-  { text: "#", color: "ggreen", cls: "bottom-40 left-10 text-3xl", depth: 18 },
-  { text: "PR", color: "gblue", cls: "top-1/2 right-16 text-3xl", depth: 26 },
+/* Glyph stickers on the stage. Each is a small square plate so the glyph
+   keeps AA contrast on the blue wall; see .glyph-plate in index.css.
+   The "< >" sticker is gone - it imitated the official mark. The official
+   mark itself sits on a white plate beside them. */
+const GLYPHS: { text: string; color: GColor; cls: string; depth: number; tilt: number }[] = [
+  { text: "{ }", color: "gred", cls: "top-28 right-8", depth: 14, tilt: -4 },
+  { text: "#", color: "ggreen", cls: "bottom-44 left-10", depth: 18, tilt: 3 },
+  { text: "PR", color: "gblue", cls: "top-1/2 right-14", depth: 26, tilt: -2 },
 ];
 
 export default function Hero() {
@@ -93,14 +97,24 @@ export default function Hero() {
                 "radial-gradient(circle at 50% 28%, rgba(255,255,255,0.30), rgba(255,255,255,0) 62%), #4285F4",
             }}
           >
+            {/* the official mark, flat and unaltered, on a white plate */}
+            <span data-drift={22} className="pointer-events-none absolute top-6 left-6 z-[2] inline-flex">
+              <GdgLogo variant="mark-plate" size={62} alt="" clear={0.16} />
+            </span>
+
             {/* glyph stickers */}
             {GLYPHS.map((g) => (
               <span
                 key={g.text}
                 data-drift={g.depth}
                 aria-hidden="true"
-                className={`pointer-events-none absolute z-[2] select-none font-display font-extrabold ${g.cls}`}
-                style={{ color: COLOR_HEX[g.color], textShadow: "3px 3px 0 var(--color-ink)" }}
+                className={`glyph-plate pointer-events-none absolute z-[2] select-none font-display font-extrabold ${g.cls}`}
+                style={{
+                  /* white plate, ink glyph (21:1), accent edge for identity:
+                     yellow glyphs on white would only reach 1.6:1. */
+                  "--glyph-accent": COLOR_HEX[g.color],
+                  rotate: `${g.tilt}deg`,
+                } as CSSProperties}
               >
                 {g.text}
               </span>

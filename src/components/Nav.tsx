@@ -2,7 +2,8 @@ import { useEffect, useRef, useState, type MouseEvent as ReactMouseEvent } from 
 import { AnimatePresence, motion, useScroll, useSpring } from "framer-motion";
 import { cn } from "../utils/cn";
 import { scrollToId, scrollToTop } from "../lib/scroll";
-import { GdgMark, SuitGlyph, SUIT_FOR } from "./ui";
+import { SuitGlyph, SUIT_FOR } from "./ui";
+import GdgLogo from "./GdgLogo";
 import { COLOR_HEX, ON_COLOR, PANEL_EDGE, PANEL_HEX, type GColor } from "../data/content";
 
 const NAV_ITEMS: { id: string; label: string; desc: string; color: GColor }[] = [
@@ -195,9 +196,8 @@ export default function Nav() {
             className="group flex items-center gap-3"
             aria-label="Back to top"
           >
-            <span className="transition-transform duration-500 group-hover:rotate-90">
-              <GdgMark size={24} />
-            </span>
+            {/* official mark, unmodified and undecorated - no hover rotation */}
+            <GdgLogo variant="mark" size={30} alt="Google Developer Groups" />
             <span className="font-display text-[15px] font-extrabold">
               GDGoC<span className="text-gblue">·</span>PSIT
             </span>

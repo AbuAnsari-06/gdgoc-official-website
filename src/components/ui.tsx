@@ -322,18 +322,9 @@ export function Marquee({
   );
 }
 
-/* ---------------- GDG mark ---------------- */
-
-export function GdgMark({ size = 22 }: { size?: number }) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 32 32" fill="none" aria-hidden="true">
-      <rect x="1.5" y="1.5" width="29" height="29" fill="none" stroke={COLOR_HEX.gyellow} strokeWidth="3" />
-      <rect x="6" y="6" width="20" height="20" fill={COLOR_HEX.gblue} />
-      <path d="M16 6 26 16 16 26 6 16Z" fill={COLOR_HEX.gred} />
-      <rect x="12" y="12" width="8" height="8" fill={COLOR_HEX.ggreen} />
-    </svg>
-  );
-}
+/* The old hand-rolled GdgMark lived here. It was a lookalike, not the
+   official mark, so it is gone: every logo now comes from
+   src/components/GdgLogo.tsx, which only ever places official files. */
 
 /* ---------------- Arrow button ---------------- */
 

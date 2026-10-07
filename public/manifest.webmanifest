@@ -1,0 +1,15 @@
+{
+  "name": "GDGoC PSIT, Google Developer Groups on Campus",
+  "short_name": "GDGoC PSIT",
+  "description": "The Google Developer Groups on Campus chapter at PSIT Kanpur. Learn. Connect. Grow.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#FFFFFF",
+  "theme_color": "#FFFFFF",
+  "icons": [
+    { "src": "/brand/gdg/icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/brand/gdg/icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "/brand/gdg/icons/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}
