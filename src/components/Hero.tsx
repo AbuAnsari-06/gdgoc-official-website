@@ -168,12 +168,11 @@ export default function Hero() {
                clamped inside it, so the status rail below can never sit on
                top of the floor. */}
             <div className="pointer-events-none absolute inset-x-0 bottom-[45%] z-[2] h-[3px] bg-ink" />
-            <div
-              id="ruru-stage"
-              className="absolute inset-x-0 bottom-0 top-[55%] z-[1] bg-gyellow"
-              role="img"
-              aria-label="Ruru, the GDGoC mascot, rolling around its box"
-            />
+            {/* the droid's domain. Ruru clamps itself inside this band, so
+               nothing else may sit on it. The described image lives on the
+               droid's own visual wrapper, not here: role="img" on an
+               ancestor would hide its button from assistive tech. */}
+            <div id="ruru-stage" className="absolute inset-x-0 bottom-0 top-[55%] z-[1] bg-gyellow" />
             <Robot />
           </div>
         </div>

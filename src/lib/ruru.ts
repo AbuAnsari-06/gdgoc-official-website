@@ -1,0 +1,257 @@
+/* ==================================================================
+   RURU — the maths behind the rolling droid, kept pure so it can be
+   tested without a DOM.
+
+   Frames
+     floor  : x right, y "into" the screen (depth). The stage's yellow
+              band is the floor.
+     world  : X right, Y up, Z toward the viewer. The ball rests on
+              Y = 0 and the camera is pitched down by CAMERA_PITCH, so a
+              world point projects to
+                  sx = X
+                  sy = Z * cos(pitch) - Y * sin(pitch)
+              (screen y grows downward).
+
+   Rolling without slipping on a floor whose normal is (0, 1, 0):
+       omega = (n x v) / r
+   integrated as a quaternion, so surface features never gimbal-drift.
+   ================================================================== */
+
+export const CAMERA_PITCH = (20 * Math.PI) / 180;
+const CP = Math.cos(CAMERA_PITCH);
+const SP = Math.sin(CAMERA_PITCH);
+
+/** Camera-back unit vector in world space; a feature is lit/visible when it
+    faces this way. */
+export const VIEW_AXIS = { x: 0, y: SP, z: CP } as const;
+
+export interface Vec2 {
+  x: number;
+  y: number;
+}
+
+/** Axis-aligned rectangle the droid may occupy, in floor pixels. */
+export interface Domain {
+  w: number;
+  h: number;
+}
+
+export interface Quat {
+  w: number;
+  x: number;
+  y: number;
+  z: number;
+}
+
+export const IDENTITY_QUAT: Quat = { w: 1, x: 0, y: 0, z: 0 };
+
+export function quatMultiply(a: Quat, b: Quat): Quat {
+  return {
+    w: a.w * b.w - a.x * b.x - a.y * b.y - a.z * b.z,
+    x: a.w * b.x + a.x * b.w + a.y * b.z - a.z * b.y,
+    y: a.w * b.y - a.x * b.z + a.y * b.w + a.z * b.x,
+    z: a.w * b.z + a.x * b.y - a.y * b.x + a.z * b.w,
+  };
+}
+
+/** Rotate `q` by `angle` radians about a world-space axis. */
+export function quatRotate(q: Quat, ax: number, ay: number, az: number, angle: number): Quat {
+  const len = Math.hypot(ax, ay, az);
+  if (len < 1e-9 || Math.abs(angle) < 1e-9) return q;
+  const h = angle / 2;
+  const s = Math.sin(h) / len;
+  const d = { w: Math.cos(h), x: ax * s, y: ay * s, z: az * s };
+  const out = quatMultiply(d, q);
+  const n = Math.hypot(out.w, out.x, out.y, out.z) || 1;
+  return { w: out.w / n, x: out.x / n, y: out.y / n, z: out.z / n };
+}
+
+/** Row-major 3x3 from a quaternion. */
+export function quatToMat3(q: Quat): number[] {
+  const { w, x, y, z } = q;
+  const xx = x * x;
+  const yy = y * y;
+  const zz = z * z;
+  const xy = x * y;
+  const xz = x * z;
+  const yz = y * z;
+  const wx = w * x;
+  const wy = w * y;
+  const wz = w * z;
+  return [
+    1 - 2 * (yy + zz), 2 * (xy - wz), 2 * (xz + wy),
+    2 * (xy + wz), 1 - 2 * (xx + zz), 2 * (yz - wx),
+    2 * (xz - wy), 2 * (yz + wx), 1 - 2 * (xx + yy),
+  ];
+}
+
+/** Transform a local unit vector by a row-major 3x3. */
+export function applyMat3(m: number[], v: { x: number; y: number; z: number }) {
+  return {
+    x: m[0] * v.x + m[1] * v.y + m[2] * v.z,
+    y: m[3] * v.x + m[4] * v.y + m[5] * v.z,
+    z: m[6] * v.x + m[7] * v.y + m[8] * v.z,
+  };
+}
+
+/** How far a world-space unit vector leans toward the camera, 1 = dead on. */
+export function facingOf(world: { x: number; y: number; z: number }): number {
+  return world.x * VIEW_AXIS.x + world.y * VIEW_AXIS.y + world.z * VIEW_AXIS.z;
+}
+
+/**
+ * Project a world-space unit vector to a screen offset, in units of the ball
+ * radius. The ball outline is always a circle (orthographic sphere), only the
+ * positions of features are foreshortened.
+ */
+export function projectUnit(v: { x: number; y: number; z: number }): Vec2 {
+  return { x: v.x, y: v.z * CP - v.y * SP };
+}
+
+/** The rolling angle for a path length. Never negative. */
+export function rollAngle(distance: number, radius: number): number {
+  if (radius <= 0) return 0;
+  return Math.abs(distance) / radius;
+}
+
+/** Floor-normal cross travel direction, in world space, normalised. */
+export function rollAxis(worldX: number, worldZ: number): { x: number; y: number; z: number } {
+  // n = (0,1,0), v = (worldX, 0, worldZ)  ->  n x v = (worldZ, 0, -worldX)
+  return { x: worldZ, y: 0, z: -worldX };
+}
+
+/** Ground-plane screen velocity -> world floor velocity. */
+export function screenToWorldVelocity(sx: number, sy: number) {
+  return { x: sx, z: CP < 1e-6 ? 0 : sy / CP };
+}
+
+/* ---------------- depth ---------------- */
+
+export const SCALE_BACK = 0.88;
+export const SCALE_FRONT = 1.08;
+
+/** Depth scale across the floor: 0.88 at the far edge, 1.08 at the near one. */
+export function depthScale(y: number, domainH: number): number {
+  const t = domainH <= 0 ? 0 : Math.min(1, Math.max(0, y / domainH));
+  return SCALE_BACK + t * (SCALE_FRONT - SCALE_BACK);
+}
+
+/* ---------------- steering ---------------- */
+
+export const MAX_SPEED = 520;
+export const MAX_SPEED_ZOOM = 900;
+export const MAX_ACCEL = 2400;
+/** How hard the droid pulls toward its target, 1/s. */
+const GAIN = 8;
+/** Desired speed reaches maxSpeed once the target is this far away. */
+const ARRIVE_SLACK = 4;
+/** Fraction of speed shed per second with no target. */
+const FRICTION = 0.6;
+
+export interface Body {
+  x: number;
+  y: number;
+  vx: number;
+  vy: number;
+  /** Ball radius in floor pixels at depth scale 1. */
+  r: number;
+  target: Vec2 | null;
+  maxSpeed: number;
+}
+
+export function createBody(x: number, y: number, r: number): Body {
+  return { x, y, vx: 0, vy: 0, r, target: null, maxSpeed: MAX_SPEED };
+}
+
+/** The biggest the ball can render, so clamping is safe at every depth. */
+export function outerRadius(r: number): number {
+  return r * SCALE_FRONT;
+}
+
+/**
+ * Keep the whole ball inside the domain. Uses the front-most scale, so the
+ * ball can never poke out of the yellow band even at the near edge.
+ */
+export function clampInBounds(b: Body, domain: Domain, pad = 12): Body {
+  const re = outerRadius(b.r) + pad;
+  const minX = Math.min(re, domain.w / 2);
+  const maxX = Math.max(domain.w - re, domain.w / 2);
+  const minY = Math.min(re, domain.h / 2);
+  const maxY = Math.max(domain.h - re, domain.h / 2);
+  const x = Math.min(maxX, Math.max(minX, b.x));
+  const y = Math.min(maxY, Math.max(minY, b.y));
+  // bounce off the wall we just clamped against, shedding most of the energy
+  if (x !== b.x) b.vx *= -0.35;
+  if (y !== b.y) b.vy *= -0.35;
+  b.x = x;
+  b.y = y;
+  return b;
+}
+
+/** Seconds of sub-stepping used by the fixed 60Hz accumulator. */
+export const FIXED_DT = 1 / 60;
+
+/**
+ * One fixed physics step. Pure: mutates and returns the body it was given,
+ * which is what the render loop wants, and is trivial to assert on.
+ */
+export function stepBody(b: Body, dt: number, domain: Domain): Body {
+  const t = b.target;
+  if (t) {
+    const dx = t.x - b.x;
+    const dy = t.y - b.y;
+    const dist = Math.hypot(dx, dy);
+    if (dist > 0.5) {
+      const want = Math.min(b.maxSpeed, dist * ARRIVE_SLACK);
+      const dvx = (dx / dist) * want;
+      const dvy = (dy / dist) * want;
+      let ax = (dvx - b.vx) * GAIN;
+      let ay = (dvy - b.vy) * GAIN;
+      const am = Math.hypot(ax, ay);
+      if (am > MAX_ACCEL) {
+        ax = (ax / am) * MAX_ACCEL;
+        ay = (ay / am) * MAX_ACCEL;
+      }
+      b.vx += ax * dt;
+      b.vy += ay * dt;
+    } else {
+      b.vx *= 1 - Math.min(1, FRICTION * dt * 3);
+      b.vy *= 1 - Math.min(1, FRICTION * dt * 3);
+    }
+  } else {
+    const damp = Math.max(0, 1 - FRICTION * dt);
+    b.vx *= damp;
+    b.vy *= damp;
+  }
+
+  const speed = Math.hypot(b.vx, b.vy);
+  if (speed > b.maxSpeed) {
+    b.vx = (b.vx / speed) * b.maxSpeed;
+    b.vy = (b.vy / speed) * b.maxSpeed;
+  }
+
+  b.x += b.vx * dt;
+  b.y += b.vy * dt;
+  clampInBounds(b, domain, 12);
+  return b;
+}
+
+/** Arrived: close enough and slow enough that the wiggle can start. */
+export function hasArrived(b: Body, epsilon = 3): boolean {
+  if (!b.target) return false;
+  return Math.hypot(b.target.x - b.x, b.target.y - b.y) <= Math.max(epsilon, b.r * 0.06) && Math.hypot(b.vx, b.vy) < 40;
+}
+
+/** Floor points the droid wanders between while idle. */
+export function randomPoint(rnd: () => number, domain: Domain, margin: number): Vec2 {
+  const m = Math.min(margin, Math.min(domain.w, domain.h) / 3);
+  return {
+    x: m + rnd() * Math.max(1, domain.w - 2 * m),
+    y: m + rnd() * Math.max(1, domain.h - 2 * m),
+  };
+}
+
+/** Position of a sphere feature after rolling, in world space. */
+export function featureWorld(mat: number[], local: { x: number; y: number; z: number }) {
+  return applyMat3(mat, local);
+}
