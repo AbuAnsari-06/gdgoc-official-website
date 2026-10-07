@@ -219,9 +219,10 @@ body {
 
 /* ---------- hero glyph stickers ---------- */
 
-/* Flat white plate, 3px ink border, hard shadow, ink glyph. The accent
-   only ever appears on the top edge - a yellow glyph on white would be
-   1.6:1, so glyphs are always ink. */
+/* Flat brand plate, 3px ink border, hard shadow, ink glyph. The glyph is
+   always ink, never white or a second brand colour: on these fills ink reads
+   at 4.1:1 on red, 4.5:1 on blue, 5.3:1 on green and 9.4:1 on yellow, and the
+   glyph is 21.6px bold, so every one of those clears AA. */
 .glyph-plate {
   display: inline-flex;
   align-items: center;
@@ -230,9 +231,7 @@ body {
   height: 46px;
   padding: 0 10px;
   border: 3px solid var(--color-ink);
-  border-top-width: 7px;
-  border-top-color: var(--glyph-accent, var(--color-ink));
-  background: var(--color-bg);
+  background: var(--glyph-fill, var(--color-bg));
   color: var(--color-ink);
   box-shadow: 4px 4px 0 var(--color-ink);
   font-size: 1.35rem;

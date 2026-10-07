@@ -41,8 +41,8 @@ function DropLine({ word, color, offset }: { word: string; color: GColor; offset
    centre). Each is a white plate with an ink glyph and an accent top edge:
    an ink glyph on white reads at 21:1, a brand-coloured one would not. */
 const GLYPHS: { text: string; color: GColor; cls: string; depth: number; tilt: number }[] = [
-  { text: "PR", color: "gblue", cls: "top-[11%] left-[16%]", depth: 14, tilt: -3 },
-  { text: "{ }", color: "gred", cls: "top-[22%] left-[4%]", depth: 10, tilt: 4 },
+  { text: "PR", color: "gred", cls: "top-[11%] left-[16%]", depth: 14, tilt: -3 },
+  { text: "{ }", color: "gblue", cls: "top-[22%] left-[4%]", depth: 10, tilt: 4 },
   { text: "#", color: "ggreen", cls: "top-[27%] left-[22%]", depth: 12, tilt: -2 },
 ];
 
@@ -190,8 +190,11 @@ export default function Hero() {
                 PSIT Kanpur, a crew of students who learn in public, build loudly and ship open source.
               </p>
               <div className="mt-6 flex flex-wrap items-center gap-3">
-                <span className="flex items-center gap-2 border-2 border-ink px-3 py-1.5 text-xs font-semibold text-ink">
-                  <span className="animate-pulse-dot h-2.5 w-2.5 border-2 border-ink bg-ggreen" />
+                {/* green is the one chip that carries a saturated fill: ink on
+                   #34A853 reads at 5.3:1, and the pulse dot inverts to ink so
+                   it stays visible on the fill. */}
+                <span className="flex items-center gap-2 border-2 border-ink bg-ggreen px-3 py-1.5 text-xs font-semibold text-ink">
+                  <span className="animate-pulse-dot h-2.5 w-2.5 border-2 border-ink bg-ink" />
                   Season 04 · Active
                 </span>
                 {/* yellow is a fill, never body text: ink on yellow is 9.8:1 */}
@@ -234,11 +237,10 @@ export default function Hero() {
         >
           {/* wall: the one large saturated surface on the page */}
           <div
-            className="absolute inset-x-0 top-0 bottom-[44%] z-[1]"
-            style={{
-              background:
-                "radial-gradient(circle at 50% 22%, rgba(255,255,255,0.30), rgba(255,255,255,0) 62%), #4285F4",
-            }}
+            className="absolute inset-x-0 top-0 bottom-[44%] z-[1]"              style={{
+                background:
+                  "radial-gradient(circle at 50% 22%, rgba(255,255,255,0.18), rgba(255,255,255,0) 62%), #4285F4",
+              }}
           />
 
           {/* floor: pale warm tint, with faint perspective lines fanning from
@@ -279,7 +281,7 @@ export default function Hero() {
               className={`glyph-plate pointer-events-none absolute z-[4] select-none font-display font-extrabold ${g.cls}`}
               style={
                 {
-                  "--glyph-accent": COLOR_HEX[g.color],
+                  "--glyph-fill": COLOR_HEX[g.color],
                   rotate: `${g.tilt}deg`,
                 } as CSSProperties
               }
@@ -311,6 +313,9 @@ export default function Hero() {
           data-cursor-color="#34A853"
           data-cursor-label="Details"
           className="hard-surface group block w-full p-5 pr-12 text-left"
+          /* inline, because .hard-surface is unlayered CSS and therefore beats
+             any border utility Tailwind emits inside @layer utilities */
+          style={{ borderTopColor: COLOR_HEX.ggreen, borderTopWidth: "10px" }}
         >
           {/* wide: name, pill, display line, dates, 24-square strip */}
           <span className="hidden sm:block">
@@ -352,7 +357,7 @@ export default function Hero() {
       {/* tech marquee: yellow strip, ink type. Each "+" keeps its brand
          colour inside an ink keyline, because no brand colour reaches 3:1
          against yellow on its own (blue 2.1:1, red 2.4:1, green 1.9:1). */}
-      <div className="ticker-strip relative z-10 border-y-[3px] border-ink bg-gyellow">
+      <div className="ticker-strip relative z-10 border-y-[3px] border-ink bg-gyellow py-3.5">
         <Marquee duration={52}>
           {MARQUEE_WORDS.map((w, i) => {
             const colors: GColor[] = ["gblue", "gred", "gyellow", "ggreen"];
