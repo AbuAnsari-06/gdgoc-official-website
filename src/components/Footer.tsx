@@ -53,7 +53,7 @@ export default function Footer() {
               </span>
             </div>
             <p className="mt-5 max-w-sm text-sm leading-relaxed text-ink/80">
-              Google Developer Groups on Campus — PSIT, Kanpur. A student-run chapter where people learn
+              Google Developer Groups on Campus, PSIT Kanpur. A student-run chapter where people learn
               together, build loudly and ship open source.
             </p>
             <button type="button" onClick={scrollToTop} className="hard-button group mt-8 inline-flex items-center gap-3 bg-bg px-5 py-3 font-display text-[15px] font-bold text-ink">
@@ -109,7 +109,7 @@ export default function Footer() {
             © 2026 GDGoC PSIT · Built by the crew with React, Three.js & Framer Motion
           </p>
           <p className="font-mono text-xs text-muted">
-            A student chapter doing cool stuff — not an official Google product.
+            A student chapter doing cool stuff, not an official Google product.
           </p>
         </div>
       </div>

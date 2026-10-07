@@ -7,7 +7,7 @@ import {
 } from "react";
 import { motion, useInView, useReducedMotion } from "framer-motion";
 import { cn } from "../utils/cn";
-import { COLOR_HEX, ON_COLOR, PANEL_EDGE, PANEL_HEX, type GColor } from "../data/content";
+import { COLOR_HEX, ON_COLOR, PANEL_EDGE, PANEL_HEX, WASH_HEX, type GColor } from "../data/content";
 
 import { useScramble } from "../hooks/useScramble";
 
@@ -221,7 +221,12 @@ export function SectionTag({
   return (
     <span
       className={cn("tab-label bg-panel text-sm text-ink sm:text-base", className)}
-      style={{ background: COLOR_HEX[color] }}
+      style={{
+        /* red fails AA for small ink text at 4.1:1, so its tab falls back
+           to the red wash with a red edge - the tint-panel rule. */
+        background: color === "gred" ? WASH_HEX.gred : COLOR_HEX[color],
+        borderColor: "var(--color-ink)",
+      }}
     >
       {label}
     </span>
