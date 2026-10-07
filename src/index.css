@@ -226,6 +226,24 @@ body {
   box-shadow: 4px 4px 0 var(--color-ink);
 }
 
+/* ---------- status pill ---------- */
+
+/* Upcoming / Live / Wrapped. Ink text only: ink on yellow is 9.8:1, on
+   green 5.3:1, on white 21:1. */
+.status-pill {
+  display: inline-flex;
+  align-items: center;
+  border: 3px solid var(--color-ink);
+  padding: 0.2rem 0.6rem;
+  font-family: var(--font-display);
+  font-size: 0.8rem;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  color: var(--color-ink);
+  box-shadow: 3px 3px 0 var(--color-ink);
+  white-space: nowrap;
+}
+
 /* ---------- hard surfaces: lift, sink, rest ---------- */
 
 .hard-surface {

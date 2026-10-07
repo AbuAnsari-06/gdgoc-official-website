@@ -5,6 +5,7 @@ import {
   Reveal,
   SectionTag,
   ScrambleHeading,
+  StatusPill,
 } from "./ui";
 import GdgLogo from "./GdgLogo";
 import { HACKTOBER, COLOR_HEX } from "../data/content";
@@ -82,6 +83,7 @@ export default function Hacktober() {
 
             <Reveal delay={0.15}>
               <div className="mt-8 border-[3px] border-ink bg-bg px-6 py-6">
+                <StatusPill state={oso.state} className="mb-3" />
                 <p className="font-display text-2xl font-extrabold text-ink sm:text-3xl">{osoStatusLabel(oso)}</p>
                 <p className="mt-1 text-sm font-semibold text-muted">
                   {OSO.dates} · {OSO.totalDays} days of open contributions

@@ -233,6 +233,28 @@ export function SectionTag({
   );
 }
 
+/* ---------------- Status pill ---------------- */
+
+/* The one place OSO status colour is allowed. Upcoming takes yellow, Live
+   takes green, Wrapped is ink on white. These never stand in for the
+   event-type colours. */
+export function StatusPill({
+  state,
+  className,
+}: {
+  state: "upcoming" | "live" | "wrapped";
+  className?: string;
+}) {
+  const label = state === "upcoming" ? "Upcoming" : state === "live" ? "Live" : "Wrapped";
+  const fill =
+    state === "upcoming" ? COLOR_HEX.gyellow : state === "live" ? COLOR_HEX.ggreen : "var(--color-bg)";
+  return (
+    <span className={cn("status-pill", className)} style={{ background: fill }}>
+      {label}
+    </span>
+  );
+}
+
 /* ---------------- Scramble heading ---------------- */
 
 export function ScrambleHeading({ text, className }: { text: string; className?: string }) {

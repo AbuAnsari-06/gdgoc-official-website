@@ -55,7 +55,7 @@ export default function Hero() {
         <div>
           {/* tab label replaces the old terminal eyebrow */}
           <Reveal delay={0.1} y={16}>
-            <SectionTag label="Google Developer Group on Campus" color="gblue" />
+            <SectionTag label="Google Developer Group on Campus" color="gyellow" />
           </Reveal>
 
           <h1 className="text-h1 heading-shadow heading-shadow-ink mt-6">
@@ -69,18 +69,29 @@ export default function Hero() {
           </h1>
 
           <Reveal delay={0.35} className="mt-8 max-w-xl">
-            <p className="text-base leading-relaxed text-muted sm:text-lg">
-              The <span className="font-semibold text-ink">Google Developer Groups on Campus</span> chapter of
-              PSIT, Kanpur - a crew of students who learn in public, build loudly and ship open source.
+            <p className="text-base leading-relaxed text-ink/80 sm:text-lg" style={{ textWrap: "pretty" }}>
+              The <span className="font-semibold text-ink">Google Developer Groups on Campus</span> chapter at
+              PSIT Kanpur, a crew of students who learn in public, build loudly and ship open source.
             </p>
             <div className="mt-5 flex flex-wrap items-center gap-3">
               <span className="flex items-center gap-2 border-2 border-ink px-3 py-1.5 text-xs font-semibold text-ink">
                 <span className="animate-pulse-dot h-2.5 w-2.5 border-2 border-ink bg-ggreen" />
                 Season 04 · Active
               </span>
-              <span className="border-2 border-ink px-3 py-1.5 text-xs font-semibold text-ink">
+              {/* yellow is a fill, never body text: ink on yellow is 9.8:1 */}
+              <a
+                href="https://gdg.community.dev"
+                target="_blank"
+                rel="noopener noreferrer"
+                data-cursor-label="Open"
+                data-cursor-color="#4285F4"
+                className="hard-button group inline-flex items-center gap-2 bg-gyellow px-4 py-2.5 text-sm font-bold text-ink"
+              >
                 gdg.community.dev
-              </span>
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.8" className="transition-transform duration-300 group-hover:translate-x-1 group-hover:-translate-y-1" aria-hidden="true">
+                  <path d="M7 17 17 7M9 7h8v8" />
+                </svg>
+              </a>
             </div>
           </Reveal>
         </div>
@@ -163,17 +174,24 @@ export default function Hero() {
         <span className="hidden font-mono text-xs text-muted sm:block">PSIT Kanpur</span>
       </div>
 
-      {/* tech marquee */}
-      <div className="relative z-10 border-y-[3px] border-ink bg-panel">
+      {/* tech marquee: yellow strip, ink type. Each "+" keeps its brand
+         colour inside an ink keyline, because no brand colour reaches 3:1
+         against yellow on its own (blue 2.1:1, red 2.4:1, green 1.9:1). */}
+      <div className="ticker-strip relative z-10 border-y-[3px] border-ink bg-gyellow">
         <Marquee duration={52}>
           {MARQUEE_WORDS.map((w, i) => {
             const colors: GColor[] = ["gblue", "gred", "gyellow", "ggreen"];
             return (
               <span key={w} className="flex items-center">
                 <span className="px-6 font-display text-base font-bold text-ink">{w}</span>
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={COLOR_HEX[colors[i % 4]]} strokeWidth="3" aria-hidden="true">
-                  <path d="M12 3v18M3 12h18" />
-                </svg>
+                <span className="relative inline-flex h-4 w-4 items-center justify-center" aria-hidden="true">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--color-ink)" strokeWidth="7" className="absolute">
+                    <path d="M12 3v18M3 12h18" />
+                  </svg>
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={COLOR_HEX[colors[i % 4]]} strokeWidth="4" className="relative">
+                    <path d="M12 3v18M3 12h18" />
+                  </svg>
+                </span>
               </span>
             );
           })}

@@ -213,10 +213,7 @@ export default function Nav() {
             onMouseEnter={requestOpen}
             onMouseLeave={scheduleClose}
             aria-expanded={open}
-            className={cn(
-              "hard-button group flex items-center gap-3 px-4 py-2 font-display text-sm font-bold text-ink",
-              open ? "bg-gyellow" : "bg-bg"
-            )}
+            className="hard-button group flex items-center gap-3 bg-gyellow px-4 py-2 font-display text-sm font-bold text-ink"
           >
             <span className="grid grid-cols-2 gap-[3px]">
               {[0, 1, 2, 3].map((i) => (
