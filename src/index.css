@@ -523,46 +523,44 @@ body {
   will-change: transform;
 }
 
-/* the antenna LED takes the mood colour from its group */
+/* Mood colour. Everything that glows reads --ruru-mood, which the rig sets
+   from MOOD_EYE (blue neutral, green happy, red annoyed, yellow sleepy) and
+   cycles through all four when the droid is dizzy. */
+.ruru-visual {
+  --ruru-mood: #4285f4;
+}
+
 .ruru-bulb {
-  fill: currentColor;
-  filter: drop-shadow(0 0 6px currentColor);
+  fill: var(--ruru-mood);
+  filter: drop-shadow(0 0 6px var(--ruru-mood));
 }
 
-/* Levitation seam: the lit gap between the ball and the floating head. */
-.ruru-seam {
-  transition: opacity 0.3s ease;
+.ruru-core {
+  fill: var(--ruru-mood);
 }
 
-/* mood-driven eye shapes */
-.ruru-eye {
-  transform-box: fill-box;
-  transform-origin: center;
-  transition: transform 0.2s ease;
-}
-[data-mood="happy"] .ruru-eye {
-  transform: scaleY(0.32) translateY(-55%);
-}
-[data-mood="sleepy"] .ruru-eye {
-  transform: scaleY(0.45);
-}
-[data-mood="annoyed"] .ruru-eye {
-  transform: scaleY(0.22) translateY(80%);
-}
-[data-mood="dizzy"] .ruru-eye {
-  transform: rotate(0.35turn);
-}
-[data-mood="excited"] .ruru-eye,
-[data-mood="surprised"] .ruru-eye {
-  transform: scale(1.25);
+/* the secondary lens LED is the heartbeat: 1.6s, and it dips on a blink */
+.ruru-led {
+  animation: ruru-heartbeat 1.6s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  transition: opacity 90ms linear;
 }
 
-/* annoyed: two steam puffs fade in above the dome */
-.ruru-steam {
-  transition: opacity 0.3s ease;
+@keyframes ruru-heartbeat {
+  0%,
+  100% {
+    opacity: 0.45;
+  }
+  18% {
+    opacity: 1;
+  }
+  40% {
+    opacity: 0.6;
+  }
 }
-[data-mood="annoyed"] .ruru-steam {
-  opacity: 0.85;
+
+.ruru-visual[data-blink="1"] .ruru-led {
+  opacity: 0.2;
+  animation: none;
 }
 
 /* the hit target: a circle that follows the ball */

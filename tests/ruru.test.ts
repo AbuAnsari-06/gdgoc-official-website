@@ -73,13 +73,38 @@ ok("5000 accumulated rotations keep the quaternion normalised");
 
 /* ---------------- projection ---------------- */
 
+/* The camera is pitched 20 degrees down, so screen up is the camera's own up
+   axis (0, cos p, -sin p) and screen y grows downward. Four points pin the
+   projection down exactly. */
+const SP = Math.sin(CAMERA_PITCH);
+const CP = Math.cos(CAMERA_PITCH);
+
+/* The point the camera is aimed at - the one nearest the lens - is the centre
+   of the disc, by definition of an orthographic look-at. */
+const atCamera = projectUnit({ x: 0, y: SP, z: CP });
+assert.ok(Math.abs(atCamera.x) < 1e-12 && Math.abs(atCamera.y) < 1e-12);
+ok("the point facing the camera projects to the centre of the disc");
+
 const front = projectUnit({ x: 0, y: 0, z: 1 });
-assert.ok(front.y > 0.9 && front.y <= 1);
-ok("a feature facing the viewer projects below centre (pitched camera)");
+assert.ok(Math.abs(front.y - SP) < 1e-12 && front.y > 0);
+ok("the equatorial front point sits sin(pitch) below centre");
 
 const top = projectUnit({ x: 0, y: 1, z: 0 });
-assert.ok(top.y < 0 && top.y > -0.4);
-ok("the top of the ball compresses toward the centre");
+assert.ok(Math.abs(top.y + CP) < 1e-12 && top.y < -0.9);
+ok("the top of the ball projects cos(pitch) above centre, near the silhouette");
+
+const back = projectUnit({ x: 0, y: 0, z: -1 });
+assert.ok(Math.abs(back.y + SP) < 1e-12);
+ok("the equatorial back point rises by sin(pitch)");
+
+/* A floor point (X, 0, Z) projects to (X, Z * sin p). That is exactly what the
+   cursor -> floor mapping has to invert, so check the round trip. */
+const floorPt = projectUnit({ x: 0.4, y: 0, z: 0.7 });
+assert.ok(Math.abs(floorPt.x - 0.4) < 1e-12);
+assert.ok(Math.abs(floorPt.y - 0.7 * SP) < 1e-12);
+const roundTrip = screenToWorldVelocity(floorPt.x, floorPt.y);
+assert.ok(Math.abs(roundTrip.x - 0.4) < 1e-12 && Math.abs(roundTrip.z - 0.7) < 1e-12);
+ok("screen movement inverts back to floor depth through sin(pitch)");
 
 assert.ok(Math.abs(facingOf({ x: 0, y: 0, z: 1 }) - Math.cos(CAMERA_PITCH)) < 1e-12);
 assert.ok(Math.abs(facingOf({ x: 0, y: 1, z: 0 }) - Math.sin(CAMERA_PITCH)) < 1e-12);

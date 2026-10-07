@@ -100,12 +100,30 @@ export function facingOf(world: { x: number; y: number; z: number }): number {
 }
 
 /**
- * Project a world-space unit vector to a screen offset, in units of the ball
- * radius. The ball outline is always a circle (orthographic sphere), only the
- * positions of features are foreshortened.
+ * Orthographic projection of a point on the unit sphere to a screen offset, in
+ * units of the radius. Screen right is world X; screen up is the camera's up
+ * axis (0, cos pitch, -sin pitch), so the component along it is
+ * d.y * CP - d.z * SP and screen y grows downward.
+ *
+ * The point that faces the camera projects to the centre of the disc, the top
+ * of the sphere to (0, -CP) and the point nearest the viewer to (0, +SP).
  */
 export function projectUnit(v: { x: number; y: number; z: number }): Vec2 {
-  return { x: v.x, y: v.z * CP - v.y * SP };
+  return { x: v.x, y: v.z * SP - v.y * CP };
+}
+
+/**
+ * Screen offset of a point on a sphere of `radius` centred on `centre`.
+ * Shared by the ball's decals and by the head's dome features, so both
+ * foreshorten the same way.
+ */
+export function spherePoint(
+  dir: { x: number; y: number; z: number },
+  centre: Vec2,
+  radius: number
+): { x: number; y: number; facing: number } {
+  const s = projectUnit(dir);
+  return { x: centre.x + s.x * radius, y: centre.y + s.y * radius, facing: facingOf(dir) };
 }
 
 /** The rolling angle for a path length. Never negative. */
@@ -122,7 +140,9 @@ export function rollAxis(worldX: number, worldZ: number): { x: number; y: number
 
 /** Ground-plane screen velocity -> world floor velocity. */
 export function screenToWorldVelocity(sx: number, sy: number) {
-  return { x: sx, z: CP < 1e-6 ? 0 : sy / CP };
+  // A floor point (X, 0, Z) projects to (X, Z * SP), so screen y maps to depth
+  // through sin(pitch), not cos(pitch).
+  return { x: sx, z: SP < 1e-6 ? 0 : sy / SP };
 }
 
 /* ---------------- the field ---------------- */
@@ -192,6 +212,67 @@ export function depthScale(y: number, domainH: number): number {
   const t = domainH <= 0 ? 0 : Math.min(1, Math.max(0, y / domainH));
   return SCALE_BACK + t * (SCALE_FRONT - SCALE_BACK);
 }
+
+/* ---------------- the head ---------------- */
+
+/**
+ * Dome head geometry, all as fractions of the ball diameter D except the
+ * angles. The dome is 0.58 D across and half as tall as it is wide, so it is
+ * a true hemisphere sitting on its collar.
+ */
+export const HEAD = {
+  domeWidth: 0.58,
+  domeHeightRatio: 0.5,
+  /** The gap under the collar, in ball diameters. */
+  gap: 0.025,
+  /** How far the head may slide toward the motion direction, of the radius. */
+  slideMax: 0.06,
+  yawMax: (22 * Math.PI) / 180,
+  pitchMax: (8 * Math.PI) / 180,
+} as const;
+
+/**
+ * A point on the head's dome, in units of the dome radius from its centre,
+ * after the head's own yaw and pitch. `az`/`el` are the feature's fixed
+ * azimuth and elevation on the dome, so a feature projected here foreshortens
+ * exactly like a ball decal does.
+ */
+export function domePoint(
+  az: number,
+  el: number,
+  yaw: number,
+  pitch: number
+): { x: number; y: number; facing: number } {
+  const ce = Math.cos(el);
+  let d = { x: ce * Math.sin(az), y: Math.sin(el), z: ce * Math.cos(az) };
+  const cy = Math.cos(yaw);
+  const sy = Math.sin(yaw);
+  d = { x: d.x * cy + d.z * sy, y: d.y, z: d.z * cy - d.x * sy };
+  const cp = Math.cos(pitch);
+  const sp = Math.sin(pitch);
+  d = { x: d.x, y: d.y * cp - d.z * sp, z: d.y * sp + d.z * cp };
+  const s = projectUnit(d);
+  return { x: s.x, y: s.y, facing: facingOf(d) };
+}
+
+/** The four vertices of a regular tetrahedron, normalised. */
+export const TETRA: { x: number; y: number; z: number }[] = ([
+  [1, 1, 1],
+  [1, -1, -1],
+  [-1, 1, -1],
+  [-1, -1, 1],
+] as const).map(([x, y, z]) => {
+  const n = Math.hypot(x, y, z);
+  return { x: x / n, y: y / n, z: z / n };
+});
+
+/**
+ * Ball decals are spherical caps, not flat patches: angular radius 11 degrees,
+ * placed at the tetrahedron's vertices so they stay evenly spread as the ball
+ * rolls. sin(11 deg) converts the angle to a radius in units of the ball.
+ */
+export const DECAL_ANGLE = (11 * Math.PI) / 180;
+export const DECAL_SIN = Math.sin(DECAL_ANGLE);
 
 /* ---------------- steering ---------------- */
 

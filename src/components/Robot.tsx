@@ -23,13 +23,17 @@ import { getOsoStatus } from "../lib/oso";
 import { burstConfetti, useFinePointer } from "./ui";
 import { COLOR_HEX } from "../data/content";
 import {
+  DECAL_SIN,
   FIXED_DT,
+  HEAD,
   IDENTITY_QUAT,
+  TETRA,
   ballDiameter,
   clampToField,
   createBody,
   debugFieldOn,
   depthScale,
+  domePoint,
   facingOf,
   fieldFor,
   hasArrived,
@@ -61,8 +65,47 @@ const MOOD_EYE: Record<Mood, string> = {
   sleepy: "#FBBC04",
 };
 
-const HEAD_RATIO = 0.6; // head width / ball diameter
-const LEVITATE_GAP = 6; // px of lit seam between the ball and the head
+const HEAD_BOX_W = 200; // dome width, in the head's own units
+const HEAD_CX = 120; // the dome's centre line, in head units
+const DOME_CY = 134; // the hemisphere's centre: its equator, where it meets the collar
+const HEAD_BASE_Y = 150; // the collar's bottom edge, where the head meets the ball
+const HEAD_TOP_LOCAL = -22; // the tall antenna's ring tip
+const TAU_EYES = 220; // ms
+const TAU_HEAD = 380; // ms
+const TAU_LEAN = 600; // ms
+const FOUR = ["#4285F4", "#EA4335", "#FBBC04", "#34A853"];
+
+/** Exponential smoothing that is independent of frame rate. */
+const ease = (tauMs: number, dt: number) => 1 - Math.exp((-dt * 1000) / tauMs);
+const clampDeg = (d: number) => Math.max(-26, Math.min(26, d));
+const LENS_R = 30; // main lens radius, in head units (0.30 of the dome radius)
+const BLADE_OUT = 39; // blade pack outer radius
+const IRIS_MAIN = { az: (-12 * Math.PI) / 180, el: (40 * Math.PI) / 180 };
+const IRIS_SECOND = { az: (34 * Math.PI) / 180, el: (34 * Math.PI) / 180 };
+/** How far open the iris sits in each mood. */
+const IRIS: Record<Mood, number> = {
+  neutral: 0.6,
+  curious: 0.6,
+  happy: 0.85,
+  excited: 1,
+  surprised: 0.95,
+  dizzy: 0.55,
+  annoyed: 0.35,
+  sleepy: 0.1,
+};
+
+/** One blade of the 8-blade iris: an annulus sector whose inner edge is a
+    straight chord at distance `rA`, so eight of them tile the pack exactly
+    and the aperture is an octagon. */
+function bladePath(rA: number, i: number): string {
+  const HALF = Math.PI / 8;
+  const a0 = (i * Math.PI) / 4 - HALF;
+  const a1 = (i * Math.PI) / 4 + HALF;
+  const rIn = rA / Math.cos(HALF);
+  const p = (r: number, a: number) => `${(r * Math.cos(a)).toFixed(2)} ${(r * Math.sin(a)).toFixed(2)}`;
+  return `M${p(rIn, a0)} L${p(BLADE_OUT, a0)} L${p(BLADE_OUT, a1)} L${p(rIn, a1)} Z`;
+}
+
 const POKE_WINDOW = 3000;
 const POKES_FOR_ANNOYED = 5;
 const SLEEP_AFTER = 20000;
@@ -73,13 +116,6 @@ const BASE_SPEED = 520;
 const ZOOM_SPEED = 900;
 const EDGE_SPEED = 260;
 
-/* Head design box, in the SVG's own units. The dome spans y 4..126 and the
-   antenna reaches y -13, so anchoring happens on y = 126 (the dome's base)
-   and the drawn height is BOX_H. */
-const HEAD_BOX_W = 200;
-const HEAD_BASE_Y = 126;
-const HEAD_BOX_H = 139;
-
 interface Vec3 {
   x: number;
   y: number;
@@ -88,21 +124,22 @@ interface Vec3 {
 
 /* ---------------- ball surface, in local unit-sphere coordinates ------- */
 
-const DECALS: { color: string; dir: Vec3 }[] = [
-  { color: COLOR_HEX.gblue, dir: { x: 1, y: 0.16, z: 0.1 } },
-  { color: COLOR_HEX.gred, dir: { x: 0.06, y: 0.2, z: 1 } },
-  { color: COLOR_HEX.ggreen, dir: { x: -1, y: 0.16, z: 0.06 } },
-  { color: COLOR_HEX.gyellow, dir: { x: 0.05, y: -0.22, z: -1 } },
-];
+/* Four decals, all the same size and evenly spread: the tetrahedron's vertices
+   stay equidistant however the ball turns, so no patch ever dominates. */
+const DECAL_COLORS = [COLOR_HEX.gblue, COLOR_HEX.gred, COLOR_HEX.ggreen, COLOR_HEX.gyellow];
+const DECALS: { color: string; dir: Vec3 }[] = TETRA.map((dir, i) => ({
+  color: DECAL_COLORS[i],
+  dir,
+}));
 
 const SEAM_LATS = [55, 125].map((d) => (d * Math.PI) / 180);
 const BAND_LAT = (78 * Math.PI) / 180;
 
-/** 16 rivets in two offset rings. */
-const RIVETS: Vec3[] = Array.from({ length: 16 }, (_, i) => {
+/** 12 rivets in two offset rings. */
+const RIVETS: Vec3[] = Array.from({ length: 12 }, (_, i) => {
   const ring = i % 2;
-  const phi = ((i / 16) * Math.PI * 2 + (ring ? Math.PI / 16 : 0)) * 2;
-  const lat = ring ? 0.28 : -0.28;
+  const phi = ((i / 12) * Math.PI * 2 + (ring ? Math.PI / 12 : 0)) * 2;
+  const lat = ring ? 0.3 : -0.3;
   const c = Math.cos(lat);
   return { x: Math.cos(phi) * c, y: Math.sin(lat), z: Math.sin(phi) * c };
 });
@@ -180,9 +217,9 @@ function drawBall(
   ctx: CanvasRenderingContext2D,
   radius: number,
   q: Quat,
-  opts: { hop: number; squash: number; dpr: number; glow: boolean }
+  opts: { hop: number; squash: number; dpr: number }
 ) {
-  const { dpr, hop, squash, glow } = opts;
+  const { dpr, hop, squash } = opts;
   const size = ctx.canvas.width / dpr;
   ctx.setTransform(1, 0, 0, 1, 0, 0);
   ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
@@ -254,23 +291,27 @@ function drawBall(
   // the single thin yellow band
   strokeRing(ctx, mat, RING_BAND, radius, "rgba(251,188,4,0.92)", radius * 0.075);
 
-  // four brand-colour caps, as ellipses: minor axis = facing cosine,
-  // oriented along the projected normal
+  /* four brand-colour decals, each a spherical cap of angular radius 11 deg.
+     Orthographic projection turns a cap into an ellipse of semi-major
+     r*sin(11deg) with the minor axis squashed by the facing cosine, and the
+     squash runs along the projected normal, so the major axis is
+     perpendicular to it. Drawn as ellipses rather than filled circles - a
+     circle would visibly slide across the surface as the ball turns. */
   for (const d of DECALS) {
     const w = toWorld(mat, d.dir);
     const face = facingOf(w);
-    if (face <= 0.04) continue;
+    if (face <= 0.03) continue;
     const p = projectUnit(w);
-    const capR = radius * 0.3;
+    const capR = radius * DECAL_SIN;
     ctx.save();
     ctx.translate(p.x * radius, p.y * radius);
-    ctx.rotate(Math.atan2(p.y, p.x));
+    ctx.rotate(Math.atan2(p.y, p.x) + Math.PI / 2);
     ctx.beginPath();
-    ctx.ellipse(0, 0, capR, capR * Math.max(0.08, Math.min(1, face)), 0, 0, Math.PI * 2);
+    ctx.ellipse(0, 0, capR, capR * Math.max(0.05, Math.min(1, face)), 0, 0, Math.PI * 2);
     ctx.fillStyle = d.color;
     ctx.fill();
-    ctx.lineWidth = radius * 0.016;
-    ctx.strokeStyle = "rgba(32,33,36,0.55)";
+    ctx.lineWidth = radius * 0.012;
+    ctx.strokeStyle = "rgba(32,33,36,0.5)";
     ctx.stroke();
     ctx.restore();
   }
@@ -325,20 +366,21 @@ function drawBall(
   ctx.strokeStyle = rim;
   ctx.stroke();
 
-  // blue floor bounce lower right
-  const bounce = ctx.createRadialGradient(
-    radius * 0.4,
-    radius * 0.62,
-    0,
-    radius * 0.4,
-    radius * 0.62,
-    radius * 0.8
-  );
-  bounce.addColorStop(0, "rgba(66,133,244,0.34)");
-  bounce.addColorStop(1, "rgba(66,133,244,0)");
+  // bounce light, capped at 12%: the blue wall above, the warm floor below
+  const cool = ctx.createLinearGradient(0, -radius, 0, radius * 0.25);
+  cool.addColorStop(0, "rgba(66,133,244,0.12)");
+  cool.addColorStop(1, "rgba(66,133,244,0)");
   ctx.beginPath();
   ctx.arc(0, 0, radius, 0, Math.PI * 2);
-  ctx.fillStyle = bounce;
+  ctx.fillStyle = cool;
+  ctx.fill();
+
+  const warm = ctx.createLinearGradient(0, radius * 0.1, 0, radius);
+  warm.addColorStop(0, "rgba(254,247,224,0)");
+  warm.addColorStop(1, "rgba(254,247,224,0.12)");
+  ctx.beginPath();
+  ctx.arc(0, 0, radius, 0, Math.PI * 2);
+  ctx.fillStyle = warm;
   ctx.fill();
 
   // ambient occlusion near the ground contact
@@ -358,14 +400,6 @@ function drawBall(
   ctx.strokeStyle = "#202124";
   ctx.stroke();
 
-  // levitation glow: the lit seam just under the floating head
-  if (glow) {
-    ctx.beginPath();
-    ctx.ellipse(0, -radius * 0.5, radius * 0.6, radius * 0.12, 0, 0, Math.PI * 2);
-    ctx.fillStyle = "rgba(251,188,4,0.32)";
-    ctx.fill();
-  }
-
   ctx.restore();
 }
 
@@ -376,15 +410,13 @@ export default function Robot() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const svgRef = useRef<SVGSVGElement>(null);
   const headRef = useRef<SVGGElement>(null);
-  const antennaRef = useRef<SVGGElement>(null);
-  const eyesRef = useRef<SVGGElement>(null);
-  const eyeLRef = useRef<SVGCircleElement>(null);
-  const eyeRRef = useRef<SVGCircleElement>(null);
-  const lidLRef = useRef<SVGEllipseElement>(null);
-  const lidRRef = useRef<SVGEllipseElement>(null);
-  const mouthRef = useRef<SVGGElement>(null);
-  const bulbRef = useRef<SVGCircleElement>(null);
-  const seamRef = useRef<SVGEllipseElement>(null);
+  const antTallRef = useRef<SVGGElement>(null);
+  const antStubRef = useRef<SVGGElement>(null);
+  const lensRef = useRef<SVGGElement>(null);
+  const pupilRef = useRef<SVGGElement>(null);
+  const irisRef = useRef<SVGGElement>(null);
+  const lens2Ref = useRef<SVGGElement>(null);
+  const bladeRefs = useRef<(SVGPathElement | null)[]>([]);
   const buttonRef = useRef<HTMLButtonElement>(null);
   const bubbleRef = useRef<HTMLDivElement>(null);
   const bubbleTextRef = useRef<HTMLSpanElement>(null);
@@ -412,8 +444,17 @@ export default function Robot() {
     pitchC: 0,
     leanC: 0,
     slideC: 0,
-    aX: 0,
-    aVX: 0,
+    /** Spring state per antenna: angle and angular velocity. */
+    aTall: 0,
+    aTallV: 0,
+    aStub: 0,
+    aStubV: 0,
+    /** Iris aperture 0..1, its blade-pack spin, and the blink amount. */
+    iris: IRIS.neutral,
+    irisSpin: 0,
+    blink: 0,
+    /** Which of the four brand colours the core is cycling through. */
+    coreHue: 0,
     hop: 0,
     hopV: 0,
     squash: 1,
@@ -556,14 +597,39 @@ export default function Robot() {
     /* ---------- moods ---------- */
 
     const applyMood = (m: Mood) => {
-      const hex = MOOD_EYE[m];
-      bulbRef.current?.setAttribute("fill", hex);
-      bulbRef.current?.setAttribute("color", hex);
-      eyesRef.current?.setAttribute("fill", hex);
-      if (eyesRef.current) eyesRef.current.dataset.mood = m;
-      if (mouthRef.current) mouthRef.current.dataset.mood = m;
-      /* the head carries the mood too, so CSS can reach the steam puffs */
+      /* One custom property colours the lens core, both antenna bulbs and the
+         secondary LED, so the mood is never written to five elements by hand. */
+      visual.style.setProperty("--ruru-mood", MOOD_EYE[m]);
       if (headRef.current) headRef.current.dataset.mood = m;
+    };
+
+    /* ---- dome features ----
+       The lens and the secondary lens are points on the dome's surface, so
+       they are placed with the same sphere projection the ball decals use and
+       foreshorten as the head yaws. `scale(f, 1)` is the orthographic squash
+       of a small patch seen at an angle. */
+    const setFeature = (
+      el: SVGGElement | null,
+      p: { x: number; y: number; facing: number }
+    ) => {
+      if (!el) return;
+      const f = Math.max(0.28, Math.min(1, p.facing));
+      el.setAttribute(
+        "transform",
+        `translate(${(HEAD_CX + p.x * 100).toFixed(2)} ${(DOME_CY + p.y * 100).toFixed(2)}) scale(${f.toFixed(3)} 1)`
+      );
+    };
+
+    /* Rewriting eight blade paths every frame is wasteful, so only recompute
+       them when the aperture has actually moved. */
+    let lastBladeD = -1;
+    const setIris = (open: number, spin: number) => {
+      const rA = Math.max(0.5, BLADE_OUT * 0.92 * (1 - open));
+      if (Math.abs(rA - lastBladeD) > 0.05) {
+        lastBladeD = rA;
+        for (let i = 0; i < 8; i += 1) bladeRefs.current[i]?.setAttribute("d", bladePath(rA, i));
+      }
+      irisRef.current?.setAttribute("transform", `rotate(${spin.toFixed(2)})`);
     };
     /* Mood body language: the eyes and mouth carry most of it, the ball and
        head carry the rest. */
@@ -576,7 +642,11 @@ export default function Robot() {
         s.spinRate = Math.max(s.spinRate, 0.06);
         s.body.maxSpeed = ZOOM_SPEED;
       }
-      if (m === "surprised") s.hopV = Math.max(s.hopV, 150); // a small hop
+      if (m === "surprised") {
+        s.hopV = Math.max(s.hopV, 150); // a small hop
+        s.aTallV -= 90; // both antennas perk up
+        s.aStubV -= 130;
+      }
       applyMood(m);
     };
     applyMood("neutral");
@@ -679,7 +749,8 @@ export default function Robot() {
       s.hopV = 210;
       s.spinRate = 0.5;
       s.squash = 0.88;
-      s.aVX += 26;
+      s.aTallV -= 60; // both antennas jolt with the squash
+      s.aStubV -= 90;
       burstConfetti(button, [COLOR_HEX.gblue, COLOR_HEX.gred, COLOR_HEX.gyellow, COLOR_HEX.ggreen]);
       if (s.pokeTimes.length >= POKES_FOR_ANNOYED) {
         setMood("annoyed", 4000);
@@ -909,7 +980,8 @@ export default function Robot() {
           s.bumpAt = t;
           s.bump = 1;
           s.hopV = 90;
-          s.aVX += 18;
+          s.aTallV -= 45;
+          s.aStubV -= 65;
           say(pickLine(LINES.bump, s.lastLine));
         }
 
@@ -942,27 +1014,30 @@ export default function Robot() {
       const cxStage = s.field.x + s.body.x;
       const cyStage = s.field.y + s.body.y;
       const ballR = s.body.r * scale;
-      const headW = s.body.r * 2 * HEAD_RATIO;
-      const k = headW / HEAD_BOX_W;
-      const headBaseY = cyStage - ballR - LEVITATE_GAP;
-      const headCy = headBaseY - (HEAD_BASE_Y * k);
-      const headTop = headBaseY - HEAD_BOX_H * k;
+      /* the dome is 0.58 D across and half as tall as it is wide, and it sits
+         in a 2 to 3px gap over the ball's projected top point */
+      const domeW = s.d * HEAD.domeWidth * scale;
+      const k = domeW / HEAD_BOX_W;
+      const headBaseY = cyStage - ballR - HEAD.gap * s.d;
+      const headCy = headBaseY - (HEAD_BASE_Y - DOME_CY) * k;
+      const headTop = headBaseY - (HEAD_BASE_Y - HEAD_TOP_LOCAL) * k;
 
       /* ---- gaze ---- */
       let tx = 0;
       let ty = 0;
       if (s.lastPointer.has) {
         const r = stage.getBoundingClientRect();
-        tx = Math.max(-1, Math.min(1, (s.lastPointer.x - r.left - cxStage) / (headW * 1.4)));
-        ty = Math.max(-1, Math.min(1, (s.lastPointer.y - r.top - headCy) / (headW * 1.2)));
+        tx = Math.max(-1, Math.min(1, (s.lastPointer.x - r.left - cxStage) / (domeW * 1.4)));
+        ty = Math.max(-1, Math.min(1, (s.lastPointer.y - r.top - headCy) / (domeW * 1.2)));
       }
       const dirX = speed > 4 ? s.body.vx / speed : 0;
 
       if (reduced) {
+        // reduced motion: discrete steps, no continuous glide
         s.eyeCX = tx > 0.35 ? 1 : tx < -0.35 ? -1 : 0;
         s.eyeCY = ty > 0.35 ? 1 : ty < -0.35 ? -1 : 0;
-        s.yawC = s.eyeCX * 14;
-        s.pitchC = s.eyeCY * -10;
+        s.yawC = s.eyeCX * HEAD.yawMax;
+        s.pitchC = s.eyeCY * -HEAD.pitchMax;
         s.leanC = s.eyeCX * 3;
         s.slideC = 0;
         s.quat = { ...IDENTITY_QUAT };
@@ -974,21 +1049,22 @@ export default function Robot() {
         s.body.x += (s.home.x - s.body.x) * 0.18;
         s.body.y += (s.home.y - s.body.y) * 0.18;
       } else {
-        s.eyeCX += (tx - s.eyeCX) * 0.22;
-        s.eyeCY += (ty - s.eyeCY) * 0.22;
-        s.yawC += (Math.max(-16, Math.min(16, tx * 16)) - s.yawC) * 0.12;
-        s.pitchC += (Math.max(-10, Math.min(10, -ty * 10)) - s.pitchC) * 0.12;
-        // tilt opposite to acceleration: forward when speeding up, back when
-        // braking; clamped to +/-14 degrees
+        // eyes 220ms, head 380ms, lean 600ms: real time constants, not
+        // per-frame magic numbers, so the head reads the same at any frame rate
+        s.eyeCX += (tx - s.eyeCX) * ease(TAU_EYES, dt);
+        s.eyeCY += (ty - s.eyeCY) * ease(TAU_EYES, dt);
+        s.yawC += (tx * HEAD.yawMax - s.yawC) * ease(TAU_HEAD, dt);
+        s.pitchC += (-ty * HEAD.pitchMax - s.pitchC) * ease(TAU_HEAD, dt);
+        // tilt from acceleration, clamped to +/-6 degrees
         const accelX = dt > 0 ? (s.body.vx - s.prevVx) / dt : 0;
-        const leanTarget = Math.max(-14, Math.min(14, (accelX / 2400) * 14 - dirX * 3));
-        s.leanC += (leanTarget - s.leanC) * 0.1;
-        // slide along the ball toward the motion direction, up to 0.12 radius
+        const leanTarget = Math.max(-6, Math.min(6, (accelX / 2400) * 6 - dirX * 2));
+        s.leanC += (leanTarget - s.leanC) * ease(TAU_LEAN, dt);
+        // slide along the ball toward the motion direction, up to 0.06 radius
         const slideTarget = Math.max(
-          -s.body.r * 0.12,
-          Math.min(s.body.r * 0.12, dirX * s.body.r * 0.12)
+          -s.body.r * HEAD.slideMax,
+          Math.min(s.body.r * HEAD.slideMax, dirX * s.body.r * HEAD.slideMax)
         );
-        s.slideC += (slideTarget - s.slideC) * 0.1;
+        s.slideC += (slideTarget - s.slideC) * ease(TAU_LEAN, dt);
         s.prevVx = s.body.vx;
         s.prevVy = s.body.vy;
       }
@@ -1007,22 +1083,26 @@ export default function Robot() {
       s.bump *= 0.9;
       s.bob += dt;
 
-      /* ---- antenna spring, stiffness ~120 damping ~8 ---- */
-      s.aVX += ((s.yawC * 1.2 + s.bump * 26) - s.aX) * 120 * dt - s.aVX * 8 * dt;
-      s.aX += s.aVX * dt;
+      /* ---- two antenna springs, stiffness 60 damping 7 ---- */
+      const yawDeg = (s.yawC * 180) / Math.PI;
+      const bumpDeg = s.bump * 22;
+      s.aTallV += (yawDeg * 1.1 + bumpDeg - s.aTall) * 60 * dt - s.aTallV * 7 * dt;
+      s.aTall += s.aTallV * dt;
+      s.aStubV += (yawDeg * 1.6 + bumpDeg * 1.4 - s.aStub) * 60 * dt - s.aStubV * 7 * dt;
+      s.aStub += s.aStubV * dt;
 
-      /* ---- blink every 2-6s, occasional double ---- */
+      /* ---- blink: about 140ms, every 3 to 7s, sometimes twice ---- */
       if (s.blinkPhase < 0 && t > s.blinkAt && !reduced) s.blinkPhase = 0;
       let lid = 0;
       if (s.blinkPhase >= 0) {
-        s.blinkPhase += dt * 9;
+        s.blinkPhase += dt * 14;
         const kb = s.blinkPhase;
         lid = (kb < 1 ? kb : kb < 2 ? 2 - kb : 0) * 0.95;
         if (kb >= 2) {
           if (s.doubleBlink) {
             s.doubleBlink = false;
             s.blinkPhase = -1;
-            s.blinkAt = t + 2000 + Math.random() * 4000;
+            s.blinkAt = t + 3000 + Math.random() * 4000;
           } else if (Math.random() < 0.2) {
             s.doubleBlink = true;
             s.blinkPhase = 0;
@@ -1078,43 +1158,59 @@ export default function Robot() {
         hop: s.hop + Math.sin(s.bob * 1.7) * 1.4,
         squash,
         dpr,
-        glow: s.sleeping || s.mood === "sleepy",
       });
       canvas.style.transform =
         `translate3d(${(cxStage - canvasCss / 2).toFixed(2)}px, ${(cyStage - canvasCss / 2).toFixed(2)}px, 0)` +
         ` scale(${scale.toFixed(4)})`;
 
-      /* ---- paint: head + seam ---- */
+      /* ---- paint: the head ---- */
       const slide = s.slideC * scale;
+      /* a slow bob while happy, a small shake while annoyed, a droop asleep */
+      const bobY = s.mood === "happy" ? Math.sin(t * 0.004) * 2.4 : 0;
+      const shake = s.mood === "annoyed" ? Math.sin(t * 0.007) * 3 : 0;
+      const droop = s.mood === "sleepy" ? 2.5 : 0;
       headRef.current?.setAttribute(
         "transform",
-        `translate(${(cxStage + slide).toFixed(2)} ${headBaseY.toFixed(2)}) rotate(${s.leanC.toFixed(2)}) ` +
-          `scale(${k.toFixed(4)}) translate(${-HEAD_BOX_W / 2} ${-HEAD_BASE_Y})`
+        `translate(${(cxStage + slide).toFixed(2)} ${(headBaseY - bobY + droop).toFixed(2)}) ` +
+          `rotate(${(s.leanC + shake).toFixed(2)}) scale(${k.toFixed(4)}) ` +
+          `translate(${-HEAD_CX} ${-HEAD_BASE_Y})`
       );
-      antennaRef.current?.setAttribute(
-        "transform",
-        `rotate(${Math.max(-30, Math.min(30, s.aX)).toFixed(2)} 100 22)`
+      antTallRef.current?.setAttribute("transform", `rotate(${clampDeg(s.aTall).toFixed(2)} 91 64)`);
+      antStubRef.current?.setAttribute("transform", `rotate(${clampDeg(s.aStub).toFixed(2)} 156 68)`);
+
+      /* the lenses are points on the dome: same sphere maths as the decals */
+      setFeature(
+        lensRef.current,
+        domePoint(IRIS_MAIN.az, IRIS_MAIN.el, s.yawC, s.pitchC)
       );
-      eyesRef.current?.setAttribute(
-        "transform",
-        `translate(${(s.eyeCX * 9).toFixed(2)} ${(s.eyeCY * 6).toFixed(2)})`
+      setFeature(
+        lens2Ref.current,
+        domePoint(IRIS_SECOND.az, IRIS_SECOND.el, s.yawC, s.pitchC)
       );
-      const eyeL = eyeLRef.current;
-      const eyeR = eyeRRef.current;
-      if (eyeL && eyeR) {
-        const conv = (1 - 0.14 * Math.max(0, 1 - Math.abs(tx))).toFixed(3);
-        eyeL.style.transform = `scaleX(${conv})`;
-        eyeR.style.transform = `scaleX(${conv})`;
+
+      /* iris: aperture from the mood, closed by a blink, spun only when dizzy */
+      if (s.mood === "dizzy") {
+        s.irisSpin = (t * 0.012) % 360;
+        visual.style.setProperty("--ruru-mood", FOUR[Math.floor(t / 420) % 4]);
+      } else if (s.irisSpin !== 0) {
+        s.irisSpin = 0;
+        applyMood(s.mood);
       }
-      if (lidLRef.current) lidLRef.current.setAttribute("opacity", lid.toFixed(2));
-      if (lidRRef.current) lidRRef.current.setAttribute("opacity", lid.toFixed(2));
-      if (seamRef.current) {
-        seamRef.current.setAttribute("cx", cxStage.toFixed(2));
-        seamRef.current.setAttribute("cy", (headBaseY + 1).toFixed(2));
-        seamRef.current.setAttribute("rx", (headW * 0.42).toFixed(2));
-        seamRef.current.setAttribute("ry", Math.max(2, headW * 0.05).toFixed(2));
-        seamRef.current.setAttribute("opacity", s.sleeping ? "0.85" : "0.7");
+      const focusPulse =
+        s.mood === "excited" ? 0.05 * (0.5 + 0.5 * Math.sin(t * 0.0018)) : 0;
+      const irisTarget = Math.max(0.03, IRIS[s.mood] - focusPulse);
+      s.iris += (irisTarget - s.iris) * (reduced ? 1 : ease(TAU_EYES, dt));
+      s.blink += (lid - s.blink) * (reduced ? 1 : ease(90, dt));
+      setIris(Math.max(0.02, s.iris * (1 - s.blink * 0.97)), s.irisSpin);
+      if (pupilRef.current) {
+        /* the pupil leans toward the cursor inside 18% of the lens radius */
+        pupilRef.current.setAttribute(
+          "transform",
+          `translate(${(s.eyeCX * 0.18 * LENS_R).toFixed(2)} ${(s.eyeCY * 0.18 * LENS_R).toFixed(2)})`
+        );
       }
+      const blinkFlag = s.blink > 0.5 ? "1" : "0";
+      if (visual.dataset.blink !== blinkFlag) visual.dataset.blink = blinkFlag;
 
       /* ---- paint: hit target, sleep marker, bubble ---- */
       button.style.transform = `translate3d(${cxStage.toFixed(2)}px, ${cyStage.toFixed(2)}px, 0) scale(${scale.toFixed(4)})`;
@@ -1176,79 +1272,141 @@ export default function Robot() {
         <canvas ref={canvasRef} className="ruru-canvas" />
         <svg ref={svgRef} className="ruru-svg" viewBox="0 0 620 620" aria-hidden="true" focusable="false">
           <defs>
-            <radialGradient id="ruru-dome" cx="34%" cy="26%" r="82%">
+            {/* satin white ceramic */}
+            <radialGradient id="ruru-dome" cx="34%" cy="22%" r="84%">
               <stop offset="0%" stopColor="#ffffff" />
-              <stop offset="55%" stopColor="#f2f4f7" />
-              <stop offset="100%" stopColor="#ccd1d6" />
+              <stop offset="52%" stopColor="#f4f6f8" />
+              <stop offset="100%" stopColor="#c9cfd5" />
             </radialGradient>
-            <linearGradient id="ruru-visor" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor="#3c4043" />
-              <stop offset="42%" stopColor="#202124" />
-              <stop offset="100%" stopColor="#141517" />
+            {/* micro-texture, kept at 4% opacity */}
+            <pattern id="ruru-tex" width="6" height="6" patternUnits="userSpaceOnUse">
+              <circle cx="1" cy="1" r="0.7" fill="#202124" opacity="0.06" />
+              <circle cx="4" cy="4" r="0.6" fill="#ffffff" opacity="0.5" />
+            </pattern>
+            {/* brushed aluminium collar */}
+            <linearGradient id="ruru-collar" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stopColor="#f7f8f9" />
+              <stop offset="18%" stopColor="#c8ced4" />
+              <stop offset="40%" stopColor="#eef0f2" />
+              <stop offset="62%" stopColor="#b6bcc3" />
+              <stop offset="82%" stopColor="#e2e5e8" />
+              <stop offset="100%" stopColor="#9ea5ac" />
             </linearGradient>
-            <linearGradient id="ruru-visorgl" x1="0" y1="0" x2="1" y2="1">
-              <stop offset="0%" stopColor="#ffffff" stopOpacity="0.5" />
-              <stop offset="45%" stopColor="#ffffff" stopOpacity="0.06" />
-              <stop offset="100%" stopColor="#ffffff" stopOpacity="0" />
+            {/* polished bezel metal */}
+            <linearGradient id="ruru-bezel" x1="0" y1="0" x2="1" y2="1">
+              <stop offset="0%" stopColor="#fbfcfd" />
+              <stop offset="35%" stopColor="#aeb5bc" />
+              <stop offset="55%" stopColor="#e9ecee" />
+              <stop offset="100%" stopColor="#8d949b" />
             </linearGradient>
-            <radialGradient id="ruru-ear" cx="40%" cy="35%" r="75%">
-              <stop offset="0%" stopColor="#a8c7fa" />
-              <stop offset="100%" stopColor="#4285F4" />
+            <radialGradient id="ruru-glass" cx="38%" cy="30%" r="86%">
+              <stop offset="0%" stopColor="#2b2f33" />
+              <stop offset="45%" stopColor="#151719" />
+              <stop offset="100%" stopColor="#0a0b0c" />
             </radialGradient>
-            <linearGradient id="ruru-seamgrad" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor="#FBBC04" />
-              <stop offset="100%" stopColor="#4285F4" />
+            <linearGradient id="ruru-blade" x1="0" y1="0" x2="0.4" y2="1">
+              <stop offset="0%" stopColor="#4a5056" />
+              <stop offset="50%" stopColor="#22262a" />
+              <stop offset="100%" stopColor="#3a4045" />
             </linearGradient>
+            {/* the pane reflected in the glass: wall above, pale floor below.
+                NOT id "ruru-pane": that id is taken by the hero pane div. */}
+            <linearGradient id="ruru-glass-sheen" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stopColor="#4285F4" stopOpacity="0.30" />
+              <stop offset="45%" stopColor="#4285F4" stopOpacity="0.06" />
+              <stop offset="100%" stopColor="#FEF7E0" stopOpacity="0.22" />
+            </linearGradient>
+            {/* the soft contact shadow under the collar, no filter */}
+            <radialGradient id="ruru-contact" cx="50%" cy="50%" r="50%">
+              <stop offset="0%" stopColor="#202124" stopOpacity="0.45" />
+              <stop offset="60%" stopColor="#202124" stopOpacity="0.16" />
+              <stop offset="100%" stopColor="#202124" stopOpacity="0" />
+            </radialGradient>
+            {/* the one blur on the head: the lens bloom */}
+            <filter id="ruru-bloom" x="-70%" y="-70%" width="240%" height="240%">
+              <feGaussianBlur stdDeviation="3.4" />
+            </filter>
           </defs>
 
-          {/* the lit levitation seam sits between the head and the ball */}
-          <ellipse ref={seamRef} className="ruru-seam" cx="0" cy="0" rx="0" ry="0" fill="url(#ruru-seamgrad)" />
-
           <g ref={headRef} className="ruru-head">
-            {/* antenna with a ring bulb */}
-            {/* one antenna with a ring bulb. Both circles inherit the mood
-               colour from the group, so the LED goes yellow when sleepy. */}
-            <g ref={antennaRef} color="#4285F4">
-              <line x1="100" y1="22" x2="100" y2="0" stroke="#202124" strokeWidth="5" strokeLinecap="round" />
-              <circle className="ruru-bulb" cx="100" cy="-4" r="13" opacity="0.4" />
-              <circle ref={bulbRef} className="ruru-bulb" cx="100" cy="-4" r="9" />
-              <circle cx="100" cy="-4" r="9" fill="none" stroke="#202124" strokeWidth="3" />
+            {/* the 2 to 3px gap under the collar is a soft contact shadow */}
+            <ellipse cx="120" cy="154" rx="104" ry="14" fill="url(#ruru-contact)" />
+
+            {/* two antennas of different lengths, behind the dome */}
+            <g ref={antTallRef} className="ruru-antenna">
+              <line x1="91" y1="64" x2="74" y2="-8" stroke="#202124" strokeWidth="4" strokeLinecap="round" />
+              <line x1="91" y1="64" x2="74" y2="-8" stroke="#e9ecee" strokeWidth="1.4" strokeLinecap="round" />
+              <circle cx="73" cy="-13" r="7.5" fill="none" stroke="#202124" strokeWidth="3.4" />
+              <circle cx="73" cy="-13" r="3.4" className="ruru-bulb" />
+            </g>
+            <g ref={antStubRef} className="ruru-antenna">
+              <line x1="156" y1="68" x2="162" y2="36" stroke="#202124" strokeWidth="7" strokeLinecap="round" />
+              <circle cx="162" cy="33" r="5.5" fill="#202124" />
+              <circle cx="162" cy="33" r="3.4" className="ruru-bulb" />
             </g>
 
-            {/* blue polycarbonate ear caps */}
-            <rect x="8" y="46" width="18" height="42" rx="9" fill="url(#ruru-ear)" stroke="#202124" strokeWidth="3" />
-            <rect x="174" y="46" width="18" height="42" rx="9" fill="url(#ruru-ear)" stroke="#202124" strokeWidth="3" />
+            {/* collar: brushed ring, yellow trim, lower seam, four brand pips */}
+            <rect x="12" y="132" width="216" height="18" rx="7" fill="url(#ruru-collar)" stroke="#202124" strokeWidth="3" />
+            <rect x="20" y="136.5" width="118" height="3" rx="1.5" fill="#FBBC04" />
+            <rect x="20" y="145" width="200" height="4" fill="#202124" opacity="0.22" />
+            {["#4285F4", "#EA4335", "#FBBC04", "#34A853"].map((c, i) => (
+              <rect key={c} x={172 + i * 13} y="137.5" width="9" height="8" rx="2.5" fill={c} stroke="#202124" strokeWidth="1.6" />
+            ))}
 
-            {/* ceramic dome */}
-            <rect x="22" y="4" width="156" height="122" rx="52" fill="url(#ruru-dome)" stroke="#202124" strokeWidth="3.4" />
-            <ellipse cx="72" cy="24" rx="34" ry="12" fill="#ffffff" opacity="0.6" transform="rotate(-13 72 24)" />
+            {/* four screws */}
+            {[[28, 141], [212, 141], [66, 124], [174, 124]].map(([sx, sy]) => (
+              <g key={`screw-${sx}`}>
+                <circle cx={sx} cy={sy} r="4.2" fill="#c8ced4" stroke="#202124" strokeWidth="1.8" />
+                <line x1={sx - 2.6} y1={sy} x2={sx + 2.6} y2={sy} stroke="#202124" strokeWidth="1.4" />
+              </g>
+            ))}
 
-            {/* dark glass visor: specular streak plus faint scanlines */}
-            <rect x="40" y="28" width="120" height="72" rx="30" fill="url(#ruru-visor)" stroke="#202124" strokeWidth="3.4" />
-            <ellipse cx="80" cy="42" rx="38" ry="7" fill="url(#ruru-visorgl)" transform="rotate(-8 80 42)" />
-            <g opacity="0.12">
-              <line x1="52" y1="58" x2="148" y2="58" stroke="#a8c7fa" strokeWidth="1" />
-              <line x1="52" y1="66" x2="148" y2="66" stroke="#a8c7fa" strokeWidth="1" />
-              <line x1="52" y1="74" x2="148" y2="74" stroke="#a8c7fa" strokeWidth="1" />
+            {/* the dome: a true hemisphere, half as tall as it is wide */}
+            <path d="M20 134 A100 100 0 0 1 220 134 Z" fill="url(#ruru-dome)" />
+            <path d="M20 134 A100 100 0 0 1 220 134 Z" fill="url(#ruru-tex)" />
+            <path d="M92 40.5 A100 100 0 0 0 62 88" fill="none" stroke="#202124" strokeWidth="1.6" opacity="0.2" />
+            <path d="M148 40.5 A100 100 0 0 1 178 88" fill="none" stroke="#202124" strokeWidth="1.6" opacity="0.2" />
+            <path d="M20 134 A100 100 0 0 1 220 134" fill="none" stroke="#202124" strokeWidth="12" opacity="0.14" />
+            <path d="M20 134 A100 100 0 0 1 220 134 Z" fill="none" stroke="#202124" strokeWidth="3.4" />
+            <ellipse cx="74" cy="72" rx="34" ry="15" fill="#ffffff" opacity="0.5" transform="rotate(-24 74 72)" />
+
+            {/* main eye: bezel, glass, glowing core, eight aperture blades,
+               then the glass reflections on top */}
+            <g ref={lensRef}>
+              <circle r="46" fill="url(#ruru-bezel)" stroke="#202124" strokeWidth="3.2" />
+              <circle r="39" fill="url(#ruru-glass)" />
+              <g ref={pupilRef}>
+                <circle r="21" fill="currentColor" opacity="0.5" filter="url(#ruru-bloom)" className="ruru-core" />
+                <circle r="14" fill="currentColor" opacity="0.95" className="ruru-core" />
+                <g ref={irisRef}>
+                  {Array.from({ length: 8 }, (_, i) => (
+                    <path
+                      key={i}
+                      ref={(el) => {
+                        bladeRefs.current[i] = el;
+                      }}
+                      d={bladePath(LENS_R * 0.92 * (1 - IRIS.neutral), i)}
+                      fill="url(#ruru-blade)"
+                      stroke="#0b0c0d"
+                      strokeWidth="1.3"
+                    />
+                  ))}
+                </g>
+              </g>
+              <circle r="39" fill="url(#ruru-glass-sheen)" />
+              {/* one large window-shaped specular, plus one tiny highlight */}
+              <rect x="-20" y="-27" width="38" height="11" rx="5.5" fill="#ffffff" opacity="0.5" transform="rotate(-20)" />
+              <circle cx="-21" cy="-9" r="3.2" fill="#ffffff" opacity="0.95" />
+              <path d="M-40 -18 A42 42 0 0 1 -6 -42" fill="none" stroke="#ffffff" strokeWidth="3" opacity="0.5" />
             </g>
 
-            {/* annoyed: two steam puffs above the dome */}
-            <g className="ruru-steam" fill="#BDC1C6" opacity="0">
-              <circle cx="44" cy="-12" r="9" />
-              <circle cx="160" cy="-14" r="11" />
-            </g>
-
-            {/* two LED eyes and a segmented-LED mouth */}
-            <g ref={eyesRef} fill="#4285F4" data-mood="neutral">
-              <circle ref={eyeLRef} cx="76" cy="64" r="11" className="ruru-eye" />
-              <circle ref={eyeRRef} cx="124" cy="64" r="11" className="ruru-eye" />
-            </g>
-            <ellipse ref={lidLRef} cx="76" cy="64" rx="14" ry="12" fill="#ccd1d6" opacity="0" />
-            <ellipse ref={lidRRef} cx="124" cy="64" rx="14" ry="12" fill="#ccd1d6" opacity="0" />
-            <g ref={mouthRef} data-mood="neutral" fill="#4285F4">
-              <rect x="86" y="86" width="6" height="5" rx="2" />
-              <rect x="97" y="86" width="6" height="5" rx="2" />
-              <rect x="108" y="86" width="6" height="5" rx="2" />
+            {/* secondary lens: dark glass with its own status LED */}
+            <g ref={lens2Ref} className="ruru-lens2">
+              <circle r="14" fill="url(#ruru-bezel)" stroke="#202124" strokeWidth="2.6" />
+              <circle r="9.5" fill="url(#ruru-glass)" />
+              <circle r="9.5" fill="url(#ruru-glass-sheen)" />
+              <circle cx="-3.4" cy="-4" r="2.6" fill="#ffffff" opacity="0.85" />
+              <circle r="3" className="ruru-bulb ruru-led" />
             </g>
           </g>
         </svg>
