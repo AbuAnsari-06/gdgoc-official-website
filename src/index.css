@@ -179,6 +179,44 @@ body {
   box-shadow: 3px 3px 0 var(--color-ink);
 }
 
+/* ---------- hero wordmark ---------- */
+
+/* The tightest the display type is ever allowed to get. Tracking stops at
+   -0.03em and the hard shadow at 0.03em: at the old -0.045em / 0.045em the
+   ink shadow of the "r" filled the gap to the "n" and "Learn." read as
+   "Leam.". Optical sizing stays on so the counters open up as the type
+   grows, and the shadow is the ink hard offset the rest of the site uses. */
+.hero-display {
+  font-family: var(--font-display);
+  font-size: clamp(3.1rem, 8.4vw, 7rem);
+  line-height: 0.9;
+  letter-spacing: -0.03em;
+  font-weight: 800;
+  font-optical-sizing: auto;
+  text-shadow: 0.03em 0.03em 0 var(--color-ink);
+}
+
+.hero-line {
+  display: block;
+}
+
+/* ---------- scroll hint ---------- */
+
+/* Visible label plus a transform-only indicator, so nothing animates a
+   layout property. */
+.scroll-indicator {
+  position: relative;
+}
+
+@keyframes scroll-indicator-run {
+  0% { transform: translateY(-100%); }
+  55%, 100% { transform: translateY(170%); }
+}
+
+.scroll-indicator-dot {
+  animation: scroll-indicator-run 1.9s cubic-bezier(0.76, 0, 0.24, 1) infinite;
+}
+
 /* ---------- hero glyph stickers ---------- */
 
 /* Flat white plate, 3px ink border, hard shadow, ink glyph. The accent

@@ -6,6 +6,7 @@ import {
   SectionTag,
   ScrambleHeading,
   StatusPill,
+  MonthGrid,
 } from "./ui";
 import GdgLogo from "./GdgLogo";
 import { HACKTOBER, COLOR_HEX } from "../data/content";
@@ -56,22 +57,7 @@ export default function Hacktober() {
                   <p className="text-h2 heading-shadow heading-shadow-green">Oct 8</p>
                   <p className="mt-1 pl-1 text-sm font-bold tracking-wide text-ink/60 uppercase">to</p>
                   <p className="text-h2 heading-shadow heading-shadow-green">Oct 31</p>
-                  <div className="mt-auto grid grid-cols-6 gap-1.5" aria-hidden="true">
-                    {Array.from({ length: OSO.totalDays }, (_, i) => {
-                      const filled = oso.state === "wrapped" || (oso.state === "live" && i < oso.day);
-                      const today = oso.state === "live" && i === oso.day - 1;
-                      return (
-                        <span
-                          key={i}
-                          className="aspect-square border-2 border-ink"
-                          style={{
-                            background: filled ? COLOR_HEX.ggreen : "var(--color-bg)",
-                            boxShadow: today ? "3px 3px 0 var(--color-ink)" : undefined,
-                          }}
-                        />
-                      );
-                    })}
-                  </div>
+                  <MonthGrid state={oso.state} day={oso.day} cols={6} className="mt-auto" />
                 </div>
                 {/* official lockup in the poster corner, flat and unmodified;
                    decorative here, the hero and footer carry the alt text */}

@@ -7,6 +7,7 @@ import {
 } from "react";
 import { motion, useInView, useReducedMotion } from "framer-motion";
 import { cn } from "../utils/cn";
+import { OSO } from "../lib/oso";
 import { COLOR_HEX, ON_COLOR, PANEL_EDGE, PANEL_HEX, WASH_HEX, type GColor } from "../data/content";
 
 import { useScramble } from "../hooks/useScramble";
@@ -230,6 +231,54 @@ export function SectionTag({
     >
       {label}
     </span>
+  );
+}
+
+/* ---------------- Contribution month grid ---------------- */
+
+/* One square per OSO day, filled as the month progresses. Shared by the
+   hero status rail and the poster so the two can never disagree. */
+export function MonthGrid({
+  state,
+  day,
+  cols = 6,
+  square = 0,
+  className,
+}: {
+  state: "upcoming" | "live" | "wrapped";
+  day: number;
+  cols?: number;
+  /** Extra px on each side of a square; 0 lets the grid size itself. */
+  square?: number;
+  className?: string;
+}) {
+  return (
+    <div
+      className={cn("grid gap-1.5", className)}
+      style={{ gridTemplateColumns: `repeat(${cols}, minmax(0, 1fr))` }}
+      aria-hidden="true"
+    >
+      {Array.from({ length: OSO.totalDays }, (_, i) => {
+        const filled = state === "wrapped" || (state === "live" && i < day);
+        const today = state === "live" && i === day - 1;
+        const next = state === "upcoming" && i === 0;
+        return (
+          <span
+            key={i}
+            className="aspect-square border-2 border-ink"
+            style={{
+              background: filled
+                ? COLOR_HEX.ggreen
+                : next
+                  ? COLOR_HEX.gyellow
+                  : "var(--color-bg)",
+              boxShadow: today || next ? "3px 3px 0 var(--color-ink)" : undefined,
+              minWidth: square || undefined,
+            }}
+          />
+        );
+      })}
+    </div>
   );
 }
 
