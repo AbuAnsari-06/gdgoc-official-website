@@ -344,6 +344,139 @@ body {
   box-shadow: 3px 3px 0 var(--hard-edge, var(--color-ink));
 }
 
+/* ---------- hero split: the robot pane ---------- */
+
+/* The pane owns the whole remaining right side of the first screen. Below
+   lg it stacks under the text pane, full-bleed. It is never shorter than
+   360px. Written as CSS rather than stacked Tailwind variants because
+   max-lg and md:max-lg would both match at 768-1023px and the winner would
+   depend on Tailwind's generated order, not on the class order. */
+.ruru-pane {
+  min-height: 360px;
+}
+
+@media (max-width: 1023px) {
+  .ruru-pane {
+    min-height: 58svh;
+  }
+}
+
+@media (min-width: 768px) and (max-width: 1023px) {
+  .ruru-pane {
+    min-height: 64svh;
+  }
+}
+
+/* The text pane's content sits on the same left edge as the nav's container
+   (mx-auto max-w-7xl with px-5 sm:px-8) at every width: above the container
+   width the gutter opens up to match it, below it collapses to the page
+   padding. Percentages resolve against the hero, so a classic scrollbar
+   cannot push the two edges apart. */
+.hero-text-pane {
+  padding-left: max(1.25rem, calc((100% - 80rem) / 2 + 1.25rem));
+  padding-right: 1.25rem;
+}
+
+@media (min-width: 640px) {
+  .hero-text-pane {
+    padding-left: max(2rem, calc((100% - 80rem) / 2 + 2rem));
+    padding-right: 2rem;
+  }
+}
+
+/* RuruField outline. Rendered only when ?debugField is in the URL. */
+.ruru-field-debug {
+  position: absolute;
+  z-index: 4;
+  border: 1px dashed rgba(32, 33, 36, 0.55);
+  pointer-events: none;
+}
+
+/* ---------- Open Source October status card ---------- */
+
+/* Floating and fixed: the card is redundant next to the event section and
+   must never sit on Ruru's field, so it lives in the viewport corner and is
+   revealed only once the visitor is about halfway through the first screen.
+   Opacity and transform only; the gate logic is in src/lib/statusCard.ts. */
+.oso-card {
+  position: fixed;
+  right: calc(24px + env(safe-area-inset-right, 0px));
+  bottom: calc(24px + env(safe-area-inset-bottom, 0px));
+  z-index: 50;
+  width: 340px;
+  max-width: calc(100vw - 48px);
+}
+
+@media (max-width: 767px) {
+  .oso-card {
+    right: 16px;
+    left: 16px;
+    bottom: calc(16px + env(safe-area-inset-bottom, 0px));
+    width: auto;
+    max-width: none;
+  }
+}
+
+.oso-card[data-show="0"] {
+  opacity: 0;
+  transform: translateY(16px);
+  pointer-events: none;
+}
+
+.oso-card[data-show="1"] {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .oso-card {
+    transition:
+      opacity 450ms cubic-bezier(0.22, 1, 0.36, 1),
+      transform 450ms cubic-bezier(0.22, 1, 0.36, 1);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .oso-card {
+    transition: opacity 150ms linear;
+  }
+  .oso-card[data-show="0"] {
+    transform: none;
+  }
+}
+
+/* Dismiss. A sibling of the card's link rather than a child, because a
+   button inside a button is not valid. */
+.oso-close {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  z-index: 2;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border: 2px solid var(--color-ink);
+  background: var(--color-bg);
+  color: var(--color-ink);
+  box-shadow: 2px 2px 0 var(--color-ink);
+  transition: transform 0.18s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.oso-close:hover {
+  transform: translate(-2px, -2px);
+}
+
+.oso-close:active {
+  transform: translate(1px, 1px);
+}
+
+.oso-close:focus-visible {
+  outline: 3px solid var(--color-ink);
+  outline-offset: 2px;
+}
+
 /* ---------- Ruru, the rolling droid ---------- */
 
 /* The droid lives inside the stage panel. Three stacked layers, none of
@@ -353,8 +486,9 @@ body {
      .ruru-button  the real control, tracking the ball for hit testing
    The speech bubble is a fourth layer so it can be clamped to the stage. */
 
-/* The stage panel is the droid's box: pan-y keeps vertical page scrolling
-   working while a horizontal drag is allowed to steer Ruru. */
+/* The pane is the droid's box: pan-y keeps vertical page scrolling working
+   while a horizontal drag is allowed to steer Ruru. */
+.ruru-pane,
 .stage {
   touch-action: pan-y;
 }

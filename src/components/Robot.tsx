@@ -25,10 +25,13 @@ import { COLOR_HEX } from "../data/content";
 import {
   FIXED_DT,
   IDENTITY_QUAT,
-  clampInBounds,
+  ballDiameter,
+  clampToField,
   createBody,
+  debugFieldOn,
   depthScale,
   facingOf,
+  fieldFor,
   hasArrived,
   projectUnit,
   quatRotate,
@@ -41,6 +44,7 @@ import {
   type Body,
   type Domain,
   type Quat,
+  type Rect,
   type Vec2,
 } from "../lib/ruru";
 
@@ -57,7 +61,6 @@ const MOOD_EYE: Record<Mood, string> = {
   sleepy: "#FBBC04",
 };
 
-const BALL_RATIO = 0.36; // ball diameter as a fraction of the stage width
 const HEAD_RATIO = 0.6; // head width / ball diameter
 const LEVITATE_GAP = 6; // px of lit seam between the ball and the head
 const POKE_WINDOW = 3000;
@@ -386,14 +389,19 @@ export default function Robot() {
   const bubbleRef = useRef<HTMLDivElement>(null);
   const bubbleTextRef = useRef<HTMLSpanElement>(null);
   const zzzRef = useRef<HTMLSpanElement>(null);
+  const fieldDebugRef = useRef<HTMLSpanElement>(null);
 
   const rig = useRef({
     body: createBody(0, 0, 60) as Body,
     domain: { w: 100, h: 100 } as Domain,
     stageW: 0,
     stageH: 0,
-    /** Floor rect in stage pixels, recomputed by the ResizeObserver. */
-    floor: { x: 0, y: 0, w: 0, h: 0 },
+    /** Floor band in pane pixels, recomputed by the ResizeObserver. */
+    floor: { x: 0, y: 0, w: 0, h: 0 } as Rect,
+    /** RuruField in pane pixels: where the ground-contact point may go. */
+    field: { x: 0, y: 0, w: 1, h: 1 } as Rect,
+    /** Ball diameter in pane pixels. */
+    d: 120,
     home: { x: 0, y: 0 } as Vec2,
     quat: { ...IDENTITY_QUAT } as Quat,
     mood: "neutral" as Mood,
@@ -472,9 +480,15 @@ export default function Robot() {
       s.stageW = pw;
       s.stageH = ph;
       s.floor = { x: 0, y: ph - sh, w: sw, h: sh };
-      s.domain = { w: sw, h: sh };
-      s.body.r = (sw * BALL_RATIO) / 2;
-      s.home = { x: sw / 2, y: sh / 2 };
+      // D = 0.22 x pane width, capped at 0.30 x floor height, floor of 120px.
+      s.d = ballDiameter(pw, sh);
+      s.body.r = s.d / 2;
+      // RuruField: 0.75D in from the side walls, 0.6D up from the bottom,
+      // 0.15D below the horizon. Recomputed on every resize, so an
+      // orientation change cannot leave the droid outside its box.
+      s.field = fieldFor(s.floor, s.d);
+      s.domain = { w: s.field.w, h: s.field.h };
+      s.home = { x: s.field.w * 0.62, y: s.field.h * 0.55 };
       canvasCss = Math.max(24, s.body.r * 2.6);
       canvas.style.width = `${canvasCss}px`;
       canvas.style.height = `${canvasCss}px`;
@@ -490,7 +504,14 @@ export default function Robot() {
         if (!reduced) s.body.target = { ...s.home };
         s.ready = true;
       }
-      clampInBounds(s.body, s.domain, 12);
+      clampToField(s.body, s.domain);
+      const dbg = fieldDebugRef.current;
+      if (dbg) {
+        dbg.style.left = `${s.field.x}px`;
+        dbg.style.top = `${s.field.y}px`;
+        dbg.style.width = `${s.field.w}px`;
+        dbg.style.height = `${s.field.h}px`;
+      }
       button.style.width = `${s.body.r * 2}px`;
       button.style.height = `${s.body.r * 2}px`;
       button.style.marginLeft = `${-s.body.r}px`;
@@ -572,9 +593,15 @@ export default function Robot() {
 
     /* ---------- pointer ---------- */
 
+    /* Pointer -> field-local floor coords. The pointer's vertical position
+       maps to depth across the floor band, then clamps into the field. */
     const toFloor = (clientX: number, clientY: number): Vec2 => {
       const r = stage.getBoundingClientRect();
-      return { x: clientX - r.left, y: clientY - r.top };
+      const t = s.floor.h > 0 ? (clientY - r.top) / s.floor.h : 0.5;
+      return {
+        x: Math.max(0, Math.min(s.field.w, clientX - r.left - s.field.x)),
+        y: Math.max(0, Math.min(s.field.h, t * s.field.h)),
+      };
     };
 
     const onMove = (e: PointerEvent) => {
@@ -735,11 +762,7 @@ export default function Robot() {
       // stage would drag the droid straight back
       s.holdUntil = now + 2500;
       if (s.sleeping) wake(true);
-      const next = clampInBounds(
-        { ...s.body, x: s.body.x + d.x, y: s.body.y + d.y },
-        s.domain,
-        12
-      );
+      const next = clampToField({ ...s.body, x: s.body.x + d.x, y: s.body.y + d.y }, s.domain);
       if (reduced) {
         // reduced motion: one discrete step, no rolling
         s.body.x = next.x;
@@ -915,9 +938,9 @@ export default function Robot() {
       if (zzzRef.current) zzzRef.current.dataset.on = s.sleeping ? "1" : "0";
 
       /* ---- geometry for this frame ---- */
-      const scale = depthScale(s.body.y, s.floor.h);
-      const cxStage = s.floor.x + s.body.x;
-      const cyStage = s.floor.y + s.body.y;
+      const scale = depthScale(s.body.y, s.field.h);
+      const cxStage = s.field.x + s.body.x;
+      const cyStage = s.field.y + s.body.y;
       const ballR = s.body.r * scale;
       const headW = s.body.r * 2 * HEAD_RATIO;
       const k = headW / HEAD_BOX_W;
@@ -1234,6 +1257,11 @@ export default function Robot() {
       <span ref={zzzRef} className="ruru-zzz" data-on="0" aria-hidden="true">
         z
       </span>
+
+      {/* ?debugField only: outlines RuruField. Nothing is drawn by default. */}
+      {debugFieldOn(window.location.search) && (
+        <span ref={fieldDebugRef} className="ruru-field-debug" aria-hidden="true" />
+      )}
 
       <div ref={bubbleRef} className="ruru-bubble" hidden>
         <span ref={bubbleTextRef} aria-live="polite" />

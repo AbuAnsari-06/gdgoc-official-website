@@ -125,6 +125,63 @@ export function screenToWorldVelocity(sx: number, sy: number) {
   return { x: sx, z: CP < 1e-6 ? 0 : sy / CP };
 }
 
+/* ---------------- the field ---------------- */
+
+/** The pane rectangle, in pane pixels. */
+export interface Rect {
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+}
+
+/**
+ * RuruField: the rectangle the droid's ground-contact point may never leave,
+ * expressed as insets on the floor band in ball diameters. 0.75D at the sides
+ * keeps the whole shell (max outer radius 1.08 * D/2 = 0.54D) inside the
+ * floor band at every depth; 0.6D at the bottom keeps the contact shadow off
+ * the baseboard; the top sits 0.15D below the horizon so the ball can never
+ * clip the horizon line.
+ */
+export const FIELD_INSET = { side: 0.75, bottom: 0.6, top: 0.15 } as const;
+
+/** Ball diameter in pane pixels: 0.22 x pane width, cap 0.30 x floor height. */
+export function ballDiameter(paneW: number, floorH: number): number {
+  return Math.max(120, Math.min(paneW * 0.22, floorH * 0.3));
+}
+
+/**
+ * The field, in pane pixels, from the floor band and the ball diameter. The
+ * insets are capped at a fraction of the band so a short pane still leaves a
+ * band to move in instead of collapsing the field to a line.
+ */
+export function fieldFor(floor: Rect, d: number): Rect {
+  const side = Math.min(FIELD_INSET.side * d, floor.w / 3);
+  const top = Math.min(FIELD_INSET.top * d, floor.h / 4);
+  const bottom = Math.min(FIELD_INSET.bottom * d, floor.h / 4);
+  return {
+    x: floor.x + side,
+    y: floor.y + top,
+    w: Math.max(1, floor.w - 2 * side),
+    h: Math.max(1, floor.h - top - bottom),
+  };
+}
+
+/** Foot of the pane, in floor-band pixels: the field's local origin. */
+export function toField(p: Vec2, field: Rect): Vec2 {
+  return { x: p.x - field.x, y: p.y - field.y };
+}
+
+/** Contact point -> pane pixels. */
+export function fromField(p: Vec2, field: Rect): Vec2 {
+  return { x: p.x + field.x, y: p.y + field.y };
+}
+
+/** `?debugField` outlines the field. Off by default and never drawn. */
+export function debugFieldOn(search: string): boolean {
+  return new URLSearchParams(search).has("debugField");
+}
+
 /* ---------------- depth ---------------- */
 
 export const SCALE_BACK = 0.88;
@@ -185,6 +242,32 @@ export function clampInBounds(b: Body, domain: Domain, pad = 12): Body {
   if (y !== b.y) b.vy *= -0.35;
   b.x = x;
   b.y = y;
+  return b;
+}
+
+/**
+ * Keep the ground-contact point inside the field. The field is already inset
+ * by RuruField's margins, so the contact point may reach its edges; the ball
+ * outline still lands inside the floor band because the side inset (0.75D)
+ * exceeds the largest rendered radius (0.54D). No bounce: an outward
+ * velocity is simply killed, and the soft steering in stepBody is what keeps
+ * this from firing in normal play.
+ */
+export function clampToField(b: Body, field: Domain): Body {
+  if (b.x < 0) {
+    b.x = 0;
+    if (b.vx < 0) b.vx = 0;
+  } else if (b.x > field.w) {
+    b.x = field.w;
+    if (b.vx > 0) b.vx = 0;
+  }
+  if (b.y < 0) {
+    b.y = 0;
+    if (b.vy < 0) b.vy = 0;
+  } else if (b.y > field.h) {
+    b.y = field.h;
+    if (b.vy > 0) b.vy = 0;
+  }
   return b;
 }
 
