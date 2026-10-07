@@ -8,7 +8,7 @@ import { COLOR_HEX, ON_COLOR, PANEL_EDGE, PANEL_HEX, type GColor } from "../data
 const NAV_ITEMS: { id: string; label: string; desc: string; color: GColor }[] = [
   { id: "board", label: "Board", desc: "what's pinned this week", color: "gblue" },
   { id: "about", label: "About", desc: "learn · connect · grow", color: "gred" },
-  { id: "hacktober", label: "Open Source October", desc: "the 48-hour flagship", color: "gyellow" },
+  { id: "hacktober", label: "Open Source October", desc: "the month-long contribution drive", color: "gyellow" },
   { id: "events", label: "Events", desc: "the session log", color: "ggreen" },
   { id: "domains", label: "Domains", desc: "pick your lane", color: "gblue" },
   { id: "crew", label: "Crew", desc: "humans behind the board", color: "gred" },

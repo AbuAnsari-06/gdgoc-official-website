@@ -1,4 +1,5 @@
 import type { GColor } from "./content";
+import { DEMO_PERSON } from "../lib/identity";
 
 /**
  * ────────────────────────────────────────────────────────────────────
@@ -16,6 +17,12 @@ import type { GColor } from "./content";
  *
  *  Ghost "reserved" slots auto-fill the grid up to 8 cards, so an
  *  empty roster never looks broken.
+ *
+ *  DEMO DATA: replace before launch. Every card below renders
+ *  DEMO_PERSON.fullName. The names are placeholders, so all six cards
+ *  read the same on purpose — real names, roles, tags and join years
+ *  have to come from the club. Keep one entry per person: list order,
+ *  card count and grid slots depend on the array length.
  * ────────────────────────────────────────────────────────────────────
  */
 
@@ -28,13 +35,13 @@ export interface Member {
 }
 
 export const members: Member[] = [
-  // ── sample roster · replace these with your actual crew ──────────
-  { name: "Aarav Malhotra", role: "Chapter Lead", tag: "Keeps the whole board running", color: "gblue", since: "'23" },
-  { name: "Sanya Verma", role: "Technical Lead", tag: "Reviews every PR, kindly-ish", color: "gred", since: "'23" },
-  { name: "Kabir Anand", role: "Open Source Lead", tag: "Good-first-issue hunter", color: "ggreen", since: "'24" },
-  { name: "Ishita Rao", role: "Events & Community", tag: "Turns ideas into packed rooms", color: "gyellow", since: "'24" },
-  { name: "Dev Patel", role: "Web Lead", tag: "Ships URLs, not slide decks", color: "gblue", since: "'24" },
-  { name: "Mira Joshi", role: "Design Lead", tag: "Figma files with feelings", color: "gred", since: "'25" },
+  // DEMO DATA: replace before launch — placeholder crew, not real people.
+  { name: DEMO_PERSON.fullName, role: "Chapter Lead", tag: "Keeps the whole board running", color: "gblue", since: "'23" },
+  { name: DEMO_PERSON.fullName, role: "Technical Lead", tag: "Reviews every PR, kindly-ish", color: "gred", since: "'23" },
+  { name: DEMO_PERSON.fullName, role: "Open Source Lead", tag: "Good-first-issue hunter", color: "ggreen", since: "'24" },
+  { name: DEMO_PERSON.fullName, role: "Events & Community", tag: "Turns ideas into packed rooms", color: "gyellow", since: "'24" },
+  { name: DEMO_PERSON.fullName, role: "Web Lead", tag: "Ships URLs, not slide decks", color: "gblue", since: "'24" },
+  { name: DEMO_PERSON.fullName, role: "Design Lead", tag: "Figma files with feelings", color: "gred", since: "'25" },
 ];
 
 /** Number of cards the grid shows before it wraps — ghost slots fill the rest. */

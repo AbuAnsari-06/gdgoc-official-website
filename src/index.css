@@ -241,11 +241,11 @@ body {
   box-shadow: 3px 3px 0 var(--hard-edge, var(--color-ink));
 }
 
-/* ---------- Byte, the mascot ---------- */
+/* ---------- Ruru, the mascot ---------- */
 
 /* Mount: the hero reserves a 4:5 stage; the robot stands on its floor
    and may rise above the panel top (no clipping). */
-.byte-root {
+.ruru-root {
   position: relative;
   display: block;
   width: min(88%, 430px);
@@ -256,77 +256,77 @@ body {
   cursor: pointer;
   -webkit-tap-highlight-color: transparent;
 }
-.byte-root:focus-visible {
+.ruru-root:focus-visible {
   outline: 3px solid var(--color-ink);
   outline-offset: 6px;
   border-radius: 24px;
 }
-.byte-wrap {
+.ruru-wrap {
   position: relative;
 }
-.byte-svg {
+.ruru-svg {
   display: block;
   width: 100%;
   height: auto;
   will-change: transform;
   transform-origin: 50% 100%;
 }
-.byte-svg.poke {
-  animation: byte-poke 0.45s cubic-bezier(0.34, 1.56, 0.64, 1);
+.ruru-svg.poke {
+  animation: ruru-poke 0.45s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
-@keyframes byte-poke {
+@keyframes ruru-poke {
   0% { transform: scale(1, 1); }
   30% { transform: scale(1.08, 0.9); }
   60% { transform: scale(0.96, 1.05); }
   100% { transform: scale(1, 1); }
 }
-.byte-svg.byte-in {
-  animation: byte-in 0.7s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+.ruru-svg.ruru-in {
+  animation: ruru-in 0.7s cubic-bezier(0.34, 1.56, 0.64, 1) both;
 }
-@keyframes byte-in {
+@keyframes ruru-in {
   from { transform: translateY(26px) scale(0.9); opacity: 0; }
   to { transform: translateY(0) scale(1); opacity: 1; }
 }
-.byte-bulb {
+.ruru-bulb {
   filter: drop-shadow(0 0 6px currentColor);
 }
 /* sleeping: droopy antenna + slow breathing (no bob under reduced motion) */
-.byte-svg.asleep .byte-bulb {
+.ruru-svg.asleep .ruru-bulb {
   opacity: 0.55;
 }
-.byte-svg.asleep {
-  animation: byte-breathe 3.2s ease-in-out infinite;
+.ruru-svg.asleep {
+  animation: ruru-breathe 3.2s ease-in-out infinite;
 }
-@keyframes byte-breathe {
+@keyframes ruru-breathe {
   0%, 100% { transform: scale(1, 1); }
   50% { transform: scale(1.02, 0.975); }
 }
 
 /* mood-driven eye shapes */
-.byte-eye {
+.ruru-eye {
   transform-box: fill-box;
   transform-origin: center;
   transition: transform 0.2s ease;
 }
-[data-mood="happy"] .byte-eye {
+[data-mood="happy"] .ruru-eye {
   transform: scaleY(0.32) translateY(-55%);
 }
-[data-mood="sleepy"] .byte-eye {
+[data-mood="sleepy"] .ruru-eye {
   transform: scaleY(0.45);
 }
-[data-mood="annoyed"] .byte-eye {
+[data-mood="annoyed"] .ruru-eye {
   transform: scaleY(0.22) translateY(80%);
 }
-[data-mood="dizzy"] .byte-eye {
+[data-mood="dizzy"] .ruru-eye {
   transform: rotate(0.35turn);
 }
-[data-mood="excited"] .byte-eye,
-[data-mood="surprised"] .byte-eye {
+[data-mood="excited"] .ruru-eye,
+[data-mood="surprised"] .ruru-eye {
   transform: scale(1.25);
 }
 
 /* contact shadow ellipse */
-.byte-shadow {
+.ruru-shadow {
   position: absolute;
   left: 50%;
   bottom: -6px;
@@ -340,7 +340,7 @@ body {
 }
 
 /* dialogue bubble: flat white, 3px ink border, hard shadow, tail */
-.byte-bubble {
+.ruru-bubble {
   position: absolute;
   left: 50%;
   bottom: calc(100% + 14px);
@@ -357,7 +357,7 @@ body {
   line-height: 1.35;
   color: var(--color-ink);
 }
-.byte-bubble::after {
+.ruru-bubble::after {
   content: "";
   position: absolute;
   left: 50%;
@@ -373,12 +373,12 @@ body {
    the panel top and its tail flips up - it must never cover the hero
    paragraph or chips. */
 @media (max-width: 1023px) {
-  .byte-bubble {
+  .ruru-bubble {
     bottom: auto;
     top: 10px;
     max-width: min(260px, 80vw);
   }
-  .byte-bubble::after {
+  .ruru-bubble::after {
     bottom: auto;
     top: -9px;
     transform: translateX(-50%) rotate(225deg);

@@ -57,8 +57,10 @@ export default function Crew() {
         </div>
 
         <div className="mt-14 grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
+          {/* keyed by index, not name: the demo roster renders the same
+             placeholder name on every card and keys must stay unique. */}
           {members.map((m, i) => (
-            <Reveal key={m.name} delay={(i % 4) * 0.07}>
+            <Reveal key={`member-${i}`} delay={(i % 4) * 0.07}>
               <MemberCard {...m} />
             </Reveal>
           ))}

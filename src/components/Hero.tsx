@@ -106,10 +106,10 @@ export default function Hero() {
               </span>
             ))}
 
-            {/* robot mount point — Byte stands on the stage floor and may
+            {/* robot mount point — Ruru stands on the stage floor and may
                rise above the panel's top edge (breaking the frame). */}
             <div
-              id="byte-stage"
+              id="ruru-stage"
               className="absolute inset-x-0 bottom-0 z-[3] flex h-[112%] items-end justify-center pb-5"
             >
               <Robot />
@@ -122,7 +122,7 @@ export default function Hero() {
             <button
               type="button"
               onClick={() => scrollToId("hacktober")}
-              data-byte-event
+              data-ruru-event
               data-cursor-color="#34A853"
               data-cursor-label="Open"
               className="hard-surface group relative block w-full p-5 text-left"

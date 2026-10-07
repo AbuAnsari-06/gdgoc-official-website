@@ -59,6 +59,7 @@ export const PANEL_EDGE: Record<GColor, string> = {
 /* ------------------------------------------------------------------ */
 
 import { OSO } from "../lib/oso";
+import { DEMO_PERSON } from "../lib/identity";
 
 export const HACKTOBER = {
   name: "Open Source October",
@@ -191,7 +192,8 @@ export const DOMAINS: Domain[] = [
     title: "Web",
     blurb: "Fast interfaces, honest performance budgets and deploys on Fridays anyway. The web track ships a public URL for everything it touches.",
     tools: ["React", "Next.js", "TypeScript", "Firebase"],
-    detail: "Meets Fridays 5 PM · lead: Dev Patel · open to every year",
+    /* DEMO DATA: replace before launch */
+    detail: `Meets Fridays 5 PM · lead: ${DEMO_PERSON.fullName} · open to every year`,
     icon: "web",
   },
   {

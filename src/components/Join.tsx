@@ -2,6 +2,7 @@ import { useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { ArrowLink, Reveal, SectionTag, ScrambleHeading, burstConfetti, useMagnetic } from "./ui";
 import { COLOR_HEX, PANEL_HEX, type GColor } from "../data/content";
+import { DEMO_PERSON } from "../lib/identity";
 import { cn } from "../utils/cn";
 
 const TRACKS: { label: string; color: GColor }[] = [
@@ -16,7 +17,7 @@ const TRACKS: { label: string; color: GColor }[] = [
 const PERKS = [
   { color: "gblue" as GColor, text: "Weekly hands-on sessions - no lecture slides, ever" },
   { color: "gred" as GColor, text: "Mentor reviews on your projects and pull requests" },
-  { color: "gyellow" as GColor, text: "First dibs on Open Source October teams, swag drops and DevFest" },
+  { color: "gyellow" as GColor, text: "First dibs on Open Source October issues, swag drops and DevFest" },
   { color: "ggreen" as GColor, text: "A direct line into the pan-India GDG community" },
 ];
 
@@ -185,7 +186,8 @@ export default function Join() {
                           setName(e.target.value);
                           setErrors((er) => ({ ...er, name: undefined }));
                         }}
-                        placeholder="Ada Lovelace"
+                        /* DEMO DATA: replace before launch */
+                        placeholder={DEMO_PERSON.fullName}
                         className={cn(inputCls, errors.name && "border-gred")}
                       />
                       {errors.name && <p className="mt-1.5 font-mono text-[11px] font-bold text-ink">{errors.name}</p>}

@@ -1,5 +1,5 @@
 /* ==================================================================
-   BYTE — the GDGoC PSIT chibi robot mascot.
+   RURU — the GDGoC PSIT rolling droid mascot.
    Layered inline SVG rig driven by transforms only. No React state
    per frame: refs + direct style writes, one shared rAF
    (src/lib/loop.ts), paused offscreen (IntersectionObserver) and when
@@ -236,7 +236,7 @@ export default function Robot() {
     root.addEventListener("pointerenter", onHover);
 
     /* CTA / event-card context awareness */
-    const ctaTargets = Array.from(document.querySelectorAll<HTMLElement>("[data-byte-cta]"));
+    const ctaTargets = Array.from(document.querySelectorAll<HTMLElement>("[data-ruru-cta]"));
     const ctaEnter = (ev: Event) => {
       if (s.sleeping) return;
       const el = ev.currentTarget as HTMLElement;
@@ -253,7 +253,7 @@ export default function Robot() {
       el.addEventListener("pointerleave", ctaLeave);
     }
 
-    const eventCard = document.querySelector<HTMLElement>("[data-byte-event]");
+    const eventCard = document.querySelector<HTMLElement>("[data-ruru-event]");
     const eventEnter = () => {
       if (s.sleeping) return;
       const st = getOsoStatus();
@@ -301,7 +301,7 @@ export default function Robot() {
 
       if (!s.appeared) {
         s.appeared = true;
-        svg.classList.add("byte-in");
+        svg.classList.add("ruru-in");
         if (!s.greeted) {
           s.greeted = true;
           window.setTimeout(() => say(LINES.greet[0]), 900);
@@ -458,40 +458,40 @@ export default function Robot() {
     <button
       ref={rootRef}
       type="button"
-      className="byte-root"
+      className="ruru-root"
       aria-label={`Say hi to ${ROBOT_NAME}`}
       title={`Say hi to ${ROBOT_NAME}`}
       data-cursor-style="dashed"
       data-cursor-label="poke"
       data-cursor-color="#4285F4"
     >
-      <div className="byte-wrap">
-        <div className="byte-bubble" ref={bubbleRef} hidden>
+      <div className="ruru-wrap">
+        <div className="ruru-bubble" ref={bubbleRef} hidden>
           <span ref={bubbleTextRef} aria-live="polite" />
         </div>
-        <span ref={shadowRef} className="byte-shadow" aria-hidden="true" />
-        <svg ref={svgRef} className="byte-svg" viewBox="0 0 200 240" aria-hidden="true" focusable="false">
+        <span ref={shadowRef} className="ruru-shadow" aria-hidden="true" />
+        <svg ref={svgRef} className="ruru-svg" viewBox="0 0 200 240" aria-hidden="true" focusable="false">
           <defs>
-            <radialGradient id="byte-shell" cx="35%" cy="28%" r="80%">
+            <radialGradient id="ruru-shell" cx="35%" cy="28%" r="80%">
               <stop offset="0%" stopColor="#ffffff" />
               <stop offset="55%" stopColor="#f1f3f4" />
               <stop offset="100%" stopColor="#c9cdd2" />
             </radialGradient>
-            <linearGradient id="byte-visor" x1="0" y1="0" x2="0" y2="1">
+            <linearGradient id="ruru-visor" x1="0" y1="0" x2="0" y2="1">
               <stop offset="0%" stopColor="#3c4043" />
               <stop offset="45%" stopColor="#202124" />
               <stop offset="100%" stopColor="#17181a" />
             </linearGradient>
-            <linearGradient id="byte-visorgl" x1="0" y1="0" x2="1" y2="1">
+            <linearGradient id="ruru-visorgl" x1="0" y1="0" x2="1" y2="1">
               <stop offset="0%" stopColor="#ffffff" stopOpacity="0.5" />
               <stop offset="45%" stopColor="#ffffff" stopOpacity="0.06" />
               <stop offset="100%" stopColor="#ffffff" stopOpacity="0" />
             </linearGradient>
-            <radialGradient id="byte-ear" cx="40%" cy="35%" r="75%">
+            <radialGradient id="ruru-ear" cx="40%" cy="35%" r="75%">
               <stop offset="0%" stopColor="#a8c7fa" />
               <stop offset="100%" stopColor="#4285F4" />
             </radialGradient>
-            <radialGradient id="byte-core" cx="50%" cy="45%" r="60%">
+            <radialGradient id="ruru-core" cx="50%" cy="45%" r="60%">
               <stop offset="0%" stopColor="#ffffff" />
               <stop offset="100%" stopColor="#e8eaed" />
             </radialGradient>
@@ -499,22 +499,22 @@ export default function Robot() {
 
           {/* body group */}
           <g ref={bodyRef}>
-            <g className="byte-arm byte-arm-l">
-              <rect x="22" y="168" width="16" height="34" rx="8" fill="url(#byte-shell)" stroke="#202124" strokeWidth="3" />
+            <g className="ruru-arm ruru-arm-l">
+              <rect x="22" y="168" width="16" height="34" rx="8" fill="url(#ruru-shell)" stroke="#202124" strokeWidth="3" />
               <circle cx="30" cy="206" r="9" fill="#e8eaed" stroke="#202124" strokeWidth="3" />
             </g>
-            <g className="byte-arm byte-arm-r">
-              <rect x="162" y="168" width="16" height="34" rx="8" fill="url(#byte-shell)" stroke="#202124" strokeWidth="3" />
+            <g className="ruru-arm ruru-arm-r">
+              <rect x="162" y="168" width="16" height="34" rx="8" fill="url(#ruru-shell)" stroke="#202124" strokeWidth="3" />
               <circle cx="170" cy="206" r="9" fill="#e8eaed" stroke="#202124" strokeWidth="3" />
             </g>
-            <rect x="52" y="160" width="96" height="62" rx="26" fill="url(#byte-shell)" stroke="#202124" strokeWidth="3" />
+            <rect x="52" y="160" width="96" height="62" rx="26" fill="url(#ruru-shell)" stroke="#202124" strokeWidth="3" />
             <g>
               <rect x="62" y="204" width="10" height="10" rx="2" fill="#4285F4" stroke="#202124" strokeWidth="2" />
               <rect x="76" y="204" width="10" height="10" rx="2" fill="#EA4335" stroke="#202124" strokeWidth="2" />
               <rect x="90" y="204" width="10" height="10" rx="2" fill="#FBBC04" stroke="#202124" strokeWidth="2" />
               <rect x="104" y="204" width="10" height="10" rx="2" fill="#34A853" stroke="#202124" strokeWidth="2" />
             </g>
-            <circle ref={coreRef} cx="100" cy="184" r="17" fill="url(#byte-core)" stroke="#4285F4" strokeWidth="3" />
+            <circle ref={coreRef} cx="100" cy="184" r="17" fill="url(#ruru-core)" stroke="#4285F4" strokeWidth="3" />
             <g strokeLinecap="round" strokeWidth="3" fill="none">
               <path d="M100 170 A14 14 0 0 1 114 184" stroke="#4285F4" />
               <path d="M114 184 A14 14 0 0 1 100 198" stroke="#EA4335" />
@@ -532,22 +532,22 @@ export default function Robot() {
           <g ref={headRef}>
             <g ref={antennaRef}>
               <line x1="100" y1="44" x2="100" y2="18" stroke="#202124" strokeWidth="4" strokeLinecap="round" />
-              <circle ref={bulbRef} cx="100" cy="14" r="7" fill="#4285F4" stroke="#202124" strokeWidth="3" className="byte-bulb" />
+              <circle ref={bulbRef} cx="100" cy="14" r="7" fill="#4285F4" stroke="#202124" strokeWidth="3" className="ruru-bulb" />
             </g>
-            <rect x="16" y="76" width="14" height="34" rx="7" fill="url(#byte-ear)" stroke="#202124" strokeWidth="3" />
-            <rect x="170" y="76" width="14" height="34" rx="7" fill="url(#byte-ear)" stroke="#202124" strokeWidth="3" />
-            <rect x="28" y="40" width="144" height="104" rx="46" fill="url(#byte-shell)" stroke="#202124" strokeWidth="3" />
+            <rect x="16" y="76" width="14" height="34" rx="7" fill="url(#ruru-ear)" stroke="#202124" strokeWidth="3" />
+            <rect x="170" y="76" width="14" height="34" rx="7" fill="url(#ruru-ear)" stroke="#202124" strokeWidth="3" />
+            <rect x="28" y="40" width="144" height="104" rx="46" fill="url(#ruru-shell)" stroke="#202124" strokeWidth="3" />
             <ellipse cx="70" cy="58" rx="30" ry="12" fill="#ffffff" opacity="0.55" transform="rotate(-14 70 58)" />
-            <rect x="44" y="62" width="112" height="60" rx="26" fill="url(#byte-visor)" stroke="#202124" strokeWidth="3" />
-            <ellipse cx="76" cy="74" rx="34" ry="7" fill="url(#byte-visorgl)" transform="rotate(-8 76 74)" />
-            <g className="byte-scan" opacity="0.12">
+            <rect x="44" y="62" width="112" height="60" rx="26" fill="url(#ruru-visor)" stroke="#202124" strokeWidth="3" />
+            <ellipse cx="76" cy="74" rx="34" ry="7" fill="url(#ruru-visorgl)" transform="rotate(-8 76 74)" />
+            <g className="ruru-scan" opacity="0.12">
               <line x1="52" y1="86" x2="148" y2="86" stroke="#a8c7fa" strokeWidth="1" />
               <line x1="52" y1="94" x2="148" y2="94" stroke="#a8c7fa" strokeWidth="1" />
               <line x1="52" y1="102" x2="148" y2="102" stroke="#a8c7fa" strokeWidth="1" />
             </g>
             <g ref={eyesRef} fill="#4285F4" data-mood="neutral">
-              <circle ref={eyeLRef} cx="78" cy="92" r="9" className="byte-eye" />
-              <circle ref={eyeRRef} cx="122" cy="92" r="9" className="byte-eye" />
+              <circle ref={eyeLRef} cx="78" cy="92" r="9" className="ruru-eye" />
+              <circle ref={eyeRRef} cx="122" cy="92" r="9" className="ruru-eye" />
             </g>
             <ellipse ref={lidLRef} cx="78" cy="92" rx="12" ry="10" fill="#c9cdd2" opacity="0" />
             <ellipse ref={lidRRef} cx="122" cy="92" rx="12" ry="10" fill="#c9cdd2" opacity="0" />
