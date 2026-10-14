@@ -1,0 +1,84 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400..800&display=swap" rel="stylesheet">
+<style>
+  * { box-sizing: border-box; margin: 0; }
+  html, body { width: 1200px; height: 630px; overflow: hidden; }
+  body {
+    background: #ffffff;
+    font-family: "Bricolage Grotesque", system-ui, sans-serif;
+    color: #202124;
+    display: flex;
+    flex-direction: column;
+    border: 3px solid #202124;
+  }
+  /* four brand stripes, top */
+  .stripes { display: flex; height: 14px; border-bottom: 3px solid #202124; }
+  .stripes span { flex: 1; }
+  .stripes span:nth-child(1) { background: #4285F4; }
+  .stripes span:nth-child(2) { background: #EA4335; }
+  .stripes span:nth-child(3) { background: #FBBC04; }
+  .stripes span:nth-child(4) { background: #34A853; }
+
+  .body { flex: 1; padding: 46px 60px 40px; display: flex; flex-direction: column; }
+
+  /* official lockup, unmodified, on the light plate */
+  .lockup { width: 452px; height: auto; display: block; }
+
+  .tab {
+    align-self: flex-start;
+    margin-top: 34px;
+    border: 3px solid #202124;
+    background: #FBBC04;
+    padding: 7px 15px;
+    font-weight: 800;
+    font-size: 19px;
+    box-shadow: 4px 4px 0 #202124;
+  }
+
+  h1 {
+    margin-top: 20px;
+    font-size: 92px;
+    line-height: 0.9;
+    font-weight: 800;
+    letter-spacing: -0.03em;
+    text-shadow: 0.03em 0.03em 0 #202124;
+  }
+
+  .meta {
+    margin-top: auto;
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 30px;
+  }
+  .meta p { font-size: 23px; font-weight: 600; max-width: 700px; line-height: 1.35; }
+  .url {
+    font-weight: 800;
+    font-size: 21px;
+    border: 3px solid #202124;
+    background: #4285F4;
+    color: #202124;
+    padding: 9px 16px;
+    box-shadow: 4px 4px 0 #202124;
+    white-space: nowrap;
+  }
+</style>
+</head>
+<body>
+  <div class="stripes"><span></span><span></span><span></span><span></span></div>
+  <div class="body">
+    <img class="lockup" src="/brand/gdg/gdg-lockup-1line-black.svg" alt="">
+    <span class="tab">Google Developer Groups on Campus</span>
+    <h1>GDGoC PSIT</h1>
+    <div class="meta">
+      <p>Learn. Connect. Grow. The student developer chapter at PSIT Kanpur.</p>
+      <span class="url">gdg.community.dev</span>
+    </div>
+  </div>
+</body>
+</html>
