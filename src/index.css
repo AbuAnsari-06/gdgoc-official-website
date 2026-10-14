@@ -13,6 +13,25 @@
   --color-gyellow: #fbbc04;
   --color-ggreen: #34a853;
 
+  /* ---- Lifted four: the hero wordmark on the navy hero base. The Google
+     four re-tinted the way Material lifts them for dark surfaces, so
+     display type clears AA on the #070B18 field without going neon.
+     Measured on that base: blue 8.4:1, red 6.4:1, yellow 12.6:1,
+     green 9.6:1 (shots/contrast.py). ---- */
+  --color-gblue-mute: #8ab4f8;
+  --color-gred-mute: #f28b82;
+  --color-gyellow-mute: #fdd663;
+  --color-ggreen-mute: #81c995;
+
+  /* ---- The hero's own deep field. The space stack is built from these
+     rather than from raw hexes so the atmosphere stays tunable. Near-black
+     first (#050608 family); the only lift is a barely-there cool plateau,
+     never a colour pool. ---- */
+  --space-950: #0d0e12;
+  --space-900: #111419;
+  --space-800: #15181f;
+  --space-700: #1b1f28;
+
   /* ---- Ink & surfaces ---- */
   --color-ink: #202124;
   --color-ink-2: #3c4043;
@@ -132,6 +151,110 @@ body {
   -webkit-mask-image: linear-gradient(90deg, transparent, black 8%, black 92%, transparent);
 }
 
+/* ---------- hero community rail (brief §8) ---------- */
+
+/* Three zones on the hero's own gutter grid: a fixed community marker, the
+   seamless message run, and one real scroll target. The rail is the floor of
+   the environment — the same shifted gutter maths as .hero-text-pane, so its
+   left edge lines up with the headline above it at every width. */
+.hero-rail {
+  display: flex;
+  align-items: center;
+  gap: 0.9rem;
+  padding-top: 0.85rem;
+  padding-bottom: 0.85rem;
+  padding-left: max(1.25rem, calc((100% - 80rem) / 2 + 1.25rem - 3.5rem));
+  padding-right: 1.25rem;
+}
+
+@media (min-width: 640px) {
+  .hero-rail {
+    gap: 1.25rem;
+    padding-left: max(2rem, calc((100% - 80rem) / 2 + 2rem - 3.5rem));
+    padding-right: 2rem;
+  }
+}
+
+.ticker-zone {
+  flex: none;
+}
+
+.ticker-label {
+  font-family: var(--font-display);
+  font-size: 0.7rem;
+  font-weight: 800;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: rgba(214, 224, 246, 0.74);
+  white-space: nowrap;
+}
+
+/* on the narrowest phones the four-square marker alone carries the label
+   zone: it stays a marker instead of a truncated word */
+@media (max-width: 479px) {
+  .ticker-label {
+    display: none;
+  }
+}
+
+.ticker-body {
+  min-width: 0;
+  flex: 1 1 auto;
+}
+
+.ticker-marquee {
+  width: 100%;
+}
+
+.ticker-item {
+  padding: 0 0.8rem;
+  font-family: var(--font-display);
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: rgba(236, 241, 255, 0.92);
+  white-space: nowrap;
+}
+
+@media (min-width: 640px) {
+  .ticker-item {
+    font-size: 0.86rem;
+    padding: 0 1.05rem;
+  }
+}
+
+.ticker-cue {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  border-left: 1px solid rgba(180, 200, 255, 0.16);
+  padding-left: 0.9rem;
+  font-family: var(--font-display);
+  font-size: 0.7rem;
+  font-weight: 800;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: rgba(214, 224, 246, 0.82);
+  transition: color 200ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.ticker-cue:hover,
+.ticker-cue:focus-visible {
+  color: #ffffff;
+}
+
+.ticker-cue-text {
+  display: none;
+  white-space: nowrap;
+}
+
+@media (min-width: 768px) {
+  .ticker-cue-text {
+    display: inline;
+  }
+}
+
 @keyframes pulse-dot {
   0%, 100% { box-shadow: 0 0 0 0 rgba(52, 168, 83, 0.55); }
   70% { box-shadow: 0 0 0 9px rgba(52, 168, 83, 0); }
@@ -181,23 +304,293 @@ body {
 
 /* ---------- hero wordmark ---------- */
 
-/* The tightest the display type is ever allowed to get. Tracking stops at
-   -0.03em and the hard shadow at 0.03em: at the old -0.045em / 0.045em the
-   ink shadow of the "r" filled the gap to the "n" and "Learn." read as
-   "Leam.". Optical sizing stays on so the counters open up as the type
-   grows, and the shadow is the ink hard offset the rest of the site uses. */
+/* Hero-scale display type in Poppins: the geometric, circle-built sans,
+   the closest Google-Fonts relative of Google's own wordmark. Poppins is
+   far wider than the condensed face it replaces, so the clamp caps lower
+   and the tracking closes up slightly to hold the longest line
+   ("Connect.") inside the text column at every width. Bricolage stays for
+   body and UI. */
 .hero-display {
-  font-family: var(--font-display);
-  font-size: clamp(3.1rem, 8.4vw, 7rem);
-  line-height: 0.9;
-  letter-spacing: -0.03em;
-  font-weight: 800;
-  font-optical-sizing: auto;
-  text-shadow: 0.03em 0.03em 0 var(--color-ink);
+  font-family: "Poppins", var(--font-display);
+  font-size: clamp(3.2rem, 8vw, 9.4rem);
+  line-height: 0.95;
+  letter-spacing: -0.025em;
+  font-weight: 700;
+  text-shadow: 0.035em 0.035em 0 rgba(0, 0, 0, 0.55);
 }
 
 .hero-line {
   display: block;
+  position: relative;
+  /* a border around every letter: the site's 3px ink border, scaled to the
+     type. On the navy base the edge is the deep field itself, so the glyph
+     keeps a crisp rim against its own glow instead of a black outline that
+     would dissolve into the background. paint-order draws the stroke
+     behind the fill, so the outline sits outside the glyph. */
+  -webkit-text-stroke: 0.05em var(--hero-edge, var(--space-950));
+  paint-order: stroke fill;
+}
+
+/* the word's atmospheric glow: absolutely positioned, paints only */
+.hero-word-glow {
+  position: absolute;
+  inset: -18% -6%;
+  z-index: -1;
+  pointer-events: none;
+}
+
+/* Words carry the Google four: each one takes its own brand colour over
+   the hard offset shadow. The halo is dialed far back so on near-black
+   space the words read as type first, with the brand as a rim — the
+   background must stay quiet black (brief §1), never a colour field. */
+.hero-line[data-color="gblue"] {
+  color: var(--color-gblue-mute);
+  --word-halo: rgba(138, 180, 248, 0.12);
+}
+.hero-line[data-color="gred"] {
+  color: var(--color-gred-mute);
+  --word-halo: rgba(242, 139, 130, 0.10);
+}
+.hero-line[data-color="gyellow"] {
+  color: var(--color-gyellow-mute);
+  --word-halo: rgba(253, 214, 99, 0.11);
+}
+.hero-line[data-color="ggreen"] {
+  color: var(--color-ggreen-mute);
+  --word-halo: rgba(129, 201, 149, 0.10);
+}
+
+/* the hard offset shadow stays; the brand halo is a tight glow layered
+   behind it, so the edges of the type keep their print crispness and the
+   halo only reads as a lift. The shadow is deeper now that the type is
+   bright on navy. */
+.hero-line {
+  text-shadow:
+    0.03em 0.03em 0 rgba(3, 6, 14, 0.75),
+    0 0 0.05em var(--word-halo, transparent);
+}
+
+/* the second half of the effect: each word's atmospheric glow breathes,
+   staggered left to right, so Learn, Connect and Grow light up in turn.
+   Opacity only — it runs on the compositor, never on the type itself. */
+@keyframes hero-word-breathe {
+  0%,
+  66%,
+  100% {
+    opacity: 0.5;
+  }
+  80% {
+    opacity: 1;
+  }
+}
+
+.hero-word-glow {
+  opacity: 0.7;
+  animation: hero-word-breathe 7s ease-in-out infinite;
+}
+
+.hero-line[data-color="gred"] .hero-word-glow {
+  animation-delay: 0.6s;
+}
+.hero-line[data-color="ggreen"] .hero-word-glow {
+  animation-delay: 1.2s;
+}
+
+/* ---------- the spacecraft hero ---------- */
+
+/* The hero is one dark environment and it owns it end to end: the base
+   field, the starfield canvas, the floor grid and the ticker are all
+   inside this section, so the light sections below keep their own paper
+   world untouched. The gradients below are Layer A of the atmosphere
+   (brief §4) — they are what the hero looks like with every animation
+   switched off, so the composition must hold on them alone. Near-black
+   space: one faint neutral plateau for depth, then darkness. No colour
+   pools — the stars carry the visual interest (brief §1). */
+.hero-space {
+  background:
+    /* one extremely subtle neutral depth lift, upper left: night sky
+       luminance variation, not a coloured haze */
+    radial-gradient(64% 52% at 14% 8%, rgba(214, 226, 255, 0.028), transparent 70%),
+    radial-gradient(50% 44% at 84% 88%, rgba(214, 226, 255, 0.018), transparent 72%),
+    /* the deep field itself */
+    linear-gradient(180deg, var(--space-900) 0%, var(--space-800) 44%, var(--space-950) 100%);
+  color: rgba(245, 247, 255, 0.94);
+  /* the hero's own coordinate system: nothing inside it registers on the
+     stacking context of the page around it */
+  isolation: isolate;
+}
+
+/* On the navy base a dark outline is invisible, so the focus ring flips
+   inside the hero. Outside the hero the ink ring stays as it was. */
+.hero-space :focus-visible {
+  outline: 3px solid rgba(255, 255, 255, 0.92);
+  outline-offset: 3px;
+}
+
+/* Two hero controls set their own ink ring further down this file
+   (.oso-close, .ruru-button). Inside the hero that ring is invisible, so
+   the flip has to win on specificity rather than on source order. */
+.hero-space .oso-close:focus-visible,
+.hero-space .ruru-button:focus-visible {
+  outline-color: rgba(255, 255, 255, 0.92);
+}
+
+/* the stage: the robot's world is the whole hero body */
+.hero-stage {
+  touch-action: pan-y;
+}
+
+/* readability veil: deepens the field under the text column so the
+   headline keeps its contrast, never a rectangle edge (brief §37) */
+.hero-veil {
+  background:
+    radial-gradient(60% 76% at 22% 50%, rgba(4, 6, 14, 0.62), rgba(4, 6, 14, 0.26) 58%, transparent 82%);
+}
+
+/* ---------- hero floor grid (Layer E) ---------- */
+
+/* A faint perspective lattice lying on the stage floor: Layer E of the
+   atmosphere. One plane, rotated away from the viewer so its lines converge
+   toward a horizon just under the headline and fade out with distance.
+   Drawn from two repeating gradients; decorative only, so it never affects
+   layout and never takes a pointer. */
+.hero-grid {
+  position: absolute;
+  left: 50%;
+  bottom: -4%;
+  width: 300%;
+  height: 118%;
+  margin-left: -150%;
+  z-index: 2;
+  pointer-events: none;
+  transform-origin: 50% 100%;
+  transform: perspective(340px) rotateX(74deg);
+  background-image:
+    linear-gradient(to right, rgba(163, 191, 255, 0.22) 0 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(163, 191, 255, 0.22) 0 1px, transparent 1px);
+  background-size: 76px 76px, 76px 76px;
+  /* nearest lines read, the far field dissolves into the dark before the
+     lattice reaches the headline: distance, not a texture */
+  mask-image: linear-gradient(to top, #000 2%, rgba(0, 0, 0, 0.5) 42%, transparent 74%);
+  -webkit-mask-image: linear-gradient(to top, #000 2%, rgba(0, 0, 0, 0.5) 42%, transparent 74%);
+}
+
+/* the horizon: one soft light line where the plane meets the field, so the
+   lattice reads as ground rather than as a pattern */
+.hero-grid::before {
+  content: "";
+  position: absolute;
+  inset: 0 0 auto 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(173, 196, 255, 0.5), transparent);
+}
+
+/* One reading-light pass across the environment, the spacecraft-window clue
+   without a cockpit frame (brief §44). Kept at 1.2% and steeply angled: a
+   wider or brighter streak reads as a band across the hero rather than as
+   light falling on it. */
+.hero-space::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  pointer-events: none;
+  background: linear-gradient(
+    108deg,
+    transparent 34%,
+    rgba(214, 226, 255, 0.012) 44%,
+    transparent 49%
+  );
+}
+
+/* hero copy that sits directly on the field: the light pair, so body text
+   and metadata clear AA against the navy base (14.6:1 and 8.3:1). */
+.hero-copy {
+  color: rgba(233, 238, 252, 0.9);
+}
+
+.hero-copy strong,
+.hero-copy .hero-copy-strong {
+  color: #f7f9ff;
+  font-weight: 600;
+}
+
+.hero-meta {
+  color: rgba(198, 209, 233, 0.78);
+}
+
+/* the hero's text pane needs no gutter maths any more — the stage is
+   the whole section and the nav container alignment is kept by the
+   same padding rule as before, applied to the overlay column. */
+.hero-text-pane {
+  /* shifted a step left of the nav gutter so the headline sits visibly
+     further into the field (read request); floors keep the page gutter */
+  padding-left: max(1.25rem, calc((100% - 80rem) / 2 + 1.25rem - 3.5rem));
+  padding-right: 1.25rem;
+}
+
+@media (min-width: 640px) {
+  .hero-text-pane {
+    padding-left: max(2rem, calc((100% - 80rem) / 2 + 2rem - 3.5rem));
+    padding-right: 2rem;
+  }
+}
+
+/* ---------- headline letters: enter once, then obey the robot ---------- */
+
+/* The entrance animation uses `both` fill so letters hold their final
+   frame; the robot's reaction then writes inline transforms that must
+   win over the finished animation. Animations beat inline styles while
+   running, so once the intro letter animations complete we flip a data
+   attribute that removes the animation entirely. */
+.hero-display[data-settled="1"] .letter {
+  animation: none !important;
+}
+
+/* ---------- the disturbance, visually (brief §6) ---------- */
+
+/* --k is the letter's smoothed influence (0..1) and --fx its signed push
+   direction, both written by the render loop for as long as the droid is
+   inside the letter's radius. With the attribute off, the type is exactly
+   the print setting again: the hard offset shadow plus the word's halo. */
+.hero-display .letter {
+  --k: 0;
+  --fx: 0;
+}
+
+/* Stage 1 is the bloom alone: at 0.1 influence this is a rim of colour, not
+   a fringe. Stage 2 adds the split — one warm shadow to the left, one cool
+   to the right, scaled by the same influence that drives the displacement,
+   so the colour and the movement are the same event. */
+.hero-display .letter[data-fx="1"] {
+  text-shadow:
+    calc(var(--fx) * -1.4px) 0 rgba(242, 139, 130, calc(var(--k) * 0.5)),
+    calc(var(--fx) * 1.4px) 0 rgba(138, 180, 248, calc(var(--k) * 0.55)),
+    0 0 calc(var(--k) * 0.16em) var(--word-halo, transparent),
+    0.03em 0.03em 0 rgba(3, 6, 14, 0.75);
+}
+
+/* Reduced motion never reaches this rule: DropLine returns before it
+   subscribes to the robot, so no letter carries the attribute at all. */
+
+/* ---------- space ambience (site-wide readability helpers) ---------- */
+
+/* One world after the hero: sections keep their washes, but on the dark
+   base they read as atmosphere. The wash-section system stays untouched;
+   these helpers are for text sitting directly on the universe. */
+.on-space {
+  color: rgba(255, 255, 255, 0.92);
+}
+
+/* the starfield canvas: an absolute layer inside the hero, above the
+   base gradients and below every control. Pointer-transparent, so the
+   robot, the buttons and the ticker keep every event. */
+.space-bg {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  display: block;
+  pointer-events: none;
 }
 
 /* ---------- scroll hint ---------- */
@@ -217,7 +610,8 @@ body {
   animation: scroll-indicator-run 1.9s cubic-bezier(0.76, 0, 0.24, 1) infinite;
 }
 
-/* ---------- hero glyph stickers ---------- */
+/* ---------- hero glyph stickers (pre-space hero; retired styles kept
+   harmless for any residual use) ---------- */
 
 /* Flat brand plate, 3px ink border, hard shadow, ink glyph. The glyph is
    always ink, never white or a second brand colour: on these fills ink reads
@@ -263,10 +657,18 @@ body {
   box-shadow: 4px 4px 0 var(--color-ink);
 }
 
+/* On the dark hero the plate becomes translucent glass. */
+.hero-space .gdg-logo-plate {
+  background: rgba(255, 255, 255, 0.9);
+  border-color: transparent;
+  box-shadow: 0 0 24px rgba(66, 133, 244, 0.35);
+}
+
 /* ---------- status pill ---------- */
 
 /* Upcoming / Live / Wrapped. Ink text only: ink on yellow is 9.8:1, on
-   green 5.3:1, on white 21:1. */
+   green 5.3:1, on white 21:1. On the dark hero the pill floats as a
+   translucent chip instead of a bordered plate. */
 .status-pill {
   display: inline-flex;
   align-items: center;
@@ -366,19 +768,19 @@ body {
   }
 }
 
-/* The text pane's content sits on the same left edge as the nav's container
-   (mx-auto max-w-7xl with px-5 sm:px-8) at every width: above the container
-   width the gutter opens up to match it, below it collapses to the page
-   padding. Percentages resolve against the hero, so a classic scrollbar
-   cannot push the two edges apart. */
+/* The text pane sits a step left of the nav's container edge (mx-auto
+   max-w-7xl with px-5 sm:px-8): above the container width the gutter
+   opens up to match it, below it collapses to the page padding. The -3.5rem
+   is the deliberate headline shift (read request). Percentages resolve
+   against the hero, so a classic scrollbar cannot push the edges apart. */
 .hero-text-pane {
-  padding-left: max(1.25rem, calc((100% - 80rem) / 2 + 1.25rem));
+  padding-left: max(1.25rem, calc((100% - 80rem) / 2 + 1.25rem - 3.5rem));
   padding-right: 1.25rem;
 }
 
 @media (min-width: 640px) {
   .hero-text-pane {
-    padding-left: max(2rem, calc((100% - 80rem) / 2 + 2rem));
+    padding-left: max(2rem, calc((100% - 80rem) / 2 + 2rem - 3.5rem));
     padding-right: 2rem;
   }
 }
@@ -794,6 +1196,21 @@ html.cursor-on iframe {
 
 /* ---------- section washes (toggled per-section by IntersectionObserver) ---- */
 
+/* The page material for every section that is not the hero: a uniform
+   lattice of small ink dots over a fine paper grain. Both are painted as
+   the section's own background, so the ground reads as the surface the
+   page is printed on. Every content box carries its own opaque,
+   ink-bordered surface, so the texture stops cleanly at each box edge and
+   never lands inside one. */
+.wash-section,
+.paper-ground {
+  background-image:
+    radial-gradient(circle at 50% 50%, rgba(32, 33, 36, 0.28) 0 1px, transparent 1.6px),
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='p'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23p)' opacity='0.2'/%3E%3C/svg%3E");
+  background-size: 22px 22px, 160px 160px;
+  background-repeat: repeat, repeat;
+}
+
 .wash-section {
   background-color: var(--color-bg);
   transition: background-color 0.55s ease;
@@ -818,15 +1235,56 @@ html.cursor-on iframe {
 
 /* ---------- hero wordmark letters ---------- */
 
+/* Each word lands with its own motion signature: Learn rises from below
+   with a soft overshoot, Connect slides in from the right with a blur
+   pull, Grow drops with the hardest spring of the three. Letters within
+   a word still stagger, at a fraction of the word's own delay. */
+/* Each word lands with its own motion signature: Learn rises from below
+   with a soft overshoot, Connect slides in from the right with a blur
+   pull, Grow drops with the hardest spring of the three. Letters within
+   a word still stagger, at a fraction of the word's own delay. */
 @keyframes letter-drop {
   0% { transform: translateY(-0.62em); opacity: 0; }
   60% { opacity: 1; }
   100% { transform: translateY(0); opacity: 1; }
 }
 
+@keyframes letter-rise {
+  0% { transform: translateY(0.34em); opacity: 0; filter: blur(6px); }
+  55% { opacity: 1; }
+  76% { transform: translateY(-0.06em); filter: blur(0px); }
+  100% { transform: translateY(0); opacity: 1;
+}
+}
+
+@keyframes letter-rush {
+  0% { transform: translateX(0.5em) skewX(-10deg); opacity: 0; }
+  60% { opacity: 1; }
+  100% { transform: translateX(0) skewX(0deg); opacity: 1; }
+}
+
+@keyframes letter-slam {
+  0% { transform: scale(1.5); opacity: 0; }
+  45% { opacity: 1; }
+  62% { transform: scale(0.94); }
+  100% { transform: scale(1); opacity: 1; }
+}
+
 .letter {
   display: inline-block;
   animation: letter-drop 0.42s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.hero-line[data-motion="rise"] .letter {
+  animation: letter-rise 0.6s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.hero-line[data-motion="rush"] .letter {
+  animation: letter-rush 0.5s cubic-bezier(0.76, 0, 0.24, 1) both;
+}
+
+.hero-line[data-motion="slam"] .letter {
+  animation: letter-slam 0.55s cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
 /* ---------- Open Source October sticker ---------- */

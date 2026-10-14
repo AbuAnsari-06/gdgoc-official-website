@@ -21,7 +21,7 @@ const EXTERNALS = [
 
 export default function Footer() {
   return (
-    <footer className="relative border-t-[3px] border-ink bg-bg">
+    <footer className="paper-ground relative border-t-[3px] border-ink bg-bg">
       {/* big marquee */}
       <div className="border-b-[3px] border-ink bg-panel py-8">
         <Marquee duration={38} mask={false}>

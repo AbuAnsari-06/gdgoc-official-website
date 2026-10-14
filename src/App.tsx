@@ -13,6 +13,7 @@ import Crew from "./components/Crew";
 import Join from "./components/Join";
 import Footer from "./components/Footer";
 import Cursor from "./components/Cursor";
+import GDGoCIntro from "./components/intro/GDGoCIntro";
 import { setLenis } from "./lib/scroll";
 
 export default function App() {
@@ -55,6 +56,10 @@ export default function App() {
   return (
     <MotionConfig reducedMotion="user">
       <div className="relative min-h-screen bg-bg font-body text-ink">
+        {/* No page-wide starfield here: the universe belongs to the hero
+           alone (it owns and pauses the canvas), and the sections below
+           are the paper world. A full-page copy would paint 61 MB of
+           bitmap under opaque backgrounds for nothing. */}
         <Nav />
         <main>
           <Hero />
@@ -70,6 +75,7 @@ export default function App() {
         <Footer />
         <Cursor />
         <div className="noise-overlay" aria-hidden="true" />
+        <GDGoCIntro />
       </div>
     </MotionConfig>
   );

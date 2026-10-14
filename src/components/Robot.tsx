@@ -22,24 +22,34 @@ import { ROBOT_NAME, LINES, pickLine } from "../data/robot";
 import { getOsoStatus } from "../lib/oso";
 import { burstConfetti, useFinePointer } from "./ui";
 import { COLOR_HEX } from "../data/content";
+import { publishRobot } from "../lib/ruruBus";
 import {
   DECAL_SIN,
+  FIELD_INSET,
+  outerRadius,
   FIXED_DT,
   HEAD,
   IDENTITY_QUAT,
   TETRA,
+  floorBandH,
   ballDiameter,
   clampToField,
+  ROAM_PLAN,
   createBody,
   debugFieldOn,
+  debugRuruOn,
   depthScale,
   domePoint,
   facingOf,
   fieldFor,
   hasArrived,
+  occlusion,
+  pinnedSpot,
   projectUnit,
   quatRotate,
   quatToMat3,
+  pxPerSec,
+  RIG,
   randomPoint,
   rollAngle,
   rollAxis,
@@ -47,12 +57,24 @@ import {
   stepBody,
   type Body,
   type Domain,
+  type KeepOut,
   type Quat,
   type Rect,
   type Vec2,
 } from "../lib/ruru";
 
 type Mood = "neutral" | "curious" | "happy" | "excited" | "surprised" | "dizzy" | "annoyed" | "sleepy";
+
+/* Test hook: the shots harness sets this before load to pin the droid at
+   its rest pose for deterministic screenshots. ?debugRuru publishes the
+   live rig state (pose, target, roam phase, gate flags) so a headless probe
+   can tell why the droid is where it is instead of guessing from pixels. */
+declare global {
+  interface Window {
+    __GDGOC_ROAM_OFF?: boolean;
+    __RURU?: Record<string, number | boolean | null | { w: number; h: number }>;
+  }
+}
 
 const MOOD_EYE: Record<Mood, string> = {
   neutral: "#4285F4",
@@ -108,13 +130,21 @@ function bladePath(rA: number, i: number): string {
 
 const POKE_WINDOW = 3000;
 const POKES_FOR_ANNOYED = 5;
-const SLEEP_AFTER = 20000;
-const WANDER_AFTER = 4000;
-const BUMP_SPEED = 450;
-const DODGE_COOLDOWN = 8000;
-const BASE_SPEED = 520;
-const ZOOM_SPEED = 900;
-const EDGE_SPEED = 260;
+
+/** Air kept between the shell's rim and the headline's descender line. */
+const HEADLINE_CLEARANCE = 6;
+
+/** The lowest the shell ever fades to while passing behind supporting type:
+    enough dimming to hold the text's contrast, never an invisible droid. */
+/* Opacity floor while the shell passes behind the hero copy/actions.
+   Measured ceiling: the bright shell (p90 luma 247) composited at 0.36
+   keeps the .hero-copy glyphs at 4.70:1 worst-case contrast (AA for normal
+   text is 4.5:1); 0.40+ drops below 4.2:1. The starfield no longer shows
+   through the shell (SpaceBackground carves a clearing), which is what
+   made him read clearly — this floor only guards type legibility. */
+const MIN_OPACITY = 0.36;
+
+const PACE = { cruise: 0, wander: 0, intro: 0, roam: 0 };
 
 interface Vec3 {
   x: number;
@@ -434,6 +464,10 @@ export default function Robot() {
     field: { x: 0, y: 0, w: 1, h: 1 } as Rect,
     /** Ball diameter in pane pixels. */
     d: 120,
+    /** Blocks of supporting type the shell dims behind, in stage pixels. */
+    keepOuts: [] as KeepOut[],
+    /** Smoothed opacity, written only when it moves. */
+    dim: 1,
     home: { x: 0, y: 0 } as Vec2,
     quat: { ...IDENTITY_QUAT } as Quat,
     mood: "neutral" as Mood,
@@ -458,7 +492,6 @@ export default function Robot() {
     hop: 0,
     hopV: 0,
     squash: 1,
-    bump: 0,
     spin: 0,
     spinRate: 0,
     bob: 0,
@@ -470,6 +503,7 @@ export default function Robot() {
     pointerInStage: false,
     pointerStage: { x: 0, y: 0 } as Vec2,
     cursorSpeed: 0,
+    chasePickup: 0,
     circleAcc: 0,
     lastAngle: 0,
     hadAngle: false,
@@ -477,25 +511,33 @@ export default function Robot() {
     pokeCount: 0,
     lastInput: performance.now(),
     glanceAt: performance.now() + 7000,
-    wanderAt: performance.now() + WANDER_AFTER,
+    wanderAt: performance.now() + RIG.wanderAfterMs,
     sleeping: false,
     appeared: false,
     lineAt: 0,
     lastLine: null as string | null,
     greeted: false,
     inView: true,
-    dodgeAt: 0,
-    bumpAt: 0,
     prevVx: 0,
     prevVy: 0,
     ready: false,
     /** Set when the status card is hovered, so the droid stays put. */
     holdUntil: 0,
+    /** 5-second roam cinematic: which waypoint of the path is next.
+        -1 means the cinematic has finished (or never started). */
+    roamPhase: -1 as number,
+    /** Timestamp of the earliest moment the next roam hop may start. */
+    roamNextAt: 0 as number,
+    /** Set once the intro overlay has handed the stage over. While it is
+        false the droid ignores the pointer, since the overlay owns it. */
+    introDone: false,
   });
 
   useEffect(() => {
     const stage = document.getElementById("ruru-stage");
-    const parent = stage?.parentElement ?? null;
+    /* The droid's world is the whole hero section: the stage id now marks
+       the section itself, so the field spans the full viewport. */
+    const parent = stage ?? null;
     const canvas = canvasRef.current;
     const svg = svgRef.current;
     const button = buttonRef.current;
@@ -509,25 +551,94 @@ export default function Robot() {
     if (!ctx) return;
     const dpr = Math.min(2, window.devicePixelRatio || 1);
     const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    /* Posed mode: only ever set by ?ruru=x,y (stills and probes). */
+    const pin = pinnedSpot(window.location.search);
+    const debugRuru = debugRuruOn(window.location.search);
 
     /* ---------- geometry, measured off the real stage ---------- */
+
+    /* The roam cinematic is the one motion allowed past RIG.max, so it is
+       the one place that has to lift the body's own ceilings: without
+       capD/capA the plan walks at the general 0.8 D/s ceiling and the sweep
+       reads as a crawl instead of a dash. roamOn arms both paces; roamOff
+       hands the body back to the normal limits whenever the cinematic ends
+       or a visitor interrupts it. */
+    const roamOn = () => {
+      s.body.maxSpeed = PACE.roam;
+      s.body.capD = RIG.roam;
+      s.body.capA = RIG.roamAccel;
+    };
+    const roamOff = () => {
+      s.body.capD = undefined;
+      s.body.capA = undefined;
+    };
 
     let canvasCss = 0;
     const measure = () => {
       const pw = parent.clientWidth;
       const ph = parent.clientHeight;
-      const sw = stage.clientWidth;
-      const sh = stage.clientHeight;
+      /* The floor is the ground band across the whole hero; the hero paints
+         its horizon exactly on floorBandH(ph), so rig and scene can never
+         drift apart. */
+      const fh = floorBandH(ph);
       s.stageW = pw;
       s.stageH = ph;
-      s.floor = { x: 0, y: ph - sh, w: sw, h: sh };
-      // D = 0.22 x pane width, capped at 0.30 x floor height, floor of 120px.
-      s.d = ballDiameter(pw, sh);
+      s.floor = { x: 0, y: ph - fh, w: pw, h: fh };
+      s.d = ballDiameter(pw, ph, fh);
+      /* the D/s paces become floor px/s once the diameter is known */
+      PACE.cruise = pxPerSec(s.d, RIG.cruise);
+      PACE.wander = pxPerSec(s.d, RIG.wander);
+      PACE.intro = pxPerSec(s.d, RIG.intro);
+      PACE.roam = pxPerSec(s.d, RIG.roam);
       s.body.r = s.d / 2;
-      // RuruField: 0.75D in from the side walls, 0.6D up from the bottom,
-      // 0.15D below the horizon. Recomputed on every resize, so an
-      // orientation change cannot leave the droid outside its box.
+      // RuruField starts as the full-viewport width inset by 0.6D per side,
+      // from 0.15D above the floor's top edge down to 0.35D above its
+      // bottom, then the measured envelope below tightens it. Recomputed on
+      // every resize, so an orientation change cannot leave the droid
+      // outside the viewport or on top of the type.
       s.field = fieldFor(s.floor, s.d);
+
+      /* Two measured limits turn the field into a legibility-safe envelope:
+
+         ceiling   the headline's box is the thing the droid reacts to, so
+                   its type stays clear and the shell only ever brushes the
+                   line beneath it. Measured live, so a taller headline on a
+                   narrow screen moves the whole envelope down with it.
+         floor     the shell stays whole above the ticker rail instead of
+                   sinking half-way behind it.
+         keepOuts  the supporting blocks (copy, actions, bottom row) — the
+                   droid still rolls behind those, and dims while it does. */
+      const hostRect = parent.getBoundingClientRect();
+      const toStage = (el: Element, edge: "top" | "bottom") => {
+        const b = el.getBoundingClientRect();
+        return (edge === "top" ? b.top : b.bottom) - hostRect.top;
+      };
+      s.keepOuts = Array.from(parent.querySelectorAll<HTMLElement>("[data-ruru-keepout]")).map((el) => {
+        const b = el.getBoundingClientRect();
+        return {
+          left: b.left - hostRect.left,
+          right: b.right - hostRect.left,
+          top: b.top - hostRect.top,
+          bottom: b.bottom - hostRect.top,
+        };
+      });
+      const ceilingEl = parent.querySelector<HTMLElement>("[data-ruru-ceiling]");
+      const ceiling = ceilingEl ? toStage(ceilingEl, "bottom") + HEADLINE_CLEARANCE : s.field.y;
+      /* Both limits are measured against the RENDERED radius, not the ideal
+         one: at the near edge of the floor the shell draws 1.08 r, so an
+         ideal-radius limit lets the outline dip into the ticker rail (and
+         up toward the headline) by that margin. */
+      const reach = outerRadius(s.body.r);
+      const bottomLimit = Math.min(
+        s.floor.y + s.floor.h - FIELD_INSET.bottom * s.d,
+        ph - reach - 4
+      );
+      const floorLimit = Math.max(s.field.y, Math.min(ceiling + reach, bottomLimit));
+      s.field = {
+        ...s.field,
+        y: floorLimit,
+        h: Math.max(24, bottomLimit - floorLimit),
+      };
       s.domain = { w: s.field.w, h: s.field.h };
       s.home = { x: s.field.w * 0.62, y: s.field.h * 0.55 };
       canvasCss = Math.max(24, s.body.r * 2.6);
@@ -538,11 +649,39 @@ export default function Robot() {
       svg.setAttribute("viewBox", `0 0 ${pw} ${ph}`);
       svg.setAttribute("preserveAspectRatio", "none");
       if (!s.ready) {
-        // intro: start off the left edge and roll in to the home spot
-        s.body.x = -s.body.r * 2;
+        // production: start at the home spot, standing on the floor, so the
+        // page reads as a posed character. The 5s roam cinematic is armed
+        // only when no intro overlay is covering the page (the intro fires
+        // "gdgoc-intro-done" when it finishes, or was already skipped);
+        // window.__GDGOC_ROAM_OFF disables the cinematic for tests.
+        s.body.x = s.home.x;
         s.body.y = s.home.y;
-        s.body.maxSpeed = ZOOM_SPEED;
-        if (!reduced) s.body.target = { ...s.home };
+        s.body.maxSpeed = PACE.cruise;
+        const roamAllowed = !reduced && window.__GDGOC_ROAM_OFF !== true &&
+          !document.querySelector(".gdg-intro");
+        if (roamAllowed) {
+          s.introDone = true;
+          s.roamPhase = 0;
+          s.roamNextAt = performance.now() + 300;
+          roamOn();
+        } else {
+          s.roamPhase = -1;
+          s.body.target = null;
+          window.addEventListener(
+            "gdgoc-intro-done",
+            () => {
+              // the overlay is gone: start the cinematic from the rest pose
+              s.introDone = true;
+              if (window.__GDGOC_ROAM_OFF !== true &&
+                  !window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+                s.roamPhase = 0;
+                s.roamNextAt = performance.now() + 300;
+                roamOn();
+              }
+            },
+            { once: true }
+          );
+        }
         s.ready = true;
       }
       clampToField(s.body, s.domain);
@@ -570,7 +709,7 @@ export default function Robot() {
 
     const say = (line: string, requested = false) => {
       const now = performance.now();
-      if (s.lineAt !== 0 && now - s.lineAt < 2500) return;
+      if (s.lineAt !== 0 && now - s.lineAt < RIG.sayGapMs) return;
       // reduced motion: dialogue only when the user asked for it
       if (reduced && !requested) return;
       s.lineAt = now;
@@ -584,13 +723,13 @@ export default function Robot() {
         i += 1;
         bubbleText.textContent = line.slice(0, i);
         if (i >= line.length) window.clearInterval(typeTimer);
-      }, 30);
+      }, RIG.typeMsPerChar);
       window.clearTimeout(bubbleHide);
       bubbleHide = window.setTimeout(
         () => {
           if (bubble) bubble.hidden = true;
         },
-        3000 + line.length * 30
+        3000 + line.length * RIG.typeMsPerChar
       );
     };
 
@@ -638,10 +777,7 @@ export default function Robot() {
       s.moodUntil = performance.now() + ms;
       if (m === "happy") s.spinRate = Math.max(s.spinRate, 0.13); // a full turn
       if (m === "dizzy") s.spinRate = Math.max(s.spinRate, 0.14); // spins in place
-      if (m === "excited") {
-        s.spinRate = Math.max(s.spinRate, 0.06);
-        s.body.maxSpeed = ZOOM_SPEED;
-      }
+      if (m === "excited") s.spinRate = Math.max(s.spinRate, 0.06);
       if (m === "surprised") {
         s.hopV = Math.max(s.hopV, 150); // a small hop
         s.aTallV -= 90; // both antennas perk up
@@ -677,13 +813,20 @@ export default function Robot() {
     const onMove = (e: PointerEvent) => {
       const now = performance.now();
       const prev = s.lastPointer;
+      s.lastInput = now;
+      if (s.sleeping) wake(true);
+
+      /* Coarse pointers do not hover, so a scroll drag across the hero must
+         not tow the droid with it (brief §10): position tracking and cursor
+         speed follow a fine pointer only. Taps, pokes and stage drags reach
+         the droid through their own listeners either way. */
+      if (!fine) return;
+
       const step = Math.hypot(e.clientX - prev.x, e.clientY - prev.y);
       const dtms = Math.max(8, now - s.lastMoveAt);
       s.cursorSpeed = s.cursorSpeed * 0.7 + (step / dtms) * 1000 * 0.3;
       s.lastMoveAt = now;
       s.lastPointer = { x: e.clientX, y: e.clientY, has: true };
-      s.lastInput = now;
-      if (s.sleeping) wake(true);
 
       const r = stage.getBoundingClientRect();
       s.pointerInStage =
@@ -719,7 +862,7 @@ export default function Robot() {
     const onLeave = () => {
       if (!s.sleeping && s.appeared) say(pickLine(LINES.leaves, s.lastLine));
       s.body.target = { ...s.home };
-      s.body.maxSpeed = BASE_SPEED;
+      s.body.maxSpeed = PACE.cruise;
       s.lastPointer.has = false;
       s.pointerInStage = false;
     };
@@ -786,7 +929,7 @@ export default function Robot() {
         return;
       }
       s.body.target = toFloor(e.clientX, e.clientY);
-      s.body.maxSpeed = BASE_SPEED;
+      s.body.maxSpeed = PACE.cruise;
       say(pickLine(LINES.rollTo, s.lastLine), true);
       setMood("curious", 900);
     };
@@ -841,7 +984,7 @@ export default function Robot() {
         s.body.target = null;
       } else {
         s.body.target = { x: next.x, y: next.y };
-        s.body.maxSpeed = BASE_SPEED;
+        s.body.maxSpeed = PACE.cruise;
       }
     };
     window.addEventListener("keydown", onKey);
@@ -868,7 +1011,7 @@ export default function Robot() {
       // roll to the right edge of the floor and face the card
       s.holdUntil = performance.now() + 2600;
       s.body.target = { x: s.domain.w - s.body.r, y: s.home.y };
-      s.body.maxSpeed = BASE_SPEED;
+      s.body.maxSpeed = PACE.cruise;
     };
     const eventLeave = () => {
       s.holdUntil = 0;
@@ -883,12 +1026,12 @@ export default function Robot() {
     const ctaEnter = () => {
       if (s.sleeping) return;
       setMood("excited", 1600);
-      s.body.maxSpeed = ZOOM_SPEED;
+      s.body.maxSpeed = PACE.cruise;
       s.spinRate = 0.25;
       if (Math.random() < 0.4) say(pickLine(LINES.ctaHover, s.lastLine), true);
     };
     const ctaLeave = () => {
-      s.body.maxSpeed = BASE_SPEED;
+      s.body.maxSpeed = PACE.cruise;
     };
     for (const el of ctaTargets) {
       el.addEventListener("pointerenter", ctaEnter);
@@ -912,6 +1055,7 @@ export default function Robot() {
     /* ---------- one shared rAF, fixed 60Hz accumulator ---------- */
 
     let acc = 0;
+    let lastDim = 1;
     const stop = addTicker((dt, t) => {
       if (!s.inView || document.hidden) return;
 
@@ -932,20 +1076,91 @@ export default function Robot() {
       if (visual.dataset.held !== heldStr) visual.dataset.held = heldStr;
 
       /* ---- pick a target for this frame ---- */
-      if (reduced) {
+      if (s.roamPhase >= 0 && s.holdUntil > t) {
+        // an explicit hold (keyboard drive) yields the stage to the visitor
+        s.roamPhase = -1;
+        roamOff();
+        s.body.target = { ...s.home };
+        s.body.maxSpeed = PACE.cruise;
+      }
+      if (pin) {
+        /* posed mode (?ruru=x,y): one exact spot, no cinematic, no chase —
+           how a probe or a still measures the typography reaction */
+        s.body.x = s.domain.w * pin.x;
+        s.body.y = s.domain.h * pin.y;
         s.body.vx = 0;
         s.body.vy = 0;
-      } else if (!held) {
+        s.body.target = null;
+        s.roamPhase = -1;
+        roamOff();
+      } else if (reduced) {
+        s.body.vx = 0;
+        s.body.vy = 0;
+        s.roamPhase = -1;
+        roamOff();
+      } else if (s.roamPhase >= 0) {
+        /* ---- the roam cinematic ----
+           ROAM_PLAN walked at intro pace, sized in field fractions so the
+           path re-composes itself on any viewport. It is interrupted only
+           by real contact with the droid (hover, poke, stage tap), never
+           by a cursor merely passing over the floor. */
+        if (t >= s.roamNextAt && (s.body.target === null || hasArrived(s.body, s.domain, s.d * RIG.arriveTol))) {
+          const next = s.roamPhase < ROAM_PLAN.length ? ROAM_PLAN[s.roamPhase] : null;
+          if (next) {
+            s.body.target = { x: s.domain.w * next.fx, y: s.domain.h * next.fy };
+            roamOn();
+            s.roamPhase += 1;
+            s.roamNextAt = t + next.pause * 1000;
+          } else {
+            s.roamPhase = -1;
+            roamOff();
+            s.body.target = null;
+            s.body.maxSpeed = PACE.cruise;
+          }
+        }
+      } else if (!held && s.introDone && s.roamPhase < 0) {
         if (s.pointerInStage) {
-          s.body.target = { ...s.pointerStage };
-          s.body.maxSpeed = BASE_SPEED;
+          /* personal space: hold still once the cursor is inside RIG.stop D.
+             smoothing uses the cursor tau so the intent, not the pointer,
+             sets the pace of the change. */
+          const stopPx = s.d * RIG.stop;
+          const away = Math.hypot(s.pointerStage.x - s.body.x, s.pointerStage.y - s.body.y);
+          s.chasePickup += ((away > stopPx ? 1 : 0) - s.chasePickup) * ease(RIG.tau.cursor, dt);
+          if (s.chasePickup > 0.5) {
+            s.body.target = { ...s.pointerStage };
+            s.body.maxSpeed = PACE.cruise;
+          } else if (Math.hypot(s.body.vx, s.body.vy) < PACE.cruise * 0.2) {
+            s.body.target = null;
+          }
         } else if (s.lastPointer.has) {
           // pointer elsewhere on the page: drift to the nearest edge
           const r = stage.getBoundingClientRect();
           const edge = s.lastPointer.x < r.left ? s.body.r : s.domain.w - s.body.r;
           s.body.target = { x: edge, y: s.home.y };
-          s.body.maxSpeed = EDGE_SPEED;
+          s.body.maxSpeed = PACE.wander;
         }
+      }
+
+      if (debugRuru && window.__RURU) window.__RURU.__seen = 1;
+      if (debugRuru) {
+        window.__RURU = {
+          x: Math.round(s.body.x),
+          y: Math.round(s.body.y),
+          tx: s.body.target ? Math.round(s.body.target.x) : null,
+          ty: s.body.target ? Math.round(s.body.target.y) : null,
+          speed: Math.round(Math.hypot(s.body.vx, s.body.vy)),
+          roamPhase: s.roamPhase,
+          roamNextIn: Math.round(s.roamNextAt - t),
+          held,
+          inView: s.inView,
+          appeared: s.appeared,
+          introDone: s.introDone,
+          pointer: s.lastPointer.has,
+          dim: Number(s.dim.toFixed(2)),
+          d: Math.round(s.d),
+          domain: { w: Math.round(s.domain.w), h: Math.round(s.domain.h) },
+          fieldY: Math.round(s.field.y),
+        };
       }
 
       /* ---- fixed-step integration ---- */
@@ -954,8 +1169,6 @@ export default function Robot() {
       while (acc >= FIXED_DT && steps < 5) {
         const px = s.body.x;
         const py = s.body.y;
-        const vxBefore = s.body.vx;
-        const vyBefore = s.body.vy;
         stepBody(s.body, FIXED_DT, s.domain);
 
         // roll without slipping: angle = distance / radius about
@@ -969,26 +1182,14 @@ export default function Robot() {
           s.quat = quatRotate(s.quat, axis.x, axis.y, axis.z, rollAngle(dist, s.body.r));
         }
 
-        // wall bump, rate limited
-        const pad = s.body.r + 12;
-        const hit =
-          (s.body.x <= pad + 0.6 && vxBefore < -BUMP_SPEED) ||
-          (s.body.x >= s.domain.w - pad - 0.6 && vxBefore > BUMP_SPEED) ||
-          (s.body.y <= pad + 0.6 && vyBefore < -BUMP_SPEED) ||
-          (s.body.y >= s.domain.h - pad - 0.6 && vyBefore > BUMP_SPEED);
-        if (hit && t - s.bumpAt > 2500) {
-          s.bumpAt = t;
-          s.bump = 1;
-          s.hopV = 90;
-          s.aTallV -= 45;
-          s.aStubV -= 65;
-          say(pickLine(LINES.bump, s.lastLine));
-        }
-
-        if (hasArrived(s.body)) {
+          if (hasArrived(s.body, s.domain, s.d * RIG.arriveTol)) {
           if (Math.random() < 0.08 && !reduced) {
             say(pickLine(LINES.arrive, s.lastLine));
             s.squash = 0.94;
+          }
+          if (s.roamPhase >= 4) {
+            s.roamPhase = -1; // the rest pose was reached
+            roamOff();
           }
           s.body.target = null;
         }
@@ -997,12 +1198,17 @@ export default function Robot() {
       if (acc > 0.25) acc = 0;
 
       /* ---- idle life: wander, then sleep ---- */
-      if (!reduced && !s.sleeping && s.body.target === null && idle > WANDER_AFTER && t > s.wanderAt) {
+      if (!reduced && !s.sleeping && s.body.target === null && idle > RIG.wanderAfterMs && t > s.wanderAt) {
         s.wanderAt = t + 3000 + Math.random() * 3500;
-        s.body.target = randomPoint(Math.random, s.domain, s.body.r + 20);
-        s.body.maxSpeed = EDGE_SPEED;
+        const spot = randomPoint(Math.random, s.domain, s.body.r + 20);
+        /* skip tiny trips: a waypoint closer than wanderMinTrip D is not
+           worth the roll */
+        if (Math.hypot(spot.x - s.body.x, spot.y - s.body.y) > s.d * RIG.wanderMinTrip) {
+          s.body.target = spot;
+          s.body.maxSpeed = PACE.wander;
+        }
       }
-      if (!reduced && !s.sleeping && idle > SLEEP_AFTER && s.mood !== "annoyed") {
+      if (!reduced && !s.sleeping && idle > RIG.sleepAfterMs && s.mood !== "annoyed") {
         s.sleeping = true;
         setMood("sleepy", 1);
         say(pickLine(LINES.sleepy, s.lastLine));
@@ -1011,6 +1217,17 @@ export default function Robot() {
 
       /* ---- geometry for this frame ---- */
       const scale = depthScale(s.body.y, s.field.h);
+      /* Publish to the reactive systems: the typography field and the
+         particle wake both read the droid's stage-space position. Stage
+         space here is the hero section, and the ground-contact point in
+         pane pixels is (field.x + x, field.y + y). */
+      publishRobot({
+        x: s.field.x + s.body.x,
+        y: s.field.y + s.body.y,
+        r: s.body.r * scale,
+        speed: Math.hypot(s.body.vx, s.body.vy),
+        roaming: s.roamPhase >= 0,
+      });
       const cxStage = s.field.x + s.body.x;
       const cyStage = s.field.y + s.body.y;
       const ballR = s.body.r * scale;
@@ -1044,7 +1261,6 @@ export default function Robot() {
         s.spin = 0;
         s.hop = 0;
         s.squash = 1;
-        s.bump = 0;
         // stay near home, no continuous rolling
         s.body.x += (s.home.x - s.body.x) * 0.18;
         s.body.y += (s.home.y - s.body.y) * 0.18;
@@ -1055,9 +1271,10 @@ export default function Robot() {
         s.eyeCY += (ty - s.eyeCY) * ease(TAU_EYES, dt);
         s.yawC += (tx * HEAD.yawMax - s.yawC) * ease(TAU_HEAD, dt);
         s.pitchC += (-ty * HEAD.pitchMax - s.pitchC) * ease(TAU_HEAD, dt);
-        // tilt from acceleration, clamped to +/-6 degrees
+        // tilt from acceleration and travel, capped at RIG.leanMaxDeg
+        const leanCap = RIG.leanMaxDeg;
         const accelX = dt > 0 ? (s.body.vx - s.prevVx) / dt : 0;
-        const leanTarget = Math.max(-6, Math.min(6, (accelX / 2400) * 6 - dirX * 2));
+        const leanTarget = Math.max(-leanCap, Math.min(leanCap, (accelX / pxPerSec(s.d, RIG.accel)) * leanCap - dirX * 2));
         s.leanC += (leanTarget - s.leanC) * ease(TAU_LEAN, dt);
         // slide along the ball toward the motion direction, up to 0.06 radius
         const slideTarget = Math.max(
@@ -1080,15 +1297,13 @@ export default function Robot() {
       s.squash += (1 - s.squash) * 0.14;
       s.spin += s.spinRate;
       s.spinRate *= 0.94;
-      s.bump *= 0.9;
       s.bob += dt;
 
       /* ---- two antenna springs, stiffness 60 damping 7 ---- */
       const yawDeg = (s.yawC * 180) / Math.PI;
-      const bumpDeg = s.bump * 22;
-      s.aTallV += (yawDeg * 1.1 + bumpDeg - s.aTall) * 60 * dt - s.aTallV * 7 * dt;
+      s.aTallV += (yawDeg * 1.1 - s.aTall) * 60 * dt - s.aTallV * 7 * dt;
       s.aTall += s.aTallV * dt;
-      s.aStubV += (yawDeg * 1.6 + bumpDeg * 1.4 - s.aStub) * 60 * dt - s.aStubV * 7 * dt;
+      s.aStubV += (yawDeg * 1.6 - s.aStub) * 60 * dt - s.aStubV * 7 * dt;
       s.aStub += s.aStubV * dt;
 
       /* ---- blink: about 140ms, every 3 to 7s, sometimes twice ---- */
@@ -1127,33 +1342,16 @@ export default function Robot() {
         applyMood("neutral");
       }
 
-      /* ---- fast cursor ---- */
+      /* ---- cursor tempo: a fast cursor only brightens the eye ---- */
       if (!s.sleeping && s.cursorSpeed > 900 && s.mood === "neutral") {
         setMood("excited", 800);
         if (Math.random() < 0.25) say(pickLine(LINES.fast, s.lastLine));
-      }
-
-      /* ---- dodge a very fast lunge, cooldown 8s ---- */
-      if (!reduced && s.cursorSpeed > 2600 && t - s.dodgeAt > DODGE_COOLDOWN && s.pointerInStage) {
-        const away = Math.atan2(s.body.y - s.pointerStage.y, s.body.x - s.pointerStage.x);
-        s.dodgeAt = t;
-        const want = {
-          x: s.body.x + Math.cos(away) * s.body.r * 3,
-          y: s.body.y + Math.sin(away) * s.body.r * 3,
-        };
-        const pad = s.body.r * 1.08 + 12;
-        s.body.target = {
-          x: Math.max(pad, Math.min(s.domain.w - pad, want.x)),
-          y: Math.max(pad, Math.min(s.domain.h - pad, want.y)),
-        };
-        s.body.maxSpeed = ZOOM_SPEED;
-        say(pickLine(LINES.dodge, s.lastLine));
       }
       s.cursorSpeed *= 0.9;
       s.circleAcc *= 0.995;
 
       /* ---- paint: ball ---- */
-      const squash = s.squash * (1 - s.bump * 0.08);
+      const squash = s.squash;
       drawBall(ctx, canvasCss / 2.6, quatRotate(s.quat, 0, 1, 0, s.spin), {
         hop: s.hop + Math.sin(s.bob * 1.7) * 1.4,
         squash,
@@ -1175,6 +1373,19 @@ export default function Robot() {
           `rotate(${(s.leanC + shake).toFixed(2)}) scale(${k.toFixed(4)}) ` +
           `translate(${-HEAD_CX} ${-HEAD_BASE_Y})`
       );
+
+      /* ---- legibility: the shell dims while it passes behind type ----
+         The droid is deliberately drawn behind the text column, so a block
+         of supporting copy crossing it is a contrast problem, not a layout
+         one: the shell eases to MIN_OPACITY instead of reading through the
+         words. One stepped value per frame, written only when it moves. */
+      const occ = occlusion(s.keepOuts, cxStage, cyStage, ballR);
+      const dimTarget = occ > 0.02 ? Math.max(MIN_OPACITY, 1 - occ * 0.72) : 1;
+      s.dim += (dimTarget - s.dim) * (reduced ? 1 : ease(220, dt));
+      if (Math.abs(s.dim - lastDim) > 0.004) {
+        lastDim = s.dim;
+        visual.style.opacity = s.dim.toFixed(3);
+      }
       antTallRef.current?.setAttribute("transform", `rotate(${clampDeg(s.aTall).toFixed(2)} 91 64)`);
       antStubRef.current?.setAttribute("transform", `rotate(${clampDeg(s.aStub).toFixed(2)} 156 68)`);
 

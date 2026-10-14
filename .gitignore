@@ -2,5 +2,6 @@ node_modules
 dist
 shots
 .freebuff
+.tmp
 *.local
 .DS_Store

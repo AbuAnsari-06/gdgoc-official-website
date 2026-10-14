@@ -328,3 +328,34 @@ export const MARQUEE_WORDS: string[] = [
   ...EVENTS.map((e) => e.title),
   ...UPCOMING.map((u) => u.label),
 ];
+
+/* The community lines are the chapter's own sentences — the hero copy
+   already says the crew "learns in public, builds loudly and ships open
+   source" — restated as the six things the community actually does. No
+   counts, no dates, no claims that are not already on the page. */
+export const TICKER_COMMUNITY_LINES: string[] = [
+  "Learn in public",
+  "Build together",
+  "Ship open source",
+  "Explore new technologies",
+  "Turn ideas into projects",
+  "Share what we learn",
+];
+
+/* One interleaved rail: a community line, then a real item from the event
+   log or the upcoming calendar, and so on. Colours cycle the Google four
+   so the rail carries the brand without decorating every word. */
+export const TICKER_LINES: { text: string; color: GColor }[] = (() => {
+  const rail: { text: string; color: GColor }[] = [];
+  const colors: GColor[] = ["gblue", "gred", "gyellow", "ggreen"];
+  const real = MARQUEE_WORDS;
+  const max = Math.max(TICKER_COMMUNITY_LINES.length, real.length);
+  for (let i = 0; i < max; i++) {
+    const community = TICKER_COMMUNITY_LINES[i % TICKER_COMMUNITY_LINES.length];
+    if (i < TICKER_COMMUNITY_LINES.length) {
+      rail.push({ text: community.toUpperCase(), color: colors[rail.length % 4] });
+    }
+    if (i < real.length) rail.push({ text: real[i], color: colors[rail.length % 4] });
+  }
+  return rail;
+})();

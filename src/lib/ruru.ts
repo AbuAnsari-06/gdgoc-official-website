@@ -157,27 +157,51 @@ export interface Rect {
 
 /**
  * RuruField: the rectangle the droid's ground-contact point may never leave,
- * expressed as insets on the floor band in ball diameters. 0.75D at the sides
- * keeps the whole shell (max outer radius 1.08 * D/2 = 0.54D) inside the
- * floor band at every depth; 0.6D at the bottom keeps the contact shadow off
- * the baseboard; the top sits 0.15D below the horizon so the ball can never
- * clip the horizon line.
+ * expressed as insets on the floor band in ball diameters.
+ *
+ * The hero is now one full-viewport environment: the floor band spans the
+ * whole section, so the field is the entire width minus a 0.6D side inset
+ * (the shell's outer radius is 0.54D, so this keeps the droid inside the
+ * viewport at every depth) and the vertical band between 0.15D above the
+ * floor's top edge and 0.35D above its bottom — low enough that the droid
+ * reads as standing in the environment, high enough that the contact shadow
+ * and confetti never clip the ticker or the viewport edge.
  */
-export const FIELD_INSET = { side: 0.75, bottom: 0.6, top: 0.15 } as const;
+export const FIELD_INSET = { side: 0.6, bottom: 0.35, top: -0.15 } as const;
 
-/** Ball diameter in pane pixels: 0.22 x pane width, cap 0.30 x floor height. */
-export function ballDiameter(paneW: number, floorH: number): number {
-  return Math.max(120, Math.min(paneW * 0.22, floorH * 0.3));
+/**
+ * Ball diameter in hero pixels.
+ *
+ * The droid is a primary element of the composition: the diameter tries
+ * 0.20 x hero width (so it never reads narrow on ultrawide screens) and
+ * caps at 0.26 x stage height, which keeps the assembled character (ball
+ * plus dome head plus antenna tips, roughly 1.55 D tall) inside the
+ * brief's 30–38%-of-viewport band: 0.26 x 1.55 ≈ 0.40 of the stage at
+ * the cap, typically ~0.37 of the viewport. The floor band is not a cap
+ * any more — the hero is one continuous atmosphere — so `floorH` only
+ * protects tiny panes through the existing 110px floor.
+ */
+export function ballDiameter(paneW: number, paneH: number, floorH: number): number {
+  return Math.max(110, Math.min(paneW * 0.20, paneH * 0.26, Math.max(110, floorH * 1.4)));
+}
+
+/** Nominal floor-band height, derived from the hero pane height. The hero
+ * sizes its floor to this, so the droid's motion band and the painting
+ * always agree. */
+export function floorBandH(paneH: number): number {
+  return Math.max(150, Math.round(paneH * 0.34));
 }
 
 /**
  * The field, in pane pixels, from the floor band and the ball diameter. The
  * insets are capped at a fraction of the band so a short pane still leaves a
- * band to move in instead of collapsing the field to a line.
+ * band to move in instead of collapsing the field to a line. A negative top
+ * inset widens the band above the floor's top edge — the full-viewport hero
+ * lets the droid reach into the composition.
  */
 export function fieldFor(floor: Rect, d: number): Rect {
   const side = Math.min(FIELD_INSET.side * d, floor.w / 3);
-  const top = Math.min(FIELD_INSET.top * d, floor.h / 4);
+  const top = Math.max(-floor.h / 4, Math.min(FIELD_INSET.top * d, floor.h / 4));
   const bottom = Math.min(FIELD_INSET.bottom * d, floor.h / 4);
   return {
     x: floor.x + side,
@@ -197,9 +221,69 @@ export function fromField(p: Vec2, field: Rect): Vec2 {
   return { x: p.x + field.x, y: p.y + field.y };
 }
 
+/* ---------------- legibility keep-outs ---------------- */
+
+/** A rectangle of supporting type, in stage pixels. */
+export interface KeepOut {
+  left: number;
+  right: number;
+  top: number;
+  bottom: number;
+}
+
+/**
+ * How much of a block of type the shell is covering, 0..1.
+ *
+ * The droid is deliberately drawn behind the text column — that layering is
+ * what makes the reaction read as the type being pressed — so a supporting
+ * block crossing the shell is a contrast problem rather than a layout one:
+ * the shell dims while it reads through. Pure, so the rig can call it every
+ * frame and the tests can pin it.
+ *
+ * Coverage is the block's height fraction inside the shell's band, ramped by
+ * how much of the shell's width crosses it. A thin line of metadata is fully
+ * inside the band the moment the shell reaches it (fraction 1), which is the
+ * case that matters: the dimming has to be at its strongest when the shell
+ * is centred on the words, and it has to fade out as it leaves.
+ */
+export function occlusion(blocks: KeepOut[], cx: number, cy: number, r: number): number {
+  const top = cy - r;
+  const bottom = cy + r;
+  let worst = 0;
+  for (const b of blocks) {
+    const bh = Math.max(1, b.bottom - b.top);
+    const v = (Math.min(bottom, b.bottom) - Math.max(top, b.top)) / bh;
+    if (v <= 0) continue;
+    const bw = Math.max(1, Math.min(b.right - b.left, 2 * r));
+    const x = (Math.min(cx + r, b.right) - Math.max(cx - r, b.left)) / bw;
+    if (x <= 0) continue;
+    worst = Math.max(worst, Math.min(1, v) * (0.5 + 0.5 * Math.min(1, x)));
+  }
+  return worst;
+}
+
+/**
+ * `?ruru=x,y` (field fractions 0..1) pins the droid at one spot and freezes
+ * the cinematic. It exists so a still screenshot or a probe can measure the
+ * typography reaction at an exact position; browsing never sets it.
+ */
+export function pinnedSpot(search: string): Vec2 | null {
+  const m = /[?&]ruru=(\d*\.?\d+),\s*(\d*\.?\d+)/.exec(search);
+  if (!m) return null;
+  const x = Math.max(0, Math.min(1, Number(m[1])));
+  const y = Math.max(0, Math.min(1, Number(m[2])));
+  if (!Number.isFinite(x) || !Number.isFinite(y)) return null;
+  return { x, y };
+}
+
 /** `?debugField` outlines the field. Off by default and never drawn. */
 export function debugFieldOn(search: string): boolean {
   return new URLSearchParams(search).has("debugField");
+}
+
+/** `?debugRuru` publishes the live rig state to window.__RURU for probes. */
+export function debugRuruOn(search: string): boolean {
+  return new URLSearchParams(search).has("debugRuru");
 }
 
 /* ---------------- depth ---------------- */
@@ -276,13 +360,76 @@ export const DECAL_SIN = Math.sin(DECAL_ANGLE);
 
 /* ---------------- steering ---------------- */
 
-export const MAX_SPEED = 520;
-export const MAX_SPEED_ZOOM = 900;
-export const MAX_ACCEL = 2400;
+/**
+ * Every speed and time constant the droid obeys, in one place. Speeds are
+ * in ball diameters per second (D/s) or D/s^2, so the same calibration
+ * reads identically on a phone and on a desktop: the rig converts to floor
+ * pixels from the diameter it measured. speedScale is the one knob - lower
+ * it and every motion, including acceleration, slows with it.
+ */
+export const RIG = {
+  /** Multiplier for every speed and accel below. 1 ships as calibrated. */
+  speedScale: 1,
+  /** Chase and event-hover pace: 0.5 D/s. */
+  cruise: 0.5,
+  /** The hard ceiling of any floor motion: 0.8 D/s. */
+  max: 0.8,
+  /** Idle wander pace: 0.3 D/s. */
+  wander: 0.3,
+  /** First reveal, rolling in from off stage: 0.7 D/s. */
+  intro: 0.7,
+  /** The 5s cinematic sweep: 1.5 D/s — the droid is excited, and the
+      full-viewport traversal has real distance to cover. Only the roam
+      cinematic opts into this pace (via Body.capD); every normal chase
+      stays under RIG.max. */
+  roam: 2.4,
+  /** Cinematic acceleration: 5 D/s^2 (roam-only, via Body.capA). The tour
+      cruises at 2.4 D/s, so it needs a ramp that reaches that pace in about
+      half a second: measured through the real integrator, the full four-leg
+      sweep — LEARN, CONNECT, GROW, rest — lands at 4.8s on a 1440 hero
+      (3.6s on a phone), which is the window the plan promises. */
+  roamAccel: 5,
+  /** Comfortable acceleration: 0.9 D/s^2. */
+  accel: 0.9,
+  /** Inside 1.6 D of the cursor the droid holds still: personal space. */
+  stop: 1.6,
+  /** Considered arrived within 1.2 D of a chase or wander waypoint. */
+  arrive: 1.2,
+  /** Arrival tolerance in D. The arrive taper decays exponentially, so an
+      absolute few-pixel epsilon costs whole seconds per leg; measured
+      against the taper a D-based tolerance ends a leg where it visually
+      already ended. */
+  arriveTol: 0.15,
+  /** The roam cinematic runs at a higher pace, so it tapers later: an
+      arrival radius that scaled with the cruise pace instead of the ball
+      would eat most of every leg and the 5s tour would take 8s. */
+  roamArrive: 0.55,
+  /** A wander waypoint closer than this (D) is not worth a trip. */
+  wanderMinTrip: 1.2,
+  /** Head tilt from acceleration and travel is kept inside this, degrees. */
+  leanMaxDeg: 6,
+  /** Smoothing taus, ms: eyes, head, lean, cursor pickup, reactions. */
+  tau: { eyes: 220, head: 380, lean: 600, cursor: 700, reaction: 350 },
+  /** Idle wander starts after 5s without input; drowsy park at 25s. */
+  wanderAfterMs: 5000,
+  sleepAfterMs: 25000,
+  /** Dialogue: 45 ms per typed character, at least 4s between lines. */
+  typeMsPerChar: 45,
+  sayGapMs: 4000,
+} as const;
+
+/** D/s to floor px/s for a ball of the given diameter. */
+export function pxPerSec(diameter: number, dPerSec: number): number {
+  return dPerSec * diameter * RIG.speedScale;
+}
+
+/** D/s^2 to floor px/s^2 for a ball of the given diameter. */
+export function pxPerSec2(diameter: number, dPerSec2: number): number {
+  return dPerSec2 * diameter * RIG.speedScale;
+}
+
 /** How hard the droid pulls toward its target, 1/s. */
 const GAIN = 8;
-/** Desired speed reaches maxSpeed once the target is this far away. */
-const ARRIVE_SLACK = 4;
 /** Fraction of speed shed per second with no target. */
 const FRICTION = 0.6;
 
@@ -295,10 +442,19 @@ export interface Body {
   r: number;
   target: Vec2 | null;
   maxSpeed: number;
+  /** Optional per-body speed ceiling in D/s. The roam cinematic raises
+      its own ceiling this way; when absent, RIG.max applies. */
+  capD?: number;
+  /** Optional per-body acceleration ceiling in D/s^2. */
+  capA?: number;
+  /** Optional arrival-taper radius in D. Absent: RIG.arrive. A body that
+      cruises faster than RIG.max (the roam cinematic) tapers later, so its
+      extra pace is not spent gliding the last D of every leg. */
+  arriveD?: number;
 }
 
 export function createBody(x: number, y: number, r: number): Body {
-  return { x, y, vx: 0, vy: 0, r, target: null, maxSpeed: MAX_SPEED };
+  return { x, y, vx: 0, vy: 0, r, target: null, maxSpeed: pxPerSec(r * 2, RIG.max) };
 }
 
 /** The biggest the ball can render, so clamping is safe at every depth. */
@@ -311,19 +467,60 @@ export function outerRadius(r: number): number {
  * ball can never poke out of the yellow band even at the near edge.
  */
 export function clampInBounds(b: Body, domain: Domain, pad = 12): Body {
-  const re = outerRadius(b.r) + pad;
-  const minX = Math.min(re, domain.w / 2);
-  const maxX = Math.max(domain.w - re, domain.w / 2);
-  const minY = Math.min(re, domain.h / 2);
-  const maxY = Math.max(domain.h - re, domain.h / 2);
-  const x = Math.min(maxX, Math.max(minX, b.x));
-  const y = Math.min(maxY, Math.max(minY, b.y));
+  const box = reachableBox(b, domain, pad);
+  const x = Math.min(box.maxX, Math.max(box.minX, b.x));
+  const y = Math.min(box.maxY, Math.max(box.minY, b.y));
   // bounce off the wall we just clamped against, shedding most of the energy
   if (x !== b.x) b.vx *= -0.35;
   if (y !== b.y) b.vy *= -0.35;
   b.x = x;
   b.y = y;
   return b;
+}
+
+/**
+ * The box the droid's contact point can actually reach: the field inset so
+ * the ball's outline keeps `pad` of clearance.
+ *
+ * An axis narrower than the ball cannot hold an inset ball. On such an axis
+ * the domain is already a contact-point band — the hero derives its envelope
+ * from the ball's own outline limits, headline above and ticker below — so
+ * the point may use the whole band. Both the clamp and the steering read
+ * this one box, which is what keeps a waypoint reachable.
+ */
+export function reachableBox(
+  b: Body,
+  domain: Domain,
+  pad = 12
+): { minX: number; maxX: number; minY: number; maxY: number } {
+  const re = outerRadius(b.r) + pad;
+  const fitsX = domain.w >= re * 2;
+  const fitsY = domain.h >= re * 2;
+  return {
+    minX: fitsX ? re : 0,
+    maxX: fitsX ? domain.w - re : domain.w,
+    minY: fitsY ? re : 0,
+    maxY: fitsY ? domain.h - re : domain.h,
+  };
+}
+
+/**
+ * The point the droid steers toward: its target pulled into reachableBox.
+ *
+ * Without this a waypoint the ball cannot physically occupy (any fy of a
+ * hero band shallower than the ball) would be chased forever: the arrival
+ * test would never pass and the cinematic would stall on its first leg.
+ * Aiming at the closest reachable point makes such a waypoint count as
+ * reached, while every in-reach target is untouched.
+ */
+export function aimPoint(b: Body, domain: Domain): Vec2 | null {
+  const t = b.target;
+  if (!t) return null;
+  const box = reachableBox(b, domain);
+  return {
+    x: Math.min(box.maxX, Math.max(box.minX, t.x)),
+    y: Math.min(box.maxY, Math.max(box.minY, t.y)),
+  };
 }
 
 /**
@@ -360,21 +557,32 @@ export const FIXED_DT = 1 / 60;
  * which is what the render loop wants, and is trivial to assert on.
  */
 export function stepBody(b: Body, dt: number, domain: Domain): Body {
-  const t = b.target;
+  /* the hard ceiling: whatever a caller hands over as maxSpeed, no step
+     may push the droid past its ceiling — RIG.max unless the body opted
+     into a higher one (only the roam cinematic does). */
+  const capPx = pxPerSec(b.r * 2, b.capD ?? RIG.max);
+  const speedCap = Math.min(b.maxSpeed, capPx);
+  /* steer at the closest reachable point, never at a spot the ball cannot
+     occupy (see aimPoint) */
+  const t = aimPoint(b, domain);
   if (t) {
     const dx = t.x - b.x;
     const dy = t.y - b.y;
     const dist = Math.hypot(dx, dy);
     if (dist > 0.5) {
-      const want = Math.min(b.maxSpeed, dist * ARRIVE_SLACK);
+      /* arrive steering: inside RIG.arrive D of the target the desired
+         speed tapers linearly, so the roll eases in instead of skidding. */
+      const arrivePx = (b.arriveD ?? RIG.arrive) * b.r * 2;
+      const want = Math.min(speedCap, (dist / arrivePx) * speedCap);
       const dvx = (dx / dist) * want;
       const dvy = (dy / dist) * want;
       let ax = (dvx - b.vx) * GAIN;
       let ay = (dvy - b.vy) * GAIN;
       const am = Math.hypot(ax, ay);
-      if (am > MAX_ACCEL) {
-        ax = (ax / am) * MAX_ACCEL;
-        ay = (ay / am) * MAX_ACCEL;
+      const accelCap = pxPerSec2(b.r * 2, b.capA ?? RIG.accel);
+      if (am > accelCap) {
+        ax = (ax / am) * accelCap;
+        ay = (ay / am) * accelCap;
       }
       b.vx += ax * dt;
       b.vy += ay * dt;
@@ -389,9 +597,9 @@ export function stepBody(b: Body, dt: number, domain: Domain): Body {
   }
 
   const speed = Math.hypot(b.vx, b.vy);
-  if (speed > b.maxSpeed) {
-    b.vx = (b.vx / speed) * b.maxSpeed;
-    b.vy = (b.vy / speed) * b.maxSpeed;
+  if (speed > speedCap) {
+    b.vx = (b.vx / speed) * speedCap;
+    b.vy = (b.vy / speed) * speedCap;
   }
 
   b.x += b.vx * dt;
@@ -400,10 +608,60 @@ export function stepBody(b: Body, dt: number, domain: Domain): Body {
   return b;
 }
 
-/** Arrived: close enough and slow enough that the wiggle can start. */
-export function hasArrived(b: Body, epsilon = 3): boolean {
-  if (!b.target) return false;
-  return Math.hypot(b.target.x - b.x, b.target.y - b.y) <= Math.max(epsilon, b.r * 0.06) && Math.hypot(b.vx, b.vy) < 40;
+/* ---------------- the roam plan ---------------- */
+
+/**
+ * The 5-second exploration, as field-fraction waypoints. Each stop is
+ * {fx, fy, pause} where fx/fy are fractions of the field's width/height
+ * and pause is the dwell in seconds before the next leg may start.
+ *
+ * The path is a story (brief §45): the droid wakes at the right of the
+ * composition, investigates LEARN at the left, crosses the headline
+ * through CONNECT, and grows into its rest at the lower right.
+ *
+ * The legs are sized so the walk lands inside the 5s window at RIG.roam
+ * on both the desktop and the phone hero (tests/ruru.test.ts), so the
+ * cinematic reads as one deliberate sweep rather than a slow crawl.
+ */
+export const ROAM_PLAN: { fx: number; fy: number; pause: number }[] = [
+  { fx: 0.20, fy: 0.34, pause: 0.18 }, // wakes and rolls to the left edge
+  { fx: 0.44, fy: 0.62, pause: 0.14 }, // through the headline (LEARN/CONNECT)
+  { fx: 0.74, fy: 0.38, pause: 0.14 }, // out to the right, under the actions
+  { fx: 0.62, fy: 0.55, pause: 0 }, // settles at rest
+];
+
+/**
+ * Pure timing simulator for the roam: given the field's pixel size and
+ * the ball diameter, walks the plan and returns the total time. The
+ * trapezoid of one leg (accelerate at roamAccel, cruise at RIG.roam,
+ * arrive-taper) averages ~0.78 of vmax for these leg lengths, so a leg
+ * costs dist / (0.78 * vmax) plus its waypoint pause.
+ */
+export function simulateRoam(fieldW: number, fieldH: number, d: number): number {
+  const vmax = pxPerSec(d, RIG.roam);
+  const pts = [
+    { x: fieldW * 0.62, y: fieldH * 0.55 }, // wake position (the rest pose)
+    ...ROAM_PLAN.map((p) => ({ x: fieldW * p.fx, y: fieldH * p.fy })),
+  ];
+  let total = 0;
+  for (let i = 1; i < pts.length; i++) {
+    const dist = Math.hypot(pts[i].x - pts[i - 1].x, pts[i].y - pts[i - 1].y);
+    total += dist / (0.78 * vmax);
+    total += ROAM_PLAN[i - 1].pause;
+  }
+  return total;
+}
+
+/** Arrived: close enough and slow enough that the wiggle can start. Measured
+ *  against the reachable aim point, so unreachable waypoints still complete
+ *  (a stall here would freeze the whole roam cinematic). */
+export function hasArrived(b: Body, domain: Domain, epsilon = 3): boolean {
+  const aim = aimPoint(b, domain);
+  if (!aim) return false;
+  return (
+    Math.hypot(aim.x - b.x, aim.y - b.y) <= Math.max(epsilon, b.r * 0.06) &&
+    Math.hypot(b.vx, b.vy) < 40
+  );
 }
 
 /** Floor points the droid wanders between while idle. */
