@@ -101,6 +101,9 @@ export default function Profile() {
         ← Back to home
       </a>
       <h1 className="mt-4 font-display text-4xl font-extrabold sm:text-5xl">Profile & settings</h1>
+      <a href="#/tickets" className="hard-button mt-4 inline-block bg-gyellow px-4 py-2 font-display text-sm font-bold">
+        My tickets →
+      </a>
 
       {status === "loading" && (
         <p className="mt-8" role="status">

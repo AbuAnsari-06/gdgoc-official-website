@@ -193,7 +193,8 @@ gdgoc-psit/
 | POST | `/api/events` | Create event | Admin |
 | PUT / DELETE | `/api/events/:id` | Update / delete event | Admin |
 | POST | `/api/events/:id/register` | Register and generate ticket | Member |
-| GET | `/api/registrations/me` | My tickets | Member |
+| GET | `/api/tickets` | My tickets (only the logged-in member's) | Member |
+| GET | `/api/tickets/:ticketId` | One of my tickets, with its QR code when valid | Member |
 | POST | `/api/attendance/scan` | Verify QR and mark attendance | Admin |
 | GET | `/api/events/:id/registrations` | Registrations / CSV export | Admin |
 | GET | `/api/projects` | List projects | Member |
@@ -216,6 +217,25 @@ gdgoc-psit/
 - **Reduced motion**: the intro fades instead of animating, marquees stop, letters stay still and the custom cursor is off.
 - **Checks**: `npm run check` runs the typecheck, tests and production build.
 - **Known limitations**: event photos are stock images until the chapter's own photos are added; the Discord link is pending.
+### 🎟️ My Tickets
+
+- **Pages:** `/#/tickets` (ticket wallet with filters) and `/#/tickets/<ticketId>` (one ticket with its QR code). Both need a login; signed-out visitors go to login and come back.
+- **Data model:** a `Registration` is the ticket. It links a user and an `Event`, has a random `ticketId` (22 characters, unique), a `status` (`pending`, `confirmed`, `cancelled`) and `attendedAt`. One registration per user per event (unique index).
+- **Ownership:** every ticket query filters by the logged-in user. Someone else's ticket, an unknown ID and a malformed ID all return the same `404`, so nothing leaks. Responses never include database IDs or other members' data.
+- **States** (worked out on the server):
+
+  | State | Meaning | QR shown |
+  |---|---|---|
+  | `confirmed` | Registered and the event hasn't ended | Yes |
+  | `pending` | Waiting for confirmation | No |
+  | `checked_in` | Attendance recorded (`attendedAt` set) | No |
+  | `cancelled` | The registration was cancelled | No |
+  | `event_cancelled` | The event itself was cancelled | No |
+  | `expired` | The event ended and the ticket wasn't used | No |
+
+- **QR code:** generated on the server as SVG. The payload is only the `ticketId` — no names, emails or tokens. The attendance scanner (#8) looks the ID up and checks the state on the server, so a QR made in the browser can't create a valid ticket.
+- **Creating tickets:** done by event registration (#6). For local testing, `cd server && npm run seed:tickets -- you@example.com` adds sample tickets (marked "Sample:") to an existing account.
+- **Not built yet:** ticket download as a file and sharing; printing works from the ticket page.
 
 
 

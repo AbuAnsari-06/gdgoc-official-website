@@ -1170,3 +1170,14 @@ html.cursor-on iframe {
     transform: rotate(-2deg) !important;
   }
 }
+
+@page {
+  margin: 12mm;
+}
+
+@media print {
+  .cursor-layer,
+  .noise-overlay {
+    display: none !important;
+  }
+}

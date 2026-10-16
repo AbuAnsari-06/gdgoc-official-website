@@ -16,6 +16,8 @@ import Cursor from "./components/Cursor";
 import GDGoCIntro from "./components/intro/GDGoCIntro";
 import Profile from "./components/Profile";
 import Auth from "./components/Auth";
+import Tickets from "./components/Tickets";
+import TicketDetail from "./components/TicketDetail";
 import { setLenis } from "./lib/scroll";
 
 export default function App() {
@@ -28,9 +30,10 @@ export default function App() {
   const pages = {
     "#/profile": Profile,
     "#/login": Auth,
+    "#/tickets": Tickets,
   };
-  const route = hash.split("?")[0] as keyof typeof pages;
-  const page = pages[route];
+  const route = hash.split("?")[0];
+  const page = route.startsWith("#/tickets/") ? TicketDetail : pages[route as keyof typeof pages];
 
   useEffect(() => {
     if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
@@ -72,7 +75,7 @@ export default function App() {
     const Page = page;
     return (
       <div className="min-h-screen bg-bg font-body text-ink">
-        <Page />
+        <Page key={route} />
         <Cursor />
       </div>
     );
