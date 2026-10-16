@@ -63,8 +63,8 @@ export default function Domains() {
             />
           </div>
           <p className="max-w-sm text-[15px] leading-relaxed text-ink/80">
-            Six cards in the stack, one per lane. They pile up as you scroll - hover any of them for session
-            intel.
+            Six cards in the stack, one per lane. They pile up as you scroll - tap, hover or tab to any of them for
+            session intel.
           </p>
         </div>
 

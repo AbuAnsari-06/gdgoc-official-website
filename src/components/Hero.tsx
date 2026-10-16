@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { Marquee, MonthGrid, Reveal, SectionTag, StatusPill } from "./ui";
+import { Marquee, MonthGrid, Reveal, SectionTag, StatusPill, SuitGlyph, SUIT_FOR } from "./ui";
 import Robot from "./Robot";
 import { TICKER_LINES, COLOR_HEX, type GColor } from "../data/content";
 import { OSO, useOsoStatus, type OsoStatus } from "../lib/oso";
@@ -515,18 +515,8 @@ export default function Hero() {
               {TICKER_LINES.map((item, i) => (
                 <span key={`${item.text}-${i}`} className="flex items-center">
                   <span className="ticker-item">{item.text}</span>
-                  <span className="relative inline-flex h-3 w-3 items-center justify-center" aria-hidden="true">
-                    <svg
-                      width="11"
-                      height="11"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke={COLOR_HEX[item.color]}
-                      strokeWidth="5"
-                      className="absolute"
-                    >
-                      <path d="M12 3v18M3 12h18" />
-                    </svg>
+                  <span className="inline-flex" style={{ color: COLOR_HEX[item.color] }} aria-hidden="true">
+                    <SuitGlyph suit={SUIT_FOR[item.color]} size={13} />
                   </span>
                 </span>
               ))}

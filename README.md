@@ -201,7 +201,23 @@ gdgoc-psit/
 | PATCH | `/api/projects/:id/status` | Update project status | Admin |
 | GET | `/api/team` | List team members | Public |
 
-### 🔐 Authentication
+### 🏠 Homepage content
+
+| Content | Source of truth | Notes |
+|---|---|---|
+| Open Source October dates and status | `src/lib/oso.ts` | Every section (hero card, campaign, About code card, board) reads from here |
+| Stats, notices, calendar, events, domains | `src/data/content.ts` | Static for now; move to the API when an admin panel exists (#8) |
+| Social links (footer, Join section) | `SOCIAL_LINKS` in `src/data/content.ts` | Only real chapter links; add Discord here once confirmed |
+| Crew roster | `src/data/members.ts` | Add each lead here as they are announced; open "this slot could be you" cards fill the rest of the grid |
+
+- **Join form** does not store anything itself: it sends visitors to the real sign-up page (`/#/login?mode=signup`) with name, email and year prefilled.
+- **Cards with details** (events, domains) open on hover, keyboard focus or tap.
+- **Menu** opens on click, moves focus to the first item and closes with Escape.
+- **Reduced motion**: the intro fades instead of animating, marquees stop, letters stay still and the custom cursor is off.
+- **Checks**: `npm run check` runs the typecheck, tests and production build.
+- **Known limitations**: event photos are stock images until the chapter's own photos are added; the Discord link is pending.
+
+
 
 - **Pages:** `/#/login` (log in, with a link to sign up) and `/#/login?mode=signup`. Protected pages send signed-out users to `/#/login?next=<page>` and return them there after login.
 - **Session:** one JWT (7 days) in an `httpOnly` cookie, so browser scripts never see the token. Locally the cookie is `SameSite=Lax`. With `NODE_ENV=production` it becomes `SameSite=None; Secure`, because the frontend (Vercel) and API (Render) are different sites, and the server trusts the proxy's client IP. CORS only allows `CLIENT_URL`. The app restores the session on reload by calling `GET /api/users/me`.

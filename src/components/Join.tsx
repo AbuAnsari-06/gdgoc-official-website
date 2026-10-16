@@ -1,7 +1,6 @@
 import { useState } from "react";
 import { ArrowLink, Reveal, SectionTag, ScrambleHeading, useMagnetic } from "./ui";
-import { COLOR_HEX, type GColor } from "../data/content";
-import { DEMO_PERSON } from "../lib/identity";
+import { COLOR_HEX, SOCIAL_LINKS, type GColor } from "../data/content";
 import { cn } from "../utils/cn";
 
 const PERKS = [
@@ -85,12 +84,16 @@ export default function Join() {
             </ul>
 
             <div className="mt-10 flex flex-wrap gap-4">
-              <ArrowLink ghost color="gblue" onClick={() => window.open("https://gdg.community.dev", "_blank", "noopener")}>
-                gdg.community.dev
-              </ArrowLink>
-              <ArrowLink ghost color="gred" onClick={() => window.open("https://instagram.com", "_blank", "noopener")}>
-                Instagram
-              </ArrowLink>
+              {SOCIAL_LINKS.map((link) => (
+                <ArrowLink
+                  key={link.label}
+                  ghost
+                  color={link.color}
+                  onClick={() => window.open(link.href, "_blank", "noopener")}
+                >
+                  {link.label}
+                </ArrowLink>
+              ))}
             </div>
           </div>
 
@@ -125,8 +128,7 @@ export default function Join() {
                       setName(e.target.value);
                       setErrors((er) => ({ ...er, name: undefined }));
                     }}
-                    /* DEMO DATA: replace before launch */
-                    placeholder={DEMO_PERSON.fullName}
+                    placeholder="Your full name"
                     className={cn(inputCls, errors.name && "border-gred")}
                   />
                   {errors.name && <p className="mt-1.5 font-mono text-[11px] font-bold text-ink">{errors.name}</p>}

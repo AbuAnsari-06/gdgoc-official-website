@@ -1,4 +1,4 @@
-import { useEffect, useState, type MouseEvent as ReactMouseEvent } from "react";
+import { useEffect, useRef, useState, type MouseEvent as ReactMouseEvent } from "react";
 import { AnimatePresence, motion, useScroll, useSpring } from "framer-motion";
 import { cn } from "../utils/cn";
 import { scrollToId, scrollToTop } from "../lib/scroll";
@@ -159,6 +159,8 @@ function AccountLink({ user }: { user: Profile | null }) {
 export default function Nav() {
   const [open, setOpen] = useState(false);
   const [user, setUser] = useState<Profile | null>(null);
+  const menuButtonRef = useRef<HTMLButtonElement>(null);
+  const panelRef = useRef<HTMLDivElement>(null);
   const { scrollYProgress } = useScroll();
   const progress = useSpring(scrollYProgress, { stiffness: 120, damping: 28, mass: 0.4 });
   const [scrolled, setScrolled] = useState(false);
@@ -182,13 +184,29 @@ export default function Nav() {
 
   /* escape closes · body scroll lock while open */
   useEffect(() => {
-    const onKey = (e: KeyboardEvent) => e.key === "Escape" && setOpen(false);
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape" && open) {
+        setOpen(false);
+        menuButtonRef.current?.focus();
+      }
+    };
     window.addEventListener("keydown", onKey);
     document.body.style.overflow = open ? "hidden" : "";
     return () => {
       window.removeEventListener("keydown", onKey);
       document.body.style.overflow = "";
     };
+  }, [open]);
+
+  useEffect(() => {
+    if (!open) {
+      return;
+    }
+
+    const frame = requestAnimationFrame(() => {
+      panelRef.current?.querySelector<HTMLButtonElement>("nav button")?.focus();
+    });
+    return () => cancelAnimationFrame(frame);
   }, [open]);
 
   const go = (id: string) => {
@@ -242,8 +260,10 @@ export default function Nav() {
             {/* the single menu button opens the board */}
             <button
               type="button"
+              ref={menuButtonRef}
               onClick={() => setOpen((v) => !v)}
               aria-expanded={open}
+              aria-controls="site-menu"
               className="hard-button group flex items-center gap-3 bg-gyellow px-4 py-2 font-display text-sm font-bold text-ink"
             >
               <span className="grid grid-cols-2 gap-[3px]">
@@ -274,6 +294,8 @@ export default function Nav() {
       <AnimatePresence>
         {open && (
           <motion.div
+            ref={panelRef}
+            id="site-menu"
             initial={{ clipPath: "inset(0 0 100% 0)" }}
             animate={{ clipPath: "inset(0 0 0% 0)" }}
             exit={{ clipPath: "inset(0 0 100% 0)" }}

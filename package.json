@@ -7,7 +7,8 @@
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
-    "test": "vitest run --environment jsdom tests/auth.test.tsx"
+    "test": "vitest run --environment jsdom tests/auth.test.tsx tests/homepage.test.tsx",
+    "check": "tsc --noEmit -p . && npm test && npm run build"
   },
   "dependencies": {
     "@react-three/drei": "^10.7.9",

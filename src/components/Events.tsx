@@ -7,12 +7,21 @@ function EventCard({ e, rank }: { e: PastEvent; rank: string }) {
   const hex = COLOR_HEX[e.color];
   const suit = SUIT_FOR[e.color];
   const [hover, setHover] = useState(false);
+  const [focused, setFocused] = useState(false);
+  const [pinned, setPinned] = useState(false);
+  const open = hover || focused || pinned;
 
   return (
     <div
       className="hard-surface relative flex h-full flex-col overflow-hidden"
+      tabIndex={0}
+      role="group"
+      aria-label={`${e.title}, ${e.date}. Session report`}
       onMouseEnter={() => setHover(true)}
       onMouseLeave={() => setHover(false)}
+      onFocus={() => setFocused(true)}
+      onBlur={() => setFocused(false)}
+      onClick={() => setPinned((value) => !value)}
     >
       <div className="relative aspect-[16/10] overflow-hidden border-b-[3px] border-ink">
         <img src={e.image} alt={e.title} loading="lazy" className="h-full w-full object-cover" />
@@ -43,14 +52,14 @@ function EventCard({ e, rank }: { e: PastEvent; rank: string }) {
           <span style={{ color: hex }}>
             <SuitGlyph suit={suit} size={11} />
           </span>
-          hover for the session report
+          tap, hover or focus for the session report
         </p>
       </div>
 
       {/* session report — slides up on hover */}
       <motion.div
         initial={false}
-        animate={{ y: hover ? 0 : "101%" }}
+        animate={{ y: open ? 0 : "101%" }}
         transition={{ duration: 0.28, ease: [0.22, 1, 0.36, 1] }}
         className="absolute inset-x-0 bottom-0 z-[7] border-t-[3px] px-6 py-5"
         style={{ background: PANEL_HEX[e.color], borderTopColor: PANEL_EDGE[e.color], color: ON_COLOR[e.color] }}
@@ -77,7 +86,7 @@ export default function Events() {
           </div>
           <p className="max-w-sm text-[15px] leading-relaxed text-ink/80">
             Six cards from the deck we've played so far - workshops, study jams, watch parties and PR nights.
-            Hover any card for its session report.
+            Tap, hover or tab to any card for its session report.
           </p>
         </div>
 
