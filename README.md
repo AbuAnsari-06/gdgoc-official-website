@@ -201,6 +201,21 @@ gdgoc-psit/
 | PATCH | `/api/projects/:id/status` | Update project status | Admin |
 | GET | `/api/team` | List team members | Public |
 
+### 🔐 Authentication
+
+- **Pages:** `/#/login` (log in, with a link to sign up) and `/#/login?mode=signup`. Protected pages send signed-out users to `/#/login?next=<page>` and return them there after login.
+- **Session:** one JWT (7 days) in an `httpOnly` cookie, so browser scripts never see the token. Locally the cookie is `SameSite=Lax`. With `NODE_ENV=production` it becomes `SameSite=None; Secure`, because the frontend (Vercel) and API (Render) are different sites, and the server trusts the proxy's client IP. CORS only allows `CLIENT_URL`. The app restores the session on reload by calling `GET /api/users/me`.
+- **Logout** clears the cookie and returns to `/#/login`. **Changing the password** signs out every other device (`tokenVersion` on the user). An expired or invalid token gets `401`, and protected pages redirect to login.
+- **Roles:** `student` (default) and `admin`. Sign-up always creates a `student`, and no API sets a role from the request body. Make an admin directly in the database. The server checks every protected route; the frontend only decides what to show.
+- **Errors:** always `{ message, errors? }`, where `errors` maps field names to messages. Internal details are never returned.
+- **Abuse protection:** 10 failed login or sign-up attempts per IP block it for 15 minutes (in-memory). Responses use `nosniff`, `DENY` framing and `no-referrer`.
+- **Validation** lives in `src/lib/profile.ts` and is shared by the frontend and the server.
+- **Tests:**
+  - `npm test`: auth page behaviour (validation, password toggle, switching forms, loading, network failure, redirects).
+  - `npx tsx tests/profile.test.ts`: shared validation.
+  - `cd server && npm test`: API (register, login, duplicates, bad payloads, hashing, expired/forged tokens, logout, role escalation, rate limit). Needs the server running; restart it between runs, because the last test trips the rate limit.
+- **Not built yet:** refresh tokens, password recovery (needs SMTP for time-limited reset links), email verification, and admin-only routes (#8 adds a `403` role check with its first admin endpoint).
+
 ---
 
 ## 🤝 How to Contribute

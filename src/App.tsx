@@ -15,6 +15,7 @@ import Footer from "./components/Footer";
 import Cursor from "./components/Cursor";
 import GDGoCIntro from "./components/intro/GDGoCIntro";
 import Profile from "./components/Profile";
+import Auth from "./components/Auth";
 import { setLenis } from "./lib/scroll";
 
 export default function App() {
@@ -26,6 +27,7 @@ export default function App() {
   }, []);
   const pages = {
     "#/profile": Profile,
+    "#/login": Auth,
   };
   const route = hash.split("?")[0] as keyof typeof pages;
   const page = pages[route];
