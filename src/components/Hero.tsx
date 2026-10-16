@@ -1,8 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { Marquee, MonthGrid, Reveal, SectionTag, StatusPill } from "./ui";
-import GdgLogo from "./GdgLogo";
 import Robot from "./Robot";
-import SpaceBackground from "./SpaceBackground";
 import { TICKER_LINES, COLOR_HEX, type GColor } from "../data/content";
 import { OSO, useOsoStatus, type OsoStatus } from "../lib/oso";
 import { scrollToId } from "../lib/scroll";
@@ -30,15 +28,6 @@ const MOTION: Record<string, "rise" | "rush" | "slam"> = {
   "Learn.": "rise",
   "Connect.": "rush",
   "Grow.": "slam",
-};
-
-/* Soft atmospheric glow living behind each headline word — the brand
-   colour as light in the world, not as a panel (brief §27). */
-const GLOW: Record<GColor, string> = {
-  gblue: "radial-gradient(46% 42% at 42% 58%, rgba(66,133,244,0.14), rgba(66,133,244,0.05) 52%, transparent 76%)",
-  gred: "radial-gradient(46% 42% at 46% 60%, rgba(234,67,53,0.11), rgba(234,67,53,0.04) 52%, transparent 76%)",
-  ggreen: "radial-gradient(46% 42% at 42% 58%, rgba(52,168,83,0.12), rgba(52,168,83,0.04) 52%, transparent 76%)",
-  gyellow: "",
 };
 
 /* ------------------------------------------------------------------
@@ -80,6 +69,10 @@ function DropLine({
 
     /* Reduced motion: the type stays exactly where it is set. */
     if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+
+    if (window.matchMedia("(max-width: 767px)").matches) {
+      return;
+    }
 
     /* Letter centres in section space, remeasured on resize. */
     let xs: number[] = [];
@@ -197,13 +190,6 @@ function DropLine({
       ref={ref}
       aria-label={word}
     >
-      {/* the word's atmospheric glow, absolutely positioned so it never
-          affects layout */}
-      <span
-        aria-hidden="true"
-        className="hero-word-glow"
-        style={{ background: GLOW[color] }}
-      />
       {word.split("").map((ch, i) => (
         <span
           key={`${ch}-${i}`}
@@ -343,15 +329,9 @@ export default function Hero() {
   return (
     <section
       id="top"
-      className="hero-space relative flex min-h-[100svh] flex-col overflow-clip"
+      className="hero-space paper-ground relative flex min-h-[100svh] flex-col overflow-clip"
       aria-label="GDGoC PSIT, Google Developer Group on Campus, PSIT Kanpur. Learn, connect, grow."
     >
-      {/* Layer A of the atmosphere: the base gradients are painted by
-         .hero-space itself, so the composition holds with every script
-         disabled. Everything above them is inside this section, which
-         means the sections below keep their own paper world untouched. */}
-      <SpaceBackground />
-
       {/* 1px sentinel at 50% of the hero: the card is hidden until it has
          scrolled above the top of the viewport. */}
       <span
@@ -363,46 +343,24 @@ export default function Hero() {
       {/* ---- the whole hero is one environment. The robot section IS the
          stage; the text is an overlay layer, not a pane. ---- */}
       <div id="ruru-stage" className="hero-stage relative flex flex-1 flex-col justify-center">
-        {/* readability veil: a soft left-side deepening that keeps the
-           headline's contrast without forming a panel edge (§37) */}
-        <div
-          className="hero-veil pointer-events-none absolute inset-0 z-[1]"
-          aria-hidden="true"
-        />
-
         {/* the developer grid: a faint perspective lattice on the lower
            half, fading into the distance (Layer E) */}
         <div className="hero-grid" aria-hidden="true" />
-
-        {/* the official mark, flat and unaltered, on a translucent plate.
-           Kept clear of the nav's Menu button (top right). */}
-        <span
-          className="pointer-events-none absolute top-[84px] left-6 z-[4] inline-flex"
-          style={{ opacity: 0.92 }}
-        >
-          <GdgLogo variant="mark-plate" size={44} alt="" clear={0.14} />
-        </span>
-
-        {/* editorial accent glyphs — no boxes, just faint mono debris in
-           the lifted brand tints, echoing the starfield's own glyphs */}
-        <span
-          aria-hidden="true"
-          className="pointer-events-none absolute top-[16%] right-[10%] z-[1] hidden font-mono text-[11px] tracking-[0.3em] text-gblue-mute/60 lg:block"
-        >
-          01001
-        </span>
-        <span
-          aria-hidden="true"
-          className="pointer-events-none absolute bottom-[26%] right-[22%] z-[1] hidden font-mono text-[11px] text-ggreen-mute/50 lg:block"
-        >
-          {"</>"}
-        </span>
 
         {/* ---- text overlay ---- */}
         <div className="hero-text-pane relative z-20 w-full pt-24 pb-6">
           <div className="w-full max-w-[46rem]">
             <Reveal delay={0.1} y={16}>
-              <SectionTag label="Google Developer Group on Campus" color="gyellow" />
+              <div className="flex flex-wrap items-center gap-3">
+                <SectionTag label="Google Developer Group on Campus" color="gyellow" />
+                {/* green is the one chip that carries a saturated fill: ink on
+                   #34A853 reads at 5.3:1, and the pulse dot inverts to ink so
+                   it stays visible on the fill. */}
+                <span className="flex items-center gap-2 border-2 border-ink bg-ggreen px-3 py-1.5 text-xs font-semibold text-ink">
+                  <span className="animate-pulse-dot h-2.5 w-2.5 border-2 border-ink bg-ink" />
+                  Season 04 · Active
+                </span>
+              </div>
             </Reveal>
 
             {/* data-ruru-ceiling: the droid's envelope is measured from this
@@ -434,24 +392,28 @@ export default function Hero() {
               </p>
               {/* supporting type the droid passes behind: it dims while it
                  covers these blocks, so the words keep their contrast */}
-              <div data-ruru-keepout className="mt-6 flex flex-wrap items-center gap-3">
-                {/* green is the one chip that carries a saturated fill: ink on
-                   #34A853 reads at 5.3:1, and the pulse dot inverts to ink so
-                   it stays visible on the fill. */}
-                <span className="flex items-center gap-2 border-2 border-ink bg-ggreen px-3 py-1.5 text-xs font-semibold text-ink">
-                  <span className="animate-pulse-dot h-2.5 w-2.5 border-2 border-ink bg-ink" />
-                  Season 04 · Active
-                </span>
+              <div data-ruru-keepout className="mt-8 flex flex-wrap items-center gap-x-7 gap-y-4">
                 {/* yellow is a fill, never body text: ink on yellow is 9.8:1 */}
+                <a
+                  href="#/login?mode=signup"
+                  data-cursor-label="Join"
+                  data-cursor-color="#FBBC04"
+                  className="hard-button group inline-flex items-center gap-3 bg-gyellow px-6 py-3.5 font-display text-base font-extrabold text-ink"
+                >
+                  Join the community
+                  {ARROW}
+                </a>
                 <a
                   href="https://gdg.community.dev"
                   target="_blank"
                   rel="noopener noreferrer"
                   data-cursor-label="Open"
                   data-cursor-color="#4285F4"
-                  className="hard-button group inline-flex items-center gap-2 bg-gyellow px-4 py-2.5 text-sm font-bold text-ink"
+                  className="group inline-flex items-center gap-2 text-sm font-bold text-ink"
                 >
-                  gdg.community.dev
+                  <span className="border-b-[3px] border-ink/20 pb-0.5 transition-colors duration-300 group-hover:border-gblue">
+                    gdg.community.dev
+                  </span>
                   {ARROW}
                 </a>
               </div>
@@ -460,14 +422,14 @@ export default function Hero() {
 
           <div className="mt-8 flex items-center justify-between gap-4 lg:mt-10">
             <span data-ruru-keepout className="flex items-center gap-3">
-              <span className="font-display text-xs font-extrabold tracking-[0.18em] text-white/90 uppercase">
+              <span className="font-display text-xs font-extrabold tracking-[0.18em] text-ink uppercase">
                 Scroll
               </span>
               <span
-                className="scroll-indicator inline-flex h-8 w-[3px] overflow-hidden bg-white/25"
+                className="scroll-indicator inline-flex h-8 w-[3px] overflow-hidden bg-ink/15"
                 aria-hidden="true"
               >
-                <span className="scroll-indicator-dot block h-3 w-full bg-white" />
+                <span className="scroll-indicator-dot block h-3 w-full bg-ink" />
               </span>
             </span>
             <span data-ruru-keepout className="hero-meta text-xs font-semibold">
@@ -533,7 +495,7 @@ export default function Hero() {
       {/* ---- the community rail (brief §8): three zones on the hero's own
          grid — a fixed marker, the seamless message ticker, and one real
          scroll target. Glassy, so the world keeps running behind it. ---- */}
-      <div className="ticker-strip relative z-10 border-y border-white/10 bg-white/[0.04] backdrop-blur-[3px]">
+      <div className="ticker-strip relative z-10">
         <div className="hero-rail flex items-stretch">
           {/* left: the community marker. The four squares are the chapter's
              own colour set, not a status light. */}

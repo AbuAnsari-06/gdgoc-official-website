@@ -1,184 +1,98 @@
-/* ==================================================================
-   GDGoCIntro styles. Every selector is prefixed gdg-intro- so nothing
-   leaks into the site, and the site's own rules are not overridden
-   except where the intro must own the page (scroll lock, cursor).
-   ================================================================== */
-
-/* Scroll lock while the intro covers the page. */
 html.gdg-intro-lock {
   overflow: hidden !important;
 }
 
-/* The overlay sits above everything the site renders (the custom
-   cursor layer is z-index 100, the noise overlay 70). */
 .gdg-intro {
   position: fixed;
   inset: 0;
   z-index: 200;
-  background: #050507;
-  color: #fff;
-  outline: none;
   overflow: hidden;
 }
 
-/* Film grain over the whole intro frame: the same static SVG-noise
-   technique the site's own .noise-overlay uses. A plain background
-   image costs nothing per frame and sits above the canvas but below
-   the skip control. */
-.gdg-intro::before {
-  content: "";
-  position: absolute;
-  inset: 0;
-  z-index: 1;
-  pointer-events: none;
-  opacity: 0.055;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
-}
-
-/* While the intro is up, the site-wide custom cursor must not hide
-   the native pointer: the visitor needs a cursor for the skip control. */
-.gdg-intro,
-.gdg-intro * {
-  cursor: auto !important;
-}
-
-/* Stage wrapper: holds the preloader and fades it into the reveal. */
-.gdg-intro-stage {
-  position: absolute;
-  inset: 0;
-  transition: opacity 620ms ease;
-}
-.gdg-intro-stage[data-gone="1"] {
-  opacity: 0;
-  pointer-events: none;
-}
-
-/* Light burst behind the identity. It is scene lighting on the frame,
-   never a filter applied to the official mark. */
-.gdg-intro-bloom {
-  position: absolute;
-  inset: 0;
-  opacity: 0;
-  background:
-    radial-gradient(circle at 50% 50%, rgba(138, 180, 248, 0.32), rgba(5, 5, 7, 0) 58%),
-    radial-gradient(circle at 50% 50%, rgba(255, 255, 255, 0.1), rgba(5, 5, 7, 0) 38%);
-  transition: opacity 1150ms cubic-bezier(0.4, 0, 1, 1);
-  pointer-events: none;
-}
-.gdg-intro[data-phase="zoom"] .gdg-intro-bloom {
-  opacity: 1;
-}
-
-/* The identity stack: official mark on top, chapter name and caption
-   set in site type beneath it (never redrawn into the artwork). The
-   whole stack scales as one unit, so the mark is never distorted. */
-.gdg-intro-identity {
+.gdg-intro-paper {
   position: absolute;
   inset: 0;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 22px;
-  transform: scale(0.08);
-  opacity: 0;
-  transition:
-    transform 620ms cubic-bezier(0.22, 1, 0.36, 1),
-    opacity 420ms ease;
-  will-change: transform, opacity;
-}
-.gdg-intro[data-phase="reveal"] .gdg-intro-identity {
-  transform: scale(0.14);
-  opacity: 1;
+  gap: 2.75rem;
+  background-color: var(--color-bg);
 }
 
-/* The cinematic zoom: accelerating toward the viewer, soft focus
-   pulling, passing through the camera. */
-.gdg-intro[data-phase="zoom"] .gdg-intro-identity {
-  transform: scale(26);
-  opacity: 1;
-  filter: blur(12px);
-  transition:
-    transform 1200ms cubic-bezier(0.62, 0, 0.86, 0.26),
-    filter 1200ms ease-in,
-    opacity 900ms ease-in;
+.gdg-intro-deck {
+  position: relative;
+  width: clamp(72px, 17vw, 132px);
+  aspect-ratio: 5 / 7;
+}
+
+.gdg-intro-card {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.7rem;
+  border: 3px solid var(--color-ink);
+  box-shadow: 6px 6px 0 var(--color-ink);
+  color: var(--color-ink);
+}
+
+.gdg-intro-rank {
+  position: absolute;
+  top: 0.45rem;
+  left: 0.55rem;
+  font-family: var(--font-display);
+  font-size: 0.75rem;
+  font-weight: 800;
 }
 
 .gdg-intro-word {
-  font-family: var(--font-display, system-ui, sans-serif);
-  font-size: clamp(2.4rem, 7vw, 4.6rem);
+  font-family: var(--font-display);
+  font-size: clamp(0.62rem, 1.5vw, 1rem);
   font-weight: 800;
-  letter-spacing: -0.02em;
-  line-height: 1;
-  margin: 0;
-  color: #fff;
-  text-align: center;
+}
+
+.gdg-intro-title {
+  border: 3px solid var(--color-ink);
+  background: var(--color-bg);
+  box-shadow: 6px 6px 0 var(--color-ink);
+  padding: 0.35rem 1.1rem;
+  font-family: var(--font-display);
+  font-size: clamp(1.8rem, 5vw, 3.4rem);
+  font-weight: 800;
+  line-height: 1.1;
+  color: var(--color-ink);
 }
 
 .gdg-intro-caption {
-  font-family: var(--font-mono, ui-monospace, monospace);
-  font-size: clamp(0.72rem, 1.6vw, 0.82rem);
-  letter-spacing: 0.18em;
+  margin-top: -1.5rem;
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  letter-spacing: 0.2em;
   text-transform: uppercase;
-  color: rgba(255, 255, 255, 0.62);
-  margin: 0;
-  text-align: center;
-  max-width: min(92vw, 640px);
+  color: var(--color-muted);
 }
 
-/* Skip control. Low emphasis, always keyboard reachable. */
+.gdg-intro-strip {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 25.5%;
+  border-left: 3px solid var(--color-ink);
+}
+
 .gdg-intro-skip {
   position: absolute;
-  right: clamp(16px, 4vw, 32px);
-  bottom: clamp(16px, 4vh, 28px);
-  z-index: 3;
-  padding: 8px 14px;
-  font-family: var(--font-mono, ui-monospace, monospace);
-  font-size: 12px;
-  font-weight: 500;
-  line-height: 1;
-  letter-spacing: 0.08em;
-  color: rgba(255, 255, 255, 0.66);
-  background: rgba(255, 255, 255, 0.04);
-  border: 1px solid rgba(255, 255, 255, 0.22);
-  border-radius: 999px;
-  cursor: pointer !important;
-  transition: color 0.2s ease, border-color 0.2s ease, background-color 0.2s ease;
-}
-.gdg-intro-skip:hover {
-  color: #fff;
-  border-color: rgba(255, 255, 255, 0.5);
-  background: rgba(255, 255, 255, 0.08);
-}
-.gdg-intro-skip:focus-visible {
-  outline: 2px solid #fff;
-  outline-offset: 2px;
-}
-
-/* Exit: the overlay dissolves and the site underneath is already live. */
-.gdg-intro-out {
-  opacity: 0;
-  transition: opacity 340ms ease;
-  pointer-events: none !important;
-}
-
-/* Reduced motion: the identity appears at reading size, no zoom, no
-   bloom sweep, short fades only. */
-@media (prefers-reduced-motion: reduce) {
-  .gdg-intro-identity,
-  .gdg-intro[data-phase="reveal"] .gdg-intro-identity,
-  .gdg-intro[data-phase="zoom"] .gdg-intro-identity {
-    transform: none !important;
-    filter: none !important;
-    opacity: 1 !important;
-    transition: opacity 240ms ease !important;
-  }
-  .gdg-intro-bloom {
-    transition: none !important;
-    opacity: 0 !important;
-  }
-  .gdg-intro-stage,
-  .gdg-intro-out {
-    transition: none !important;
-  }
+  right: 1.5rem;
+  bottom: 1.5rem;
+  border: 3px solid var(--color-ink);
+  background: var(--color-bg);
+  box-shadow: 4px 4px 0 var(--color-ink);
+  padding: 0.5rem 0.9rem;
+  font-family: var(--font-display);
+  font-size: 0.85rem;
+  font-weight: 800;
+  color: var(--color-ink);
 }

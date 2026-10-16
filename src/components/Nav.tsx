@@ -1,10 +1,11 @@
-import { useEffect, useRef, useState, type MouseEvent as ReactMouseEvent } from "react";
+import { useEffect, useState, type MouseEvent as ReactMouseEvent } from "react";
 import { AnimatePresence, motion, useScroll, useSpring } from "framer-motion";
 import { cn } from "../utils/cn";
 import { scrollToId, scrollToTop } from "../lib/scroll";
 import { SuitGlyph, SUIT_FOR } from "./ui";
 import GdgLogo from "./GdgLogo";
 import { COLOR_HEX, ON_COLOR, PANEL_EDGE, PANEL_HEX, type GColor } from "../data/content";
+import { api, type Profile } from "../lib/profile";
 
 const NAV_ITEMS: { id: string; label: string; desc: string; color: GColor }[] = [
   { id: "board", label: "Board", desc: "what's pinned this week", color: "gblue" },
@@ -127,21 +128,50 @@ function MenuRow({
   );
 }
 
+function AccountLink({ user }: { user: Profile | null }) {
+  if (!user) {
+    return (
+      <a
+        href="#/login"
+        className="hard-button inline-flex items-center bg-bg px-4 py-2 font-display text-sm font-bold text-ink"
+      >
+        Log in
+      </a>
+    );
+  }
+
+  const initial = user.name.trim().charAt(0).toUpperCase();
+
+  return (
+    <a
+      href="#/profile"
+      aria-label="Your profile"
+      className="hard-button inline-flex items-center gap-2 bg-bg px-2 py-1.5 font-display text-sm font-bold text-ink sm:px-3"
+    >
+      <span className="grid h-6 w-6 place-items-center border-2 border-ink bg-gblue text-xs text-white">
+        {initial}
+      </span>
+      <span className="hidden sm:inline">Profile</span>
+    </a>
+  );
+}
+
 export default function Nav() {
   const [open, setOpen] = useState(false);
-  const closeTimer = useRef<number | null>(null);
+  const [user, setUser] = useState<Profile | null>(null);
   const { scrollYProgress } = useScroll();
   const progress = useSpring(scrollYProgress, { stiffness: 120, damping: 28, mass: 0.4 });
   const [scrolled, setScrolled] = useState(false);
 
-  const requestOpen = () => {
-    if (closeTimer.current) window.clearTimeout(closeTimer.current);
-    setOpen(true);
-  };
-  const scheduleClose = () => {
-    if (closeTimer.current) window.clearTimeout(closeTimer.current);
-    closeTimer.current = window.setTimeout(() => setOpen(false), 240);
-  };
+  useEffect(() => {
+    api<Profile>("/users/me")
+      .then((me) => {
+        setUser(me);
+      })
+      .catch(() => {
+        setUser(null);
+      });
+  }, []);
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 28);
@@ -206,39 +236,41 @@ export default function Nav() {
             </span>
           </button>
 
-          {/* the single menu button — hover opens the board */}
-          <button
-            type="button"
-            onClick={() => setOpen((v) => !v)}
-            onMouseEnter={requestOpen}
-            onMouseLeave={scheduleClose}
-            aria-expanded={open}
-            className="hard-button group flex items-center gap-3 bg-gyellow px-4 py-2 font-display text-sm font-bold text-ink"
-          >
-            <span className="grid grid-cols-2 gap-[3px]">
-              {[0, 1, 2, 3].map((i) => (
-                <span
-                  key={i}
-                  className={cn(
-                    "h-[5px] w-[5px] transition-all duration-300",
-                    open ? "bg-ink" : "bg-current",
-                    open && i === 0 && "translate-x-[3px] translate-y-[3px]",
-                    open && i === 3 && "-translate-x-[3px] -translate-y-[3px]"
-                  )}
-                  style={
-                    !open
-                      ? { background: FOUR[i] }
-                      : undefined
-                  }
-                />
-              ))}
-            </span>
-            {open ? "Close" : "Menu"}
-          </button>
+          <div className="flex items-center gap-3">
+            <AccountLink user={user} />
+
+            {/* the single menu button opens the board */}
+            <button
+              type="button"
+              onClick={() => setOpen((v) => !v)}
+              aria-expanded={open}
+              className="hard-button group flex items-center gap-3 bg-gyellow px-4 py-2 font-display text-sm font-bold text-ink"
+            >
+              <span className="grid grid-cols-2 gap-[3px]">
+                {[0, 1, 2, 3].map((i) => (
+                  <span
+                    key={i}
+                    className={cn(
+                      "h-[5px] w-[5px] transition-all duration-300",
+                      open ? "bg-ink" : "bg-current",
+                      open && i === 0 && "translate-x-[3px] translate-y-[3px]",
+                      open && i === 3 && "-translate-x-[3px] -translate-y-[3px]"
+                    )}
+                    style={
+                      !open
+                        ? { background: FOUR[i] }
+                        : undefined
+                    }
+                  />
+                ))}
+              </span>
+              {open ? "Close" : "Menu"}
+            </button>
+          </div>
         </div>
       </header>
 
-      {/* full-screen dropdown — opens on hover */}
+      {/* full-screen dropdown */}
       <AnimatePresence>
         {open && (
           <motion.div
@@ -246,8 +278,6 @@ export default function Nav() {
             animate={{ clipPath: "inset(0 0 0% 0)" }}
             exit={{ clipPath: "inset(0 0 100% 0)" }}
             transition={{ duration: 0.55, ease: [0.76, 0, 0.24, 1] }}
-            onMouseEnter={requestOpen}
-            onMouseLeave={scheduleClose}
             className="fixed inset-0 z-[55] overflow-y-auto border-t-[3px] border-ink bg-bg"
           >
             <div className="flex min-h-full flex-col justify-center pt-16 pb-16">
@@ -272,6 +302,16 @@ export default function Nav() {
                   color="gyellow"
                   onClick={() => go("join")}
                   emphasized
+                />
+                <MenuRow
+                  index="08"
+                  label={user ? "Your profile" : "Log in"}
+                  desc={user ? "account and settings" : "members area"}
+                  color="gblue"
+                  onClick={() => {
+                    setOpen(false);
+                    location.hash = user ? "#/profile" : "#/login";
+                  }}
                 />
               </nav>
 

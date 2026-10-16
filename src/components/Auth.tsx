@@ -55,7 +55,12 @@ export default function Auth() {
   const params = new URLSearchParams(location.hash.split("?")[1]);
   const next = safeNext(params.get("next"));
   const [mode, setMode] = useState<Mode>(params.get("mode") === "signup" ? "signup" : "login");
-  const [form, setForm] = useState(EMPTY);
+  const [form, setForm] = useState<Signup>(() => ({
+    ...EMPTY,
+    name: params.get("name") ?? "",
+    email: params.get("email") ?? "",
+    year: Number(params.get("year")) || undefined,
+  }));
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [msg, setMsg] = useState("");
   const [busy, setBusy] = useState(false);

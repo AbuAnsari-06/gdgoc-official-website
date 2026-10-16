@@ -108,3 +108,12 @@ test("already logged in skips the form; unsafe next falls back to profile", asyn
   render(<Auth />);
   await waitFor(() => expect(location.hash).toBe("#/profile"));
 });
+
+test("sign up is prefilled from the join form link", () => {
+  location.hash = "#/login?mode=signup&name=Asha%20Verma&email=a%40psit.ac.in&year=2";
+  render(<Auth />);
+
+  expect((screen.getByLabelText(/full name/i) as HTMLInputElement).value).toBe("Asha Verma");
+  expect((screen.getByLabelText(/college email/i) as HTMLInputElement).value).toBe("a@psit.ac.in");
+  expect((screen.getByLabelText(/year/i) as HTMLSelectElement).value).toBe("2");
+});
