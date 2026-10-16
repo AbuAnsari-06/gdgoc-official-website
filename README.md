@@ -185,6 +185,9 @@ gdgoc-psit/
 |---|---|---|---|
 | POST | `/api/auth/register` | Create account | Public |
 | POST | `/api/auth/login` | Login | Public |
+| POST | `/api/auth/logout` | Logout | Member |
+| GET / PATCH | `/api/users/me` | View / edit own profile | Member |
+| PATCH | `/api/users/me/password` | Change password (signs out other devices) | Member |
 | GET | `/api/events` | List events | Member |
 | GET | `/api/events/:id` | Event details | Member |
 | POST | `/api/events` | Create event | Admin |
