@@ -43,6 +43,26 @@ A companion **mobile application** is planned (see [What to Build](#-what-to-bui
 
 ---
 
+## 📌 Project Status
+
+The **Features** section below describes the full plan. This table shows what is actually built today.
+
+| Area | Status | Issue / PR |
+|---|---|---|
+| Landing page (hero, board, about, events log, domains, crew, join) | ✅ Built | #1, #3 → PR #12, #13 |
+| Sign up / log in, sessions, roles | ✅ Built | #4 → PR #10 |
+| Profile, account settings, password change | ✅ Built | #9 → PR #11 |
+| My Tickets: wallet, ticket page, QR code | ✅ Built | #7 → PR #14 |
+| Event listing and registration (creates tickets) | 🔜 Planned | #6 |
+| Member dashboard | 🔜 Planned | #5 |
+| Admin panel and QR attendance scanner | 🔜 Planned | #8 |
+| Projects page | 🔜 Planned | — |
+| Password recovery, refresh tokens, email verification | 🔜 Planned | — |
+
+**PR merge order:** #11 (profile, issue #9) → #10 (auth, issue #4) → #12 (UI, issue #1) → #13 (homepage, issue #3) → #14 (tickets, issue #7). Each builds on the one before.
+
+---
+
 ## ✨ Features
 
 ### 🌐 Landing Page
@@ -193,7 +213,8 @@ gdgoc-psit/
 | POST | `/api/events` | Create event | Admin |
 | PUT / DELETE | `/api/events/:id` | Update / delete event | Admin |
 | POST | `/api/events/:id/register` | Register and generate ticket | Member |
-| GET | `/api/registrations/me` | My tickets | Member |
+| GET | `/api/tickets` | My tickets (only the logged-in member's) | Member |
+| GET | `/api/tickets/:ticketId` | One of my tickets, with its QR code when valid | Member |
 | POST | `/api/attendance/scan` | Verify QR and mark attendance | Admin |
 | GET | `/api/events/:id/registrations` | Registrations / CSV export | Admin |
 | GET | `/api/projects` | List projects | Member |
@@ -216,6 +237,25 @@ gdgoc-psit/
 - **Reduced motion**: the intro fades instead of animating, marquees stop, letters stay still and the custom cursor is off.
 - **Checks**: `npm run check` runs the typecheck, tests and production build.
 - **Known limitations**: event photos are stock images until the chapter's own photos are added; the Discord link is pending.
+### 🎟️ My Tickets
+
+- **Pages:** `/#/tickets` (ticket wallet with filters) and `/#/tickets/<ticketId>` (one ticket with its QR code). Both need a login; signed-out visitors go to login and come back.
+- **Data model:** a `Registration` is the ticket. It links a user and an `Event`, has a random `ticketId` (22 characters, unique), a `status` (`pending`, `confirmed`, `cancelled`) and `attendedAt`. One registration per user per event (unique index).
+- **Ownership:** every ticket query filters by the logged-in user. Someone else's ticket, an unknown ID and a malformed ID all return the same `404`, so nothing leaks. Responses never include database IDs or other members' data.
+- **States** (worked out on the server; the event-end rule lives in `src/lib/tickets.ts` and is shared by the API and the UI — an event without an end time lasts 24 hours from its start):
+
+  | State | Meaning | QR shown |
+  |---|---|---|
+  | `confirmed` | Registered and the event hasn't ended | Yes |
+  | `pending` | Waiting for confirmation | No |
+  | `checked_in` | Attendance recorded (`attendedAt` set) | No |
+  | `cancelled` | The registration was cancelled | No |
+  | `event_cancelled` | The event itself was cancelled | No |
+  | `expired` | The event ended and the ticket wasn't used | No |
+
+- **QR code:** generated on the server as SVG. The payload is only the `ticketId` — no names, emails or tokens. The attendance scanner (#8) looks the ID up and checks the state on the server, so a QR made in the browser can't create a valid ticket.
+- **Creating tickets:** done by event registration (#6). For local testing, `cd server && npm run seed:tickets -- you@example.com` adds sample tickets (marked "Sample:") to an existing account.
+- **Not built yet:** ticket download as a file and sharing; printing works from the ticket page.
 
 
 
@@ -236,7 +276,7 @@ gdgoc-psit/
 - **Tests:**
   - `npm test`: auth page behaviour (validation, password toggle, switching forms, loading, network failure, redirects).
   - `npx tsx tests/profile.test.ts`: shared validation.
-  - `cd server && npm test`: API tests for registration (including concurrent duplicate sign-ups), login and wrong credentials, profile updates, password changes (other sessions signed out), expired and forged sessions, logout, role escalation, CSRF and rate limiting. See **Verification** for running them against a local database.
+  - `cd server && npm test`: ticket lifecycle unit tests, plus API tests for registration (including concurrent duplicate sign-ups), login and wrong credentials, profile updates, password changes (other sessions signed out), expired and forged sessions, logout, role escalation, CSRF, tickets and rate limiting. See **Verification** for running them against a local database.
 - **Not built yet:** refresh tokens, password recovery (needs SMTP for time-limited reset links), email verification, and admin-only routes (#8 adds a `403` role check with its first admin endpoint).
 
 ---

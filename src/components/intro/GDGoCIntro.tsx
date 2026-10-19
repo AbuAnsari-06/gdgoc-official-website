@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { motion, useMotionValue, useTransform, type MotionValue } from "framer-motion";
 import { COLOR_HEX, type GColor } from "../../data/content";
 import { SUIT_FOR, SuitGlyph } from "../ui";
@@ -79,6 +79,8 @@ function IntroHud({ progress, opacity }: { progress: MotionValue<number>; opacit
 export default function GDGoCIntro() {
   const [phase, setPhase] = useState<Phase>(() => (shouldPlay() ? "deal" : "done"));
   const [reducedMotion] = useState(() => window.matchMedia("(prefers-reduced-motion: reduce)").matches);
+  const overlayRef = useRef<HTMLDivElement>(null);
+  const active = phase !== "done";
   const [use3D] = useState(() => !reducedMotion && webglAvailable());
   const progress = useMotionValue(0);
   const handoff = useCinematic() && use3D;
@@ -106,6 +108,43 @@ export default function GDGoCIntro() {
     const root = document.documentElement;
     return () => root.classList.remove("gdg-intro-lock");
   }, []);
+
+  useEffect(() => {
+    const overlay = overlayRef.current;
+    if (!active || !overlay?.parentElement) {
+      return;
+    }
+
+    const previousFocus = document.activeElement;
+    const background = [...overlay.parentElement.children].filter(
+      (element): element is HTMLElement => element !== overlay && element instanceof HTMLElement,
+    );
+
+    for (const element of background) {
+      element.inert = true;
+    }
+
+    const keepFocusInside = (event: KeyboardEvent) => {
+      if (event.key !== "Tab") {
+        return;
+      }
+      event.preventDefault();
+      const skip = overlay.querySelector<HTMLButtonElement>(".gdg-intro-skip");
+      (skip ?? overlay).focus();
+    };
+
+    document.addEventListener("keydown", keepFocusInside);
+
+    return () => {
+      document.removeEventListener("keydown", keepFocusInside);
+      for (const element of background) {
+        element.inert = false;
+      }
+      if (previousFocus instanceof HTMLElement && previousFocus !== document.body) {
+        previousFocus.focus({ preventScroll: true });
+      }
+    };
+  }, [active]);
 
   useEffect(() => {
     if (phase !== "deal") {
@@ -178,6 +217,8 @@ export default function GDGoCIntro() {
 
   return (
     <motion.div
+      ref={overlayRef}
+      tabIndex={-1}
       className="gdg-intro"
       role="dialog"
       aria-modal="true"

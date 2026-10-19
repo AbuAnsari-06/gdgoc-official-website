@@ -2,13 +2,14 @@ import { before, test } from "node:test";
 import assert from "node:assert/strict";
 import jwt from "jsonwebtoken";
 import mongoose from "mongoose";
+import { randomBytes } from "node:crypto";
 
 const API = process.env.API_URL || "http://localhost:5000/api";
 const LOCAL_DATABASE = /^mongodb:\/\/(localhost|127\.0\.0\.1)[:/]/;
 const options = {
   skip: LOCAL_DATABASE.test(process.env.MONGO_URI ?? "")
     ? false
-    : "API tests create accounts. Run the server and tests with a local MONGO_URI.",
+    : "API tests create accounts and events. Run the server and tests with a local MONGO_URI.",
 };
 const email = `t${Date.now()}@test.dev`;
 
@@ -88,6 +89,79 @@ test("auth and profile", options, async () => {
   assert.equal(r.status, 200);
   assert.equal(r.cookie, "token=");
 });
+
+test("tickets: members only see their own tickets and QR codes for valid ones", options, async () => {
+  const ownerEmail = `owner${Date.now()}@test.dev`;
+  const otherEmail = `other${Date.now()}@test.dev`;
+  const owner = await call("/auth/register", {
+    method: "POST",
+    body: { name: "Ticket Owner", email: ownerEmail, password: "secret123" },
+  });
+  const other = await call("/auth/register", {
+    method: "POST",
+    body: { name: "Someone Else", email: otherEmail, password: "secret123" },
+  });
+
+  await mongoose.connect(process.env.MONGO_URI);
+  const db = mongoose.connection;
+  const ownerId = (await db.collection("users").findOne({ email: ownerEmail }))._id;
+  const day = 24 * 60 * 60 * 1000;
+  const soon = new Date(Date.now() + 7 * day);
+  const fixtures = [
+    { title: "Upcoming", startsAt: soon, cancelled: false, status: "confirmed", attendedAt: null },
+    { title: "Past", startsAt: new Date(Date.now() - 7 * day), cancelled: false, status: "confirmed", attendedAt: null },
+    { title: "Called off", startsAt: soon, cancelled: true, status: "confirmed", attendedAt: null },
+    { title: "Withdrawn", startsAt: soon, cancelled: false, status: "cancelled", attendedAt: null },
+    { title: "Waiting", startsAt: soon, cancelled: false, status: "pending", attendedAt: null },
+    { title: "Attended", startsAt: soon, cancelled: false, status: "confirmed", attendedAt: new Date() },
+  ];
+  const events = await db.collection("events").insertMany(
+    fixtures.map(({ title, startsAt, cancelled }) => ({ title, startsAt, cancelled })),
+  );
+  const ids = Object.values(events.insertedIds);
+  const ticketIds = ids.map(() => randomBytes(16).toString("base64url"));
+  await db.collection("registrations").insertMany(
+    ids.map((event, i) => ({
+      user: ownerId,
+      event,
+      ticketId: ticketIds[i],
+      status: fixtures[i].status,
+      attendedAt: fixtures[i].attendedAt,
+      createdAt: new Date(),
+    })),
+  );
+  await mongoose.disconnect();
+
+  assert.equal((await call("/tickets")).status, 401);
+
+  const list = await call("/tickets", { cookie: owner.cookie });
+  assert.equal(list.status, 200);
+  const states = Object.fromEntries(list.data.tickets.map((t) => [t.event.title, t.state]));
+  assert.deepEqual(states, {
+    Upcoming: "confirmed",
+    Past: "expired",
+    "Called off": "event_cancelled",
+    Withdrawn: "cancelled",
+    Waiting: "pending",
+    Attended: "checked_in",
+  });
+  assert.equal(JSON.stringify(list.data).includes(String(ownerId)), false);
+
+  const upcoming = await call(`/tickets/${ticketIds[0]}`, { cookie: owner.cookie });
+  assert.equal(upcoming.status, 200);
+  assert.match(upcoming.data.qrSvg, /^<svg/);
+
+  for (const blocked of ticketIds.slice(1)) {
+    const res = await call(`/tickets/${blocked}`, { cookie: owner.cookie });
+    assert.equal(res.status, 200);
+    assert.equal(res.data.qrSvg, null);
+  }
+
+  assert.equal((await call(`/tickets/${ticketIds[0]}`, { cookie: other.cookie })).status, 404);
+  assert.deepEqual((await call("/tickets", { cookie: other.cookie })).data.tickets, []);
+  assert.equal((await call("/tickets/not-a-real-id", { cookie: owner.cookie })).status, 404);
+});
+
 
 test("concurrent duplicate registrations return one 201 and clean 409s", options, async () => {
   const raceEmail = `race${Date.now()}@test.dev`;

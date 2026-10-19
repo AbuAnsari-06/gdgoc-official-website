@@ -2,6 +2,7 @@ import express from "express";
 import mongoose from "mongoose";
 import authRoutes from "./routes/auth.js";
 import userRoutes from "./routes/users.js";
+import ticketRoutes from "./routes/tickets.js";
 import User from "./models/User.js";
 
 const missing = ["MONGO_URI", "JWT_SECRET"].filter((name) => !process.env[name]);
@@ -68,6 +69,7 @@ app.use((req, res, next) => {
 
 app.use("/api/auth", authRoutes);
 app.use("/api/users", userRoutes);
+app.use("/api/tickets", ticketRoutes);
 
 app.use((err, req, res, next) => {
   const status = err.status || 500;

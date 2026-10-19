@@ -1181,6 +1181,10 @@ html.cursor-on iframe {
   }
 }
 
+@page {
+  margin: 12mm;
+}
+
 @media print {
   .cursor-layer,
   .noise-overlay {

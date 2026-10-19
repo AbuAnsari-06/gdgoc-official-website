@@ -16,6 +16,8 @@ import Cursor from "./components/Cursor";
 import GDGoCIntro from "./components/intro/GDGoCIntro";
 import Profile from "./components/Profile";
 import Auth from "./components/Auth";
+import Tickets from "./components/Tickets";
+import TicketDetail from "./components/TicketDetail";
 import PageWipe, { usePageWipe } from "./components/PageWipe";
 import DeckTracker from "./components/DeckTracker";
 import DeckWorld from "./components/world/DeckWorld";
@@ -33,11 +35,12 @@ export default function App() {
   const pages = {
     "#/profile": Profile,
     "#/login": Auth,
+    "#/tickets": Tickets,
   };
   const { shownHash, wipeId } = usePageWipe(hash);
   const cinematic = useCinematic();
-  const route = shownHash.split("?")[0] as keyof typeof pages;
-  const page = pages[route];
+  const route = shownHash.split("?")[0];
+  const page = route.startsWith("#/tickets/") ? TicketDetail : pages[route as keyof typeof pages];
 
   useEffect(() => {
     if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;

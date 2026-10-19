@@ -96,6 +96,9 @@ export default function Profile() {
       <PageHeader tag="Member area" title="Your profile" color="gblue">
         Your member card, account details and security settings in one place.
       </PageHeader>
+      <a href="#/tickets" className="hard-button mt-6 inline-block bg-gyellow px-4 py-2 font-display text-sm font-bold">
+        My tickets →
+      </a>
 
       {status === "loading" && (
         <p className="mt-10" role="status">

@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import GDGoCIntro from "../src/components/intro/GDGoCIntro";
 import Profile from "../src/components/Profile";
 import MemberCard from "../src/components/MemberCard";
 
@@ -12,6 +13,7 @@ const MEMBER = {
 };
 
 beforeEach(() => {
+  sessionStorage.clear();
   location.hash = "";
   vi.stubGlobal(
     "matchMedia",
@@ -27,6 +29,27 @@ beforeEach(() => {
 });
 
 afterEach(cleanup);
+
+test("intro makes the page behind it inert and keeps Tab inside", () => {
+  const { unmount } = render(
+    <div>
+      <button type="button">Behind the intro</button>
+      <GDGoCIntro />
+    </div>,
+  );
+
+  const behind = screen.getByText("Behind the intro");
+  const skip = screen.getByRole("button", { name: /skip intro/i });
+
+  expect(behind.inert).toBe(true);
+  expect(document.activeElement).toBe(skip);
+
+  fireEvent.keyDown(document, { key: "Tab" });
+  expect(document.activeElement).toBe(skip);
+
+  unmount();
+  expect(behind.inert).toBe(false);
+});
 
 test("profile load failure offers a retry that works", async () => {
   const fetchMock = vi
