@@ -350,6 +350,16 @@ export default function Nav() {
                 />
                 <MenuRow
                   index="08"
+                  label="Upcoming events"
+                  desc="browse and register"
+                  color="ggreen"
+                  onClick={() => {
+                    setOpen(false);
+                    location.hash = "#/events";
+                  }}
+                />
+                <MenuRow
+                  index="09"
                   label={user ? "Your profile" : "Log in"}
                   desc={user ? "account and settings" : "members area"}
                   color="gblue"

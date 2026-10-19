@@ -18,7 +18,7 @@ export function setSession(res, user) {
   res.cookie("token", token, { ...COOKIE, maxAge: WEEK });
 }
 
-export async function requireAuth(req, res, next) {
+async function userFromRequest(req) {
   const token = req.headers.cookie?.match(/(?:^|;\s*)token=([^;]+)/)?.[1];
 
   try {
@@ -26,14 +26,28 @@ export async function requireAuth(req, res, next) {
     const user = await User.findById(id);
 
     if (!user || user.tokenVersion !== v) {
-      throw new Error();
+      return null;
     }
-
-    req.user = user;
-    next();
+    return user;
   } catch {
-    res.status(401).json({ message: "Please log in." });
+    return null;
   }
+}
+
+export async function requireAuth(req, res, next) {
+  const user = await userFromRequest(req);
+
+  if (!user) {
+    return res.status(401).json({ message: "Please log in." });
+  }
+
+  req.user = user;
+  next();
+}
+
+export async function optionalAuth(req, res, next) {
+  req.user = await userFromRequest(req);
+  next();
 }
 
 const WINDOW_MS = 15 * 60 * 1000;

@@ -250,6 +250,110 @@ test("password change checks the current password and signs out other sessions",
   assert.equal(newPassword.status, 200);
 });
 
+test("events: listing, details and registration rules", options, async () => {
+  const stamp = Date.now();
+  const [alice, bob, cara] = await Promise.all(
+    ["alice", "bob", "cara"].map((name) =>
+      call("/auth/register", {
+        method: "POST",
+        body: { name: `Events ${name}`, email: `${name}${stamp}@test.dev`, password: "secret123" },
+      }),
+    ),
+  );
+
+  const day = 24 * 60 * 60 * 1000;
+  const soon = new Date(Date.now() + 7 * day);
+  const base = {
+    summary: "",
+    description: "",
+    venue: "Block C Lab",
+    poster: "",
+    cancelled: false,
+    published: true,
+    category: "Workshop",
+    format: "in_person",
+    host: "",
+    prerequisites: "",
+    capacity: null,
+    registeredCount: 0,
+    registrationDeadline: null,
+    startsAt: soon,
+    createdAt: new Date(),
+    updatedAt: new Date(),
+  };
+
+  await mongoose.connect(process.env.MONGO_URI);
+  const inserted = await mongoose.connection.collection("events").insertMany([
+    { ...base, title: `Open ${stamp}` },
+    { ...base, title: `Two seats ${stamp}`, capacity: 2 },
+    { ...base, title: `Deadline passed ${stamp}`, registrationDeadline: new Date(Date.now() - day) },
+    { ...base, title: `Cancelled ${stamp}`, cancelled: true },
+    { ...base, title: `Draft ${stamp}`, published: false },
+  ]);
+  await mongoose.disconnect();
+  const [open, twoSeats, deadline, cancelled, draft] = Object.values(inserted.insertedIds).map(String);
+
+  const list = await call("/events");
+  assert.equal(list.status, 200);
+  const listed = Object.fromEntries(list.data.events.map((event) => [event.id, event]));
+  assert.equal(listed[open].status, "open");
+  assert.equal(listed[twoSeats].seatsLeft, 2);
+  assert.equal(listed[deadline].status, "closed");
+  assert.equal(listed[cancelled].status, "cancelled");
+  assert.equal(listed[draft], undefined);
+  assert.equal(listed[open].registeredCount, undefined);
+
+  assert.equal((await call(`/events/${draft}`)).status, 404);
+  assert.equal((await call("/events/not-an-id")).status, 404);
+  assert.equal((await call("/events/000000000000000000000000")).status, 404);
+
+  const anonymous = await call(`/events/${open}`);
+  assert.equal(anonymous.status, 200);
+  assert.deepEqual(anonymous.data.viewer, { signedIn: false, registration: null });
+  assert.equal((await call(`/events/${open}/register`, { method: "POST" })).status, 401);
+
+  const first = await call(`/events/${open}/register`, { method: "POST", cookie: alice.cookie });
+  assert.equal(first.status, 201);
+  assert.equal(first.data.ticket.state, "confirmed");
+  assert.equal(first.data.ticket.event.title, `Open ${stamp}`);
+
+  const again = await call(`/events/${open}/register`, { method: "POST", cookie: alice.cookie });
+  assert.equal(again.status, 409);
+  assert.equal(again.data.ticketId, first.data.ticket.ticketId);
+
+  const seen = await call(`/events/${open}`, { cookie: alice.cookie });
+  assert.equal(seen.data.viewer.signedIn, true);
+  assert.deepEqual(seen.data.viewer.registration, { ticketId: first.data.ticket.ticketId, state: "confirmed" });
+
+  const tickets = await call("/tickets", { cookie: alice.cookie });
+  assert.ok(tickets.data.tickets.some((ticket) => ticket.ticketId === first.data.ticket.ticketId));
+
+  const doubleClick = await Promise.all(
+    [0, 1].map(() => call(`/events/${open}/register`, { method: "POST", cookie: bob.cookie })),
+  );
+  assert.deepEqual(doubleClick.map((r) => r.status).sort(), [201, 409]);
+
+  const race = await Promise.all(
+    [alice, bob, cara].map((user) => call(`/events/${twoSeats}/register`, { method: "POST", cookie: user.cookie })),
+  );
+  assert.deepEqual(race.map((r) => r.status).sort(), [201, 201, 409]);
+  assert.equal(race.find((r) => r.status === 409).data.message, "This event is full.");
+
+  const full = await call(`/events/${twoSeats}`);
+  assert.equal(full.data.seatsLeft, 0);
+  assert.equal(full.data.status, "full");
+
+  const late = await call(`/events/${deadline}/register`, { method: "POST", cookie: cara.cookie });
+  assert.equal(late.status, 409);
+  assert.equal(late.data.message, "Registration for this event has closed.");
+
+  const called = await call(`/events/${cancelled}/register`, { method: "POST", cookie: cara.cookie });
+  assert.equal(called.status, 409);
+  assert.equal(called.data.message, "This event was cancelled.");
+
+  assert.equal((await call(`/events/${draft}/register`, { method: "POST", cookie: cara.cookie })).status, 404);
+});
+
 test("state-changing requests from other sites are blocked", options, async () => {
   const res = await fetch(`${API}/auth/logout`, {
     method: "POST",

@@ -80,7 +80,7 @@ A modern, animated, scroll-driven page that tells the community story:
 - After login, the member lands on a simple **home screen with two options: Events and Projects**
 
 ### 🎟️ Events
-- Logged-in members see all upcoming events (with search and filters)
+- Anyone can browse upcoming events (with search and filters); members log in to register
 - Event detail view: description, date, venue, speakers, seats left
 - **Register directly from the event** — no external forms
 - A **ticket with a unique QR code** is generated instantly after registering
@@ -192,7 +192,7 @@ gdgoc-psit/
 | Model | Key fields |
 |---|---|
 | **User** | name, email, password, role (`student` / `admin`), enrollmentNo, branch, year |
-| **Event** | title, description, date, venue, poster, capacity, registrationDeadline, status |
+| **Event** | title, summary, description, startsAt, endsAt, venue, poster, category, format, host, prerequisites, capacity, registeredCount, registrationDeadline, published, cancelled |
 | **Registration** | user, event, ticketId (unique), qrData, attended (bool), attendedAt |
 | **Project** | title, description, techStack[], contributors[], githubUrl, liveUrl, status, image |
 | **TeamMember** | name, role, image, socials, tier (`lead` / `core` / `member`), order |
@@ -208,11 +208,11 @@ gdgoc-psit/
 | POST | `/api/auth/logout` | Logout | Member |
 | GET / PATCH | `/api/users/me` | View / edit own profile | Member |
 | PATCH | `/api/users/me/password` | Change password (signs out other devices) | Member |
-| GET | `/api/events` | List events | Member |
-| GET | `/api/events/:id` | Event details | Member |
+| GET | `/api/events` | List published events | Public |
+| GET | `/api/events/:id` | Event details, plus my registration when logged in | Public |
 | POST | `/api/events` | Create event | Admin |
 | PUT / DELETE | `/api/events/:id` | Update / delete event | Admin |
-| POST | `/api/events/:id/register` | Register and generate ticket | Member |
+| POST | `/api/events/:id/register` | Register and get a ticket | Member |
 | GET | `/api/tickets` | My tickets (only the logged-in member's) | Member |
 | GET | `/api/tickets/:ticketId` | One of my tickets, with its QR code when valid | Member |
 | POST | `/api/attendance/scan` | Verify QR and mark attendance | Admin |
@@ -257,6 +257,33 @@ gdgoc-psit/
 - **Creating tickets:** done by event registration (#6). For local testing, `cd server && npm run seed:tickets -- you@example.com` adds sample tickets (marked "Sample:") to an existing account.
 - **Not built yet:** ticket download as a file and sharing; printing works from the ticket page.
 
+### 📅 Events
+
+- **Pages:** `/#/events` (search, filters and sorting) and `/#/events/<id>` (full details and registration). Anyone can browse; registering needs a login, and signed-out visitors are sent to `/#/login?next=/events/<id>` and brought back.
+- **Search:** runs on the already-loaded list, so it makes no extra requests. It ignores case and extra spaces and matches events that contain every word in the title, summary, category or venue.
+- **Filters:** Upcoming / Past / All, In person / Online, category (built from the categories that exist) and "Open for registration", plus sorting by date or recently added. They combine, and "Reset search and filters" clears them. Search and filters are kept in the URL (`/#/events?q=cloud&format=online`), so links can be shared and "← All events" returns to the same results.
+- **Status** (worked out in `src/lib/events.ts`, shared by the API and the UI, checked in this order):
+
+  | Status | Meaning | Can register |
+  |---|---|---|
+  | `cancelled` | The organisers cancelled the event | No |
+  | `completed` | The event has ended (no end time = 24 hours after the start) | No |
+  | `ongoing` | The event has started | No |
+  | `full` | Every seat is taken | No |
+  | `closed` | The registration deadline has passed (no deadline = the start time) | No |
+  | `open` | Accepting registrations | Yes |
+
+- **Drafts:** events have `published: false` until an admin publishes them (#8). Unpublished events never appear in the list, and their links return `404`.
+- **Registration** (`POST /api/events/:id/register`):
+  - `201` with `{ event, ticket }`: the ticket is the saved registration, so "View your ticket" works straight away.
+  - `401` when not logged in, `404` for unknown, malformed or unpublished events.
+  - `409` with a plain message when the event is full, closed, started, ended or cancelled, or when you're already registered (that response includes your `ticketId`).
+- **Capacity and races:** a seat is claimed with one atomic database update that only succeeds while the event is open and `registeredCount < capacity`. If saving the registration then fails (for example a double click), the seat is given back. The unique user + event index stops duplicate registrations. The seat count shown on the page is a guide; only a `201` confirms a seat.
+- **Time zone:** event times are shown in IST (`Asia/Kolkata`), since every event is at PSIT Kanpur.
+- **Responses** never include database internals such as `registeredCount` or other members' registrations.
+- **Sample data:** `cd server && npm run seed:events` adds published sample events (marked "Sample:") covering open, nearly full, closed, cancelled, online and past events.
+- **Not built yet:** creating and editing events (admin panel, #8), meeting links for online events, and cancelling your own registration.
+
 
 
 - **Pages:** `/#/login` (log in, with a link to sign up) and `/#/login?mode=signup`. Protected pages send signed-out users to `/#/login?next=<page>` and return them there after login.
@@ -276,7 +303,7 @@ gdgoc-psit/
 - **Tests:**
   - `npm test`: auth page behaviour (validation, password toggle, switching forms, loading, network failure, redirects).
   - `npx tsx tests/profile.test.ts`: shared validation.
-  - `cd server && npm test`: ticket lifecycle unit tests, plus API tests for registration (including concurrent duplicate sign-ups), login and wrong credentials, profile updates, password changes (other sessions signed out), expired and forged sessions, logout, role escalation, CSRF, tickets and rate limiting. See **Verification** for running them against a local database.
+  - `cd server && npm test`: ticket lifecycle unit tests, plus API tests for registration (including concurrent duplicate sign-ups), login and wrong credentials, profile updates, password changes (other sessions signed out), expired and forged sessions, logout, role escalation, CSRF, tickets, events (listing, drafts, deadlines, cancelled events, capacity races, double clicks) and rate limiting. See **Verification** for running them against a local database.
 - **Not built yet:** refresh tokens, password recovery (needs SMTP for time-limited reset links), email verification, and admin-only routes (#8 adds a `403` role check with its first admin endpoint).
 
 ---
@@ -463,6 +490,7 @@ The app runs at **http://localhost:5173**.
 | `server` | `npm run dev` | Start the API and restart on changes (`node --watch`) |
 | `server` | `npm start` | Start the API in production |
 | `server` | `npm test` | API tests (local database only) |
+| `server` | `npm run seed:events` | Add published sample events (marked "Sample:") |
 
 ### Verification
 
