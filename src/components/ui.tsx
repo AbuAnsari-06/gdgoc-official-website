@@ -1,4 +1,5 @@
 import {
+  Fragment,
   useEffect,
   useRef,
   useState,
@@ -11,7 +12,6 @@ import { OSO } from "../lib/oso";
 import { addTicker } from "../lib/loop";
 import { COLOR_HEX, ON_COLOR, PANEL_EDGE, PANEL_HEX, WASH_HEX, type GColor } from "../data/content";
 
-import { useScramble } from "../hooks/useScramble";
 
 /* ---------------- pointer capability ---------------- */
 
@@ -194,19 +194,6 @@ export function Reveal({
   );
 }
 
-/* ---------------- Line-mask reveal ---------------- */
-
-export function LineReveal({
-  children,
-  className,
-}: {
-  children: ReactNode;
-  delay?: number;
-  className?: string;
-}) {
-  return <span className={cn("block", className)}>{children}</span>;
-}
-
 /* ---------------- Section tag ---------------- */
 
 export function SectionTag({
@@ -244,6 +231,7 @@ export function MonthGrid({
   day,
   cols = 6,
   square = 0,
+  flip = false,
   className,
 }: {
   state: "upcoming" | "live" | "wrapped";
@@ -251,8 +239,12 @@ export function MonthGrid({
   cols?: number;
   /** Extra px on each side of a square; 0 lets the grid size itself. */
   square?: number;
+  flip?: boolean;
   className?: string;
 }) {
+  const reduced = useReducedMotion();
+  const animateFlip = flip && !reduced;
+
   return (
     <div
       className={cn("grid gap-1.5", className)}
@@ -263,19 +255,33 @@ export function MonthGrid({
         const filled = state === "wrapped" || (state === "live" && i < day);
         const today = state === "live" && i === day - 1;
         const next = state === "upcoming" && i === 0;
+        let background = "#ffffff";
+        if (filled) {
+          background = COLOR_HEX.ggreen;
+        } else if (next) {
+          background = COLOR_HEX.gyellow;
+        }
+        const boxShadow = today || next ? "3px 3px 0 var(--color-ink)" : undefined;
+
+        if (!animateFlip) {
+          return (
+            <span
+              key={i}
+              className="aspect-square border-2 border-ink"
+              style={{ background, boxShadow, minWidth: square || undefined }}
+            />
+          );
+        }
+
         return (
-          <span
+          <motion.span
             key={i}
             className="aspect-square border-2 border-ink"
-            style={{
-              background: filled
-                ? COLOR_HEX.ggreen
-                : next
-                  ? COLOR_HEX.gyellow
-                  : "var(--color-bg)",
-              boxShadow: today || next ? "3px 3px 0 var(--color-ink)" : undefined,
-              minWidth: square || undefined,
-            }}
+            style={{ boxShadow, minWidth: square || undefined, transformPerspective: 300 }}
+            initial={{ rotateY: 180, backgroundColor: "#202124" }}
+            whileInView={{ rotateY: 0, backgroundColor: background }}
+            viewport={{ once: true, margin: "-60px" }}
+            transition={{ duration: 0.5, ease: [0.34, 1.3, 0.64, 1], delay: 0.2 + i * 0.045 }}
           />
         );
       })}
@@ -310,10 +316,26 @@ export function StatusPill({
 export function ScrambleHeading({ text, className }: { text: string; className?: string }) {
   const ref = useRef<HTMLHeadingElement>(null);
   const inView = useInView(ref, { once: true, margin: "-60px" });
-  const out = useScramble(text, inView);
+  const reduced = useReducedMotion();
+  const words = text.split(" ");
+
   return (
-    <h2 ref={ref} className={className}>
-      {out || "\u00A0"}
+    <h2 ref={ref} className={className} aria-label={text}>
+      {words.map((word, i) => (
+        <Fragment key={`${word}-${i}`}>
+          <span className="mask-word" aria-hidden="true">
+            <motion.span
+              className="inline-block"
+              initial={reduced ? false : { y: "115%", rotate: 4 }}
+              animate={inView || reduced ? { y: 0, rotate: 0 } : undefined}
+              transition={{ duration: 0.9, ease: [0.16, 1, 0.3, 1], delay: i * 0.07 }}
+            >
+              {word}
+            </motion.span>
+          </span>
+          {i < words.length - 1 && " "}
+        </Fragment>
+      ))}
     </h2>
   );
 }
@@ -507,7 +529,7 @@ export function ArrowLink({
             : { background: PANEL_HEX[color], color: ON_COLOR[color] }
         }
       >
-        {children}
+        <RollText>{children}</RollText>
         <svg
           width="14"
           height="14"
@@ -645,5 +667,57 @@ export function TiltCard({
         </motion.div>
       )}
     </div>
+  );
+}
+
+const HEADING_SHADOW: Record<GColor, string> = {
+  gblue: "heading-shadow-blue",
+  gred: "heading-shadow-red",
+  gyellow: "heading-shadow-yellow",
+  ggreen: "heading-shadow-green",
+};
+
+export function PageHeader({
+  tag,
+  title,
+  color = "gblue",
+  children,
+}: {
+  tag: string;
+  title: string;
+  color?: GColor;
+  children?: ReactNode;
+}) {
+  return (
+    <header>
+      <SectionTag label={tag} color={color} />
+      <h1 className={cn("mt-5 text-h2 heading-shadow", HEADING_SHADOW[color])}>{title}</h1>
+      {children && <div className="mt-4 max-w-xl text-[15px] leading-relaxed text-ink/80">{children}</div>}
+    </header>
+  );
+}
+
+export function useMediaQuery(query: string) {
+  const [matches, setMatches] = useState(() => typeof window !== "undefined" && window.matchMedia(query).matches);
+
+  useEffect(() => {
+    const media = window.matchMedia(query);
+    const onChange = () => setMatches(media.matches);
+    onChange();
+    media.addEventListener("change", onChange);
+    return () => media.removeEventListener("change", onChange);
+  }, [query]);
+
+  return matches;
+}
+
+export function RollText({ children }: { children: ReactNode }) {
+  return (
+    <span className="roll-text">
+      <span className="roll-text-line">{children}</span>
+      <span className="roll-text-line roll-text-copy" aria-hidden="true">
+        {children}
+      </span>
+    </span>
   );
 }

@@ -1171,6 +1171,16 @@ html.cursor-on iframe {
   }
 }
 
+.deck-card {
+  transition: translate 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .deck-card:hover {
+    translate: 0 -14px;
+  }
+}
+
 @page {
   margin: 12mm;
 }
@@ -1180,4 +1190,160 @@ html.cursor-on iframe {
   .noise-overlay {
     display: none !important;
   }
+}
+
+.roll-text {
+  position: relative;
+  display: inline-grid;
+  overflow: hidden;
+  vertical-align: top;
+}
+
+.roll-text-line {
+  grid-area: 1 / 1;
+  transition: transform 0.42s cubic-bezier(0.76, 0, 0.24, 1);
+}
+
+.roll-text-copy {
+  transform: translateY(105%);
+}
+
+:is(a, button):hover .roll-text-line,
+:is(a, button):focus-visible .roll-text-line {
+  transform: translateY(-105%);
+}
+
+:is(a, button):hover .roll-text-copy,
+:is(a, button):focus-visible .roll-text-copy {
+  transform: translateY(0);
+}
+
+.deal-table {
+  perspective: 1400px;
+}
+
+.deal-card {
+  transform-style: preserve-3d;
+  will-change: transform;
+}
+
+.deal-face {
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+}
+
+.deal-back {
+  transform: rotateY(180deg);
+}
+
+.wordmark-letter {
+  --pull: 0;
+  display: inline-block;
+  font-variation-settings: "wght" calc(400 + var(--pull) * 400), "opsz" 96;
+  transform: translateY(calc(var(--pull) * -6%)) scaleY(calc(1 + var(--pull) * 0.14));
+  transform-origin: 50% 100%;
+  text-shadow: calc(var(--pull) * 0.07em) calc(var(--pull) * 0.07em) 0 var(--shadow);
+}
+
+.wordmark.is-static .wordmark-letter {
+  --pull: 1;
+}
+
+.crew-card {
+  transform-style: preserve-3d;
+}
+
+.mask-word {
+  display: inline-block;
+  overflow: hidden;
+  vertical-align: top;
+  padding: 0 0.08em 0.12em 0;
+  margin: 0 -0.08em -0.12em 0;
+}
+
+.push-pin {
+  position: absolute;
+  top: -11px;
+  left: 50%;
+  z-index: 2;
+  width: 22px;
+  height: 22px;
+  margin-left: -11px;
+  border: 3px solid var(--color-ink);
+  border-radius: 50%;
+  box-shadow: 2px 3px 0 var(--color-ink);
+}
+
+.push-pin-shine {
+  position: absolute;
+  top: 3px;
+  left: 4px;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.8);
+}
+
+.pinned-note {
+  transform-origin: 50% 0;
+}
+
+@keyframes note-swing {
+  0% { rotate: 0deg; }
+  20% { rotate: -5deg; }
+  40% { rotate: 3.5deg; }
+  60% { rotate: -2deg; }
+  80% { rotate: 1deg; }
+  100% { rotate: 0deg; }
+}
+
+@media (hover: hover) and (pointer: fine) and (prefers-reduced-motion: no-preference) {
+  .pinned-note:hover {
+    animation: note-swing 1.1s cubic-bezier(0.36, 0, 0.24, 1);
+  }
+}
+
+.type-caret {
+  display: inline-block;
+  width: 0.55em;
+  height: 1.1em;
+  margin-left: 1px;
+  vertical-align: text-bottom;
+  background: var(--color-ink);
+  animation: caret-blink 0.9s steps(1) infinite;
+}
+
+@keyframes caret-blink {
+  50% {
+    opacity: 0;
+  }
+}
+
+html.world-on [data-stage] {
+  background: transparent !important;
+}
+
+html.world-on .hero-grid {
+  display: none;
+}
+
+html[data-world-stage="deal"] .oso-card,
+html[data-world-stage="domains"] .oso-card,
+html[data-world-stage="finale"] .oso-card {
+  opacity: 0 !important;
+  pointer-events: none;
+}
+
+html[data-deck-hover] .cursor-box-shape {
+  transform: rotate(45deg) scale(1.35);
+  box-shadow: 4px 4px 0 var(--color-gyellow);
+}
+
+html.deck-grabbing .cursor-box-shape {
+  transform: rotate(45deg) scale(1);
+}
+
+html.deck-grabbing,
+html.deck-grabbing * {
+  user-select: none;
 }

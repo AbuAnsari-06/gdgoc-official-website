@@ -83,7 +83,7 @@ export default function TicketDetail() {
   }, []);
 
   return (
-    <main className="mx-auto max-w-5xl px-4 pt-12 pb-20 sm:px-6 print:max-w-none print:p-0">
+    <main className="mx-auto max-w-5xl px-4 pt-28 pb-20 sm:px-6 print:max-w-none print:p-0">
       <a href="#/tickets" className="text-sm font-bold underline print:hidden">
         ← My tickets
       </a>

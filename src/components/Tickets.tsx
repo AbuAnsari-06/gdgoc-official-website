@@ -100,7 +100,7 @@ export default function Tickets() {
   const activeLabel = FILTERS.find((f) => f.id === filter)?.label.toLowerCase();
 
   return (
-    <main className="mx-auto max-w-3xl px-4 pt-12 pb-20 sm:px-6">
+    <main className="mx-auto max-w-3xl px-4 pt-28 pb-20 sm:px-6">
       <div className="flex flex-wrap items-center gap-x-5 gap-y-2 text-sm font-bold">
         <a href="#" className="underline">
           ← Home

@@ -1,5 +1,7 @@
-import { useState } from "react";
-import { ArrowLink, Reveal, SectionTag, ScrambleHeading, useMagnetic } from "./ui";
+import { useState, type PointerEvent } from "react";
+import { motion, useReducedMotion } from "framer-motion";
+import { ArrowLink, Reveal, SectionTag, ScrambleHeading, SuitGlyph, SUIT_FOR, useMagnetic } from "./ui";
+import { CardBack } from "./DealScene";
 import { COLOR_HEX, SOCIAL_LINKS, type GColor } from "../data/content";
 import { cn } from "../utils/cn";
 
@@ -11,6 +13,67 @@ const PERKS = [
 ];
 
 const YEARS = ["1st year", "2nd year", "3rd year", "4th year"];
+const YEAR_COLORS: GColor[] = ["gblue", "gred", "gyellow", "ggreen"];
+
+function initialsOf(name: string) {
+  return name
+    .trim()
+    .split(/\s+/)
+    .map((word) => word[0])
+    .slice(0, 2)
+    .join("")
+    .toUpperCase();
+}
+
+function PreviewCard({ name, year }: { name: string; year: string }) {
+  const reduced = useReducedMotion();
+  const [tilt, setTilt] = useState({ x: 0, y: 0 });
+  const color = YEAR_COLORS[Math.max(0, YEARS.indexOf(year))];
+  const hex = COLOR_HEX[color];
+  const ready = name.trim().length >= 2;
+
+  const onPointerMove = (event: PointerEvent<HTMLDivElement>) => {
+    if (reduced) {
+      return;
+    }
+    const box = event.currentTarget.getBoundingClientRect();
+    setTilt({
+      x: ((event.clientY - box.top) / box.height - 0.5) * -14,
+      y: ((event.clientX - box.left) / box.width - 0.5) * 14,
+    });
+  };
+
+  return (
+    <div
+      className="w-[170px] shrink-0 [perspective:900px]"
+      onPointerMove={onPointerMove}
+      onPointerLeave={() => setTilt({ x: 0, y: 0 })}
+      aria-hidden="true"
+    >
+      <motion.div
+        className="crew-card relative aspect-[5/7]"
+        animate={{ rotateY: ready ? 0 : 180, rotateX: tilt.x, rotateZ: ready ? -4 + tilt.y * 0.2 : -4, y: ready ? -6 : 0 }}
+        transition={{ type: "spring", stiffness: 140, damping: 16 }}
+      >
+        <div className="deal-face absolute inset-0 flex flex-col justify-between overflow-hidden border-[3px] border-ink bg-bg p-4 shadow-[6px_6px_0_var(--color-ink)]">
+          <span className="absolute inset-x-0 top-0 h-2" style={{ background: hex }} />
+          <span className="mt-1 flex flex-col items-start leading-none" style={{ color: hex }}>
+            <span className="font-display text-sm font-extrabold text-ink">{initialsOf(name) || "—"}</span>
+            <SuitGlyph suit={SUIT_FOR[color]} size={11} />
+          </span>
+          <span className="pointer-events-none absolute -right-6 -bottom-6 opacity-10" style={{ color: hex }}>
+            <SuitGlyph suit={SUIT_FOR[color]} size={130} />
+          </span>
+          <div className="relative">
+            <p className="font-mono text-[9px] font-semibold tracking-[0.2em] text-muted uppercase">Member · {year}</p>
+            <p className="mt-1 font-display text-lg leading-tight font-extrabold break-words text-ink">{name.trim() || "Your name"}</p>
+          </div>
+        </div>
+        <CardBack />
+      </motion.div>
+    </div>
+  );
+}
 
 interface FormErrors {
   name?: string;
@@ -82,6 +145,16 @@ export default function Join() {
                 </Reveal>
               ))}
             </ul>
+
+            <div className="mt-10 hidden items-center gap-6 lg:flex">
+              <PreviewCard name={name} year={year} />
+              <div>
+                <p className="font-mono text-xs font-semibold tracking-[0.25em] text-muted uppercase">Your card, live</p>
+                <p className="mt-2 max-w-[14rem] text-sm leading-relaxed text-ink/80">
+                  Type your name and pick your year. Your member card deals itself as you go.
+                </p>
+              </div>
+            </div>
 
             <div className="mt-10 flex flex-wrap gap-4">
               {SOCIAL_LINKS.map((link) => (

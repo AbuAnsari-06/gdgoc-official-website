@@ -2,7 +2,7 @@ import { useEffect, useRef, useState, type MouseEvent as ReactMouseEvent } from 
 import { AnimatePresence, motion, useScroll, useSpring } from "framer-motion";
 import { cn } from "../utils/cn";
 import { scrollToId, scrollToTop } from "../lib/scroll";
-import { SuitGlyph, SUIT_FOR } from "./ui";
+import { RollText, SuitGlyph, SUIT_FOR } from "./ui";
 import GdgLogo from "./GdgLogo";
 import { COLOR_HEX, ON_COLOR, PANEL_EDGE, PANEL_HEX, type GColor } from "../data/content";
 import { api, type Profile } from "../lib/profile";
@@ -135,7 +135,7 @@ function AccountLink({ user }: { user: Profile | null }) {
         href="#/login"
         className="hard-button inline-flex items-center bg-bg px-4 py-2 font-display text-sm font-bold text-ink"
       >
-        Log in
+        <RollText>Log in</RollText>
       </a>
     );
   }
@@ -209,16 +209,42 @@ export default function Nav() {
     return () => cancelAnimationFrame(frame);
   }, [open]);
 
+  const onHomepage = () => !location.hash.startsWith("#/");
+
   const go = (id: string) => {
     setOpen(false);
-    scrollToId(id);
+    if (onHomepage()) {
+      scrollToId(id);
+      return;
+    }
+    location.hash = "";
+
+    let attempts = 0;
+    const scrollWhenReady = () => {
+      attempts += 1;
+      if (document.getElementById(id) || attempts > 40) {
+        scrollToId(id);
+        return;
+      }
+      requestAnimationFrame(scrollWhenReady);
+    };
+    requestAnimationFrame(scrollWhenReady);
+  };
+
+  const goHome = () => {
+    setOpen(false);
+    if (onHomepage()) {
+      scrollToTop();
+    } else {
+      location.hash = "";
+    }
   };
 
   return (
     <>
       {/* scroll progress — four chapter colors */}
       <motion.div
-        className="fixed top-0 right-0 left-0 z-[80] flex h-[5px] origin-left"
+        className="fixed top-0 right-0 left-0 z-[80] flex h-[5px] origin-left print:hidden"
         style={{ scaleX: progress }}
         aria-hidden="true"
       >
@@ -230,19 +256,16 @@ export default function Nav() {
 
       <header
         className={cn(
-          "fixed top-0 right-0 left-0 z-[60] transition-all duration-300",
+          "fixed top-0 right-0 left-0 z-[60] transition-all duration-300 print:hidden",
           scrolled || open ? "border-b-[3px] border-ink bg-bg" : "border-b-[3px] border-transparent"
         )}
       >
         <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-5 sm:px-8">
           <button
             type="button"
-            onClick={() => {
-              setOpen(false);
-              scrollToTop();
-            }}
+            onClick={goHome}
             className="group flex items-center gap-3"
-            aria-label="Back to top"
+            aria-label="GDGoC PSIT home"
           >
             {/* official mark, unmodified and undecorated - no hover rotation */}
             <GdgLogo variant="mark" size={30} alt="Google Developer Groups" />

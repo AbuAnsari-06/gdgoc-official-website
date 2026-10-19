@@ -1,6 +1,6 @@
-import { useState } from "react";
-import { motion } from "framer-motion";
-import { Reveal, SectionTag, ScrambleHeading, SuitGlyph, SUIT_FOR } from "./ui";
+import { useEffect, useRef, useState } from "react";
+import { motion, useScroll, useSpring, useTransform, useVelocity } from "framer-motion";
+import { Reveal, SectionTag, ScrambleHeading, SuitGlyph, SUIT_FOR, useMediaQuery } from "./ui";
 import { EVENTS, COLOR_HEX, ON_COLOR, PANEL_EDGE, PANEL_HEX, type PastEvent } from "../data/content";
 
 function EventCard({ e, rank }: { e: PastEvent; rank: string }) {
@@ -72,23 +72,108 @@ function EventCard({ e, rank }: { e: PastEvent; rank: string }) {
   );
 }
 
+function EventsHeader() {
+  return (
+    <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+      <div>
+        <SectionTag index="04" label="Event log" color="ggreen" />
+        <ScrambleHeading text="Past drops & sessions" className="mt-5 text-h2 heading-shadow heading-shadow-green" />
+      </div>
+      <p className="max-w-sm text-[15px] leading-relaxed text-ink/80">
+        Six cards from the deck we've played so far - workshops, study jams, watch parties and PR nights.
+        Tap, hover or tab to any card for its session report.
+      </p>
+    </div>
+  );
+}
+
+function EventsGallery() {
+  const sectionRef = useRef<HTMLElement>(null);
+  const trackRef = useRef<HTMLDivElement>(null);
+  const [distance, setDistance] = useState(0);
+
+  const { scrollYProgress } = useScroll({ target: sectionRef, offset: ["start start", "end end"] });
+  const x = useTransform(scrollYProgress, [0, 1], [0, -distance]);
+  const velocity = useVelocity(scrollYProgress);
+  const lean = useSpring(useTransform(velocity, [-0.6, 0, 0.6], [5, 0, -5]), { stiffness: 220, damping: 28 });
+
+  useEffect(() => {
+    const track = trackRef.current;
+    if (!track) {
+      return;
+    }
+
+    const measure = () => {
+      setDistance(Math.max(0, track.scrollWidth - window.innerWidth));
+    };
+
+    measure();
+    const observer = new ResizeObserver(measure);
+    observer.observe(track);
+    window.addEventListener("resize", measure);
+
+    return () => {
+      observer.disconnect();
+      window.removeEventListener("resize", measure);
+    };
+  }, []);
+
+  return (
+    <section
+      ref={sectionRef}
+      id="events"
+      data-wash="blue"
+      className="wash-section relative scroll-mt-20 border-b-[3px] border-ink"
+      style={{ height: `calc(100vh + ${distance}px)` }}
+    >
+      <div className="sticky top-0 flex h-screen flex-col justify-center overflow-hidden pt-16">
+        <div className="mx-auto w-full max-w-7xl px-8">
+          <EventsHeader />
+        </div>
+
+        <motion.div
+          ref={trackRef}
+          className="mt-10 flex w-max items-stretch gap-8 pr-16 pl-[max(2rem,calc((100vw-80rem)/2+2rem))]"
+          style={{ x }}
+        >
+          {EVENTS.map((e, i) => (
+            <motion.div key={e.title} className="w-[380px] shrink-0 xl:w-[420px]" style={{ skewX: lean }}>
+              <EventCard e={e} rank={String(i + 1).padStart(2, "0")} />
+            </motion.div>
+          ))}
+
+          <motion.div
+            className="flex w-[320px] shrink-0 flex-col items-center justify-center gap-4 border-[3px] border-dashed border-ink bg-bg p-8 text-center"
+            style={{ skewX: lean }}
+          >
+            <span className="font-mono text-xs font-semibold tracking-[0.3em] text-muted uppercase">Next card</span>
+            <span className="font-display text-3xl leading-tight font-extrabold text-ink">Open Source October 2026</span>
+          </motion.div>
+        </motion.div>
+
+        <div className="mx-auto mt-10 h-[5px] w-full max-w-7xl px-8" aria-hidden="true">
+          <motion.div className="h-full origin-left bg-ink" style={{ scaleX: scrollYProgress }} />
+        </div>
+      </div>
+    </section>
+  );
+}
+
 export default function Events() {
+  const cinematic = useMediaQuery("(min-width: 1024px) and (prefers-reduced-motion: no-preference)");
+
+  if (cinematic) {
+    return <EventsGallery />;
+  }
+
+  return <EventsGrid />;
+}
+
+function EventsGrid() {
   return (
     <section id="events" data-wash="blue" className="wash-section relative scroll-mt-20 border-b-[3px] border-ink">
       <div className="mx-auto max-w-7xl px-5 py-24 sm:px-8 lg:py-32">
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-          <div>
-            <SectionTag index="04" label="Event log" color="ggreen" />
-            <ScrambleHeading
-              text="Past drops & sessions"
-              className="mt-5 text-h2 heading-shadow heading-shadow-green"
-            />
-          </div>
-          <p className="max-w-sm text-[15px] leading-relaxed text-ink/80">
-            Six cards from the deck we've played so far - workshops, study jams, watch parties and PR nights.
-            Tap, hover or tab to any card for its session report.
-          </p>
-        </div>
+        <EventsHeader />
 
         <div className="mt-14 grid gap-6 md:grid-cols-2 lg:grid-cols-3">
           {EVENTS.map((e, i) => (

@@ -1,4 +1,6 @@
 import { useEffect, useState, type FormEvent, type ReactNode } from "react";
+import MemberCard from "./MemberCard";
+import { PageHeader } from "./ui";
 import {
   api,
   BRANCHES,
@@ -53,18 +55,10 @@ function Note({ msg }: { msg: Msg }) {
   );
 }
 
-function Row({ label, value }: { label: string; value?: ReactNode }) {
-  return (
-    <div className="min-w-0">
-      <dt className="text-xs font-bold text-muted uppercase">{label}</dt>
-      <dd className="mt-0.5 break-words">{value || <span className="text-muted">Not added</span>}</dd>
-    </div>
-  );
-}
-
 export default function Profile() {
   const [user, setUser] = useState<P | null>(null);
   const [status, setStatus] = useState<"loading" | "error" | "ready">("loading");
+  const [logoutMsg, setLogoutMsg] = useState<Msg>(null);
 
   const loadUser = async () => {
     setStatus("loading");
@@ -88,8 +82,6 @@ export default function Profile() {
     loadUser();
   }, []);
 
-  const [logoutMsg, setLogoutMsg] = useState<Msg>(null);
-
   const logout = async () => {
     try {
       await api("/auth/logout", "POST");
@@ -100,22 +92,22 @@ export default function Profile() {
   };
 
   return (
-    <main className="mx-auto max-w-3xl px-4 pt-12 pb-20 sm:px-6">
-      <a href="#" className="text-sm font-bold underline">
-        ← Back to home
-      </a>
-      <h1 className="mt-4 font-display text-4xl font-extrabold sm:text-5xl">Profile & settings</h1>
-      <a href="#/tickets" className="hard-button mt-4 inline-block bg-gyellow px-4 py-2 font-display text-sm font-bold">
+    <main className="mx-auto max-w-6xl px-4 pt-28 pb-24 sm:px-6">
+      <PageHeader tag="Member area" title="Your profile" color="gblue">
+        Your member card, account details and security settings in one place.
+      </PageHeader>
+      <a href="#/tickets" className="hard-button mt-6 inline-block bg-gyellow px-4 py-2 font-display text-sm font-bold">
         My tickets →
       </a>
 
       {status === "loading" && (
-        <p className="mt-8" role="status">
+        <p className="mt-10" role="status">
           Loading your profile…
         </p>
       )}
+
       {status === "error" && (
-        <div role="alert" className="mt-8 border-[3px] border-ink bg-bg p-6">
+        <div role="alert" className="mt-10 max-w-xl border-[3px] border-ink bg-bg p-6">
           <p className="font-bold">We couldn't load your profile.</p>
           <p className="mt-1 text-sm text-muted">Check your connection and try again.</p>
           <button type="button" className={`${button} mt-4`} onClick={loadUser}>
@@ -125,54 +117,24 @@ export default function Profile() {
       )}
 
       {user && (
-        <div className="mt-8 space-y-8">
-          <Overview user={user} />
-          <EditProfile user={user} onSaved={setUser} />
-          <ChangePassword />
-          <Card title="Session" desc="Sign out of this device.">
-            <button type="button" className={ghost} onClick={logout}>
-              Log out
-            </button>
+        <div className="mt-12 grid items-start gap-10 lg:grid-cols-[minmax(0,360px)_1fr] lg:gap-14">
+          <aside className="mx-auto w-full max-w-[360px] space-y-6 lg:sticky lg:top-28">
+            <MemberCard user={user} />
+            <div className="flex flex-wrap gap-3">
+              <button type="button" className={ghost} onClick={logout}>
+                Log out
+              </button>
+            </div>
             <Note msg={logoutMsg} />
-          </Card>
+          </aside>
+
+          <div className="min-w-0 space-y-8">
+            <EditProfile user={user} onSaved={setUser} />
+            <ChangePassword />
+          </div>
         </div>
       )}
     </main>
-  );
-}
-
-function Overview({ user }: { user: P }) {
-  const initials = user.name
-    .split(/\s+/)
-    .map((w) => w[0])
-    .slice(0, 2)
-    .join("")
-    .toUpperCase();
-
-  return (
-    <Card title="Overview" desc="Your account at a glance.">
-      <div className="flex items-center gap-4">
-        <span
-          className="grid h-16 w-16 shrink-0 place-items-center border-[3px] border-ink bg-gblue font-display text-2xl font-extrabold text-white"
-          aria-hidden="true"
-        >
-          {initials}
-        </span>
-        <div className="min-w-0">
-          <p className="font-display text-2xl font-extrabold break-words">{user.name}</p>
-          <p className="break-all text-muted">{user.email}</p>
-        </div>
-      </div>
-      <dl className="mt-6 grid gap-4 sm:grid-cols-2">
-        <Row label="Branch" value={user.branch} />
-        <Row label="Year" value={user.year && `Year ${user.year}`} />
-        <Row label="Enrollment no." value={user.enrollmentNo} />
-        <Row label="Member since" value={user.createdAt && new Date(user.createdAt).toLocaleDateString()} />
-        <div className="sm:col-span-2">
-          <Row label="Bio" value={user.bio} />
-        </div>
-      </dl>
-    </Card>
   );
 }
 
