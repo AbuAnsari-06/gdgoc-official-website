@@ -420,7 +420,7 @@ Run these before opening a PR; CI runs the same steps on every pull request (`.g
    npm run dev            # in one terminal
    npm test               # in another, with the same variables
    ```
-   The API tests create accounts, so they refuse to run unless `MONGO_URI` points at a local database. In CI the same steps run against a MongoDB service container.
+   The API tests create accounts and events, so they refuse to run unless `MONGO_URI` points at a local database. In CI the same steps run against a MongoDB service container.
 
 ### Deployment
 

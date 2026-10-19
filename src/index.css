@@ -61,9 +61,9 @@
   --text-h1--line-height: 0.9;
   --text-h1--letter-spacing: -0.045em;
   --text-h1--font-weight: 800;
-  --text-h2: clamp(3rem, 7vw, 7rem);
+  --text-h2: clamp(2.75rem, 5.6vw, 5.5rem);
   --text-h2--line-height: 0.9;
-  --text-h2--letter-spacing: -0.045em;
+  --text-h2--letter-spacing: -0.025em;
   --text-h2--font-weight: 800;
   --text-h3: clamp(1.6rem, 2.6vw, 2.4rem);
   --text-h3--line-height: 1.05;
@@ -155,7 +155,7 @@ body {
 
 /* Three zones on the hero's own gutter grid: a fixed community marker, the
    seamless message run, and one real scroll target. The rail is the floor of
-   the environment — the same shifted gutter maths as .hero-text-pane, so its
+   the environment — the same gutter maths as .hero-text-pane, so its
    left edge lines up with the headline above it at every width. */
 .hero-rail {
   display: flex;
@@ -163,14 +163,14 @@ body {
   gap: 0.9rem;
   padding-top: 0.85rem;
   padding-bottom: 0.85rem;
-  padding-left: max(1.25rem, calc((100% - 80rem) / 2 + 1.25rem - 3.5rem));
+  padding-left: max(1.25rem, calc((100% - 80rem) / 2 + 1.25rem));
   padding-right: 1.25rem;
 }
 
 @media (min-width: 640px) {
   .hero-rail {
     gap: 1.25rem;
-    padding-left: max(2rem, calc((100% - 80rem) / 2 + 2rem - 3.5rem));
+    padding-left: max(2rem, calc((100% - 80rem) / 2 + 2rem));
     padding-right: 2rem;
   }
 }
@@ -185,7 +185,7 @@ body {
   font-weight: 800;
   letter-spacing: 0.22em;
   text-transform: uppercase;
-  color: rgba(214, 224, 246, 0.74);
+  color: rgba(255, 255, 255, 0.7);
   white-space: nowrap;
 }
 
@@ -212,7 +212,7 @@ body {
   font-size: 0.78rem;
   font-weight: 700;
   letter-spacing: 0.04em;
-  color: rgba(236, 241, 255, 0.92);
+  color: #ffffff;
   white-space: nowrap;
 }
 
@@ -228,14 +228,14 @@ body {
   display: inline-flex;
   align-items: center;
   gap: 0.4rem;
-  border-left: 1px solid rgba(180, 200, 255, 0.16);
+  border-left: 2px solid rgba(255, 255, 255, 0.25);
   padding-left: 0.9rem;
   font-family: var(--font-display);
   font-size: 0.7rem;
   font-weight: 800;
   letter-spacing: 0.16em;
   text-transform: uppercase;
-  color: rgba(214, 224, 246, 0.82);
+  color: var(--color-gyellow);
   transition: color 200ms cubic-bezier(0.22, 1, 0.36, 1);
 }
 
@@ -280,6 +280,7 @@ body {
    it scales with the type. Never combine with gradients. */
 .heading-shadow {
   color: var(--color-ink);
+  font-variation-settings: "opsz" 36;
   text-shadow: 0.045em 0.045em 0 var(--heading-accent, var(--color-gblue));
 }
 .heading-shadow-blue { --heading-accent: var(--color-gblue); }
@@ -304,293 +305,121 @@ body {
 
 /* ---------- hero wordmark ---------- */
 
-/* Hero-scale display type in Poppins: the geometric, circle-built sans,
-   the closest Google-Fonts relative of Google's own wordmark. Poppins is
-   far wider than the condensed face it replaces, so the clamp caps lower
-   and the tracking closes up slightly to hold the longest line
-   ("Connect.") inside the text column at every width. Bricolage stays for
-   body and UI. */
 .hero-display {
-  font-family: "Poppins", var(--font-display);
-  font-size: clamp(3.2rem, 8vw, 9.4rem);
-  line-height: 0.95;
-  letter-spacing: -0.025em;
-  font-weight: 700;
-  text-shadow: 0.035em 0.035em 0 rgba(0, 0, 0, 0.55);
+  font-family: var(--font-display);
+  font-variation-settings: "opsz" 36;
+  font-size: clamp(3.4rem, 9vw, 9rem);
+  line-height: 0.92;
+  letter-spacing: -0.005em;
+  font-weight: 800;
 }
 
 .hero-line {
   display: block;
   position: relative;
-  /* a border around every letter: the site's 3px ink border, scaled to the
-     type. On the navy base the edge is the deep field itself, so the glyph
-     keeps a crisp rim against its own glow instead of a black outline that
-     would dissolve into the background. paint-order draws the stroke
-     behind the fill, so the outline sits outside the glyph. */
-  -webkit-text-stroke: 0.05em var(--hero-edge, var(--space-950));
-  paint-order: stroke fill;
+  width: fit-content;
+  color: var(--color-ink);
+  text-shadow: 0.05em 0.05em 0 var(--word-shadow);
 }
 
-/* the word's atmospheric glow: absolutely positioned, paints only */
-.hero-word-glow {
-  position: absolute;
-  inset: -18% -6%;
-  z-index: -1;
-  pointer-events: none;
-}
-
-/* Words carry the Google four: each one takes its own brand colour over
-   the hard offset shadow. The halo is dialed far back so on near-black
-   space the words read as type first, with the brand as a rim — the
-   background must stay quiet black (brief §1), never a colour field. */
 .hero-line[data-color="gblue"] {
-  color: var(--color-gblue-mute);
-  --word-halo: rgba(138, 180, 248, 0.12);
+  --word-shadow: var(--color-gblue);
 }
 .hero-line[data-color="gred"] {
-  color: var(--color-gred-mute);
-  --word-halo: rgba(242, 139, 130, 0.10);
+  --word-shadow: var(--color-gred);
 }
 .hero-line[data-color="gyellow"] {
-  color: var(--color-gyellow-mute);
-  --word-halo: rgba(253, 214, 99, 0.11);
+  --word-shadow: var(--color-gyellow);
 }
 .hero-line[data-color="ggreen"] {
-  color: var(--color-ggreen-mute);
-  --word-halo: rgba(129, 201, 149, 0.10);
-}
-
-/* the hard offset shadow stays; the brand halo is a tight glow layered
-   behind it, so the edges of the type keep their print crispness and the
-   halo only reads as a lift. The shadow is deeper now that the type is
-   bright on navy. */
-.hero-line {
-  text-shadow:
-    0.03em 0.03em 0 rgba(3, 6, 14, 0.75),
-    0 0 0.05em var(--word-halo, transparent);
-}
-
-/* the second half of the effect: each word's atmospheric glow breathes,
-   staggered left to right, so Learn, Connect and Grow light up in turn.
-   Opacity only — it runs on the compositor, never on the type itself. */
-@keyframes hero-word-breathe {
-  0%,
-  66%,
-  100% {
-    opacity: 0.5;
-  }
-  80% {
-    opacity: 1;
-  }
+  --word-shadow: var(--color-ggreen);
 }
 
 .hero-word-glow {
-  opacity: 0.7;
-  animation: hero-word-breathe 7s ease-in-out infinite;
+  display: none;
 }
 
-.hero-line[data-color="gred"] .hero-word-glow {
-  animation-delay: 0.6s;
-}
-.hero-line[data-color="ggreen"] .hero-word-glow {
-  animation-delay: 1.2s;
-}
+/* ---------- the paper hero ---------- */
 
-/* ---------- the spacecraft hero ---------- */
-
-/* The hero is one dark environment and it owns it end to end: the base
-   field, the starfield canvas, the floor grid and the ticker are all
-   inside this section, so the light sections below keep their own paper
-   world untouched. The gradients below are Layer A of the atmosphere
-   (brief §4) — they are what the hero looks like with every animation
-   switched off, so the composition must hold on them alone. Near-black
-   space: one faint neutral plateau for depth, then darkness. No colour
-   pools — the stars carry the visual interest (brief §1). */
 .hero-space {
-  background:
-    /* one extremely subtle neutral depth lift, upper left: night sky
-       luminance variation, not a coloured haze */
-    radial-gradient(64% 52% at 14% 8%, rgba(214, 226, 255, 0.028), transparent 70%),
-    radial-gradient(50% 44% at 84% 88%, rgba(214, 226, 255, 0.018), transparent 72%),
-    /* the deep field itself */
-    linear-gradient(180deg, var(--space-900) 0%, var(--space-800) 44%, var(--space-950) 100%);
-  color: rgba(245, 247, 255, 0.94);
-  /* the hero's own coordinate system: nothing inside it registers on the
-     stacking context of the page around it */
+  background-color: var(--color-bg);
+  color: var(--color-ink);
   isolation: isolate;
 }
 
-/* On the navy base a dark outline is invisible, so the focus ring flips
-   inside the hero. Outside the hero the ink ring stays as it was. */
-.hero-space :focus-visible {
-  outline: 3px solid rgba(255, 255, 255, 0.92);
-  outline-offset: 3px;
-}
-
-/* Two hero controls set their own ink ring further down this file
-   (.oso-close, .ruru-button). Inside the hero that ring is invisible, so
-   the flip has to win on specificity rather than on source order. */
-.hero-space .oso-close:focus-visible,
-.hero-space .ruru-button:focus-visible {
-  outline-color: rgba(255, 255, 255, 0.92);
-}
-
-/* the stage: the robot's world is the whole hero body */
 .hero-stage {
   touch-action: pan-y;
 }
 
-/* readability veil: deepens the field under the text column so the
-   headline keeps its contrast, never a rectangle edge (brief §37) */
 .hero-veil {
-  background:
-    radial-gradient(60% 76% at 22% 50%, rgba(4, 6, 14, 0.62), rgba(4, 6, 14, 0.26) 58%, transparent 82%);
+  display: none;
 }
 
-/* ---------- hero floor grid (Layer E) ---------- */
-
-/* A faint perspective lattice lying on the stage floor: Layer E of the
-   atmosphere. One plane, rotated away from the viewer so its lines converge
-   toward a horizon just under the headline and fade out with distance.
-   Drawn from two repeating gradients; decorative only, so it never affects
-   layout and never takes a pointer. */
 .hero-grid {
   position: absolute;
   left: 50%;
-  bottom: -4%;
+  bottom: 0;
   width: 300%;
-  height: 118%;
+  height: 70%;
   margin-left: -150%;
-  z-index: 2;
+  z-index: 0;
   pointer-events: none;
   transform-origin: 50% 100%;
-  transform: perspective(340px) rotateX(74deg);
+  transform: perspective(420px) rotateX(70deg);
   background-image:
-    linear-gradient(to right, rgba(163, 191, 255, 0.22) 0 1px, transparent 1px),
-    linear-gradient(to bottom, rgba(163, 191, 255, 0.22) 0 1px, transparent 1px);
-  background-size: 76px 76px, 76px 76px;
-  /* nearest lines read, the far field dissolves into the dark before the
-     lattice reaches the headline: distance, not a texture */
-  mask-image: linear-gradient(to top, #000 2%, rgba(0, 0, 0, 0.5) 42%, transparent 74%);
-  -webkit-mask-image: linear-gradient(to top, #000 2%, rgba(0, 0, 0, 0.5) 42%, transparent 74%);
+    linear-gradient(to right, rgba(32, 33, 36, 0.14) 0 2px, transparent 2px),
+    linear-gradient(to bottom, rgba(32, 33, 36, 0.14) 0 2px, transparent 2px);
+  background-size: 88px 88px, 88px 88px;
+  mask-image: linear-gradient(to top, #000 0%, rgba(0, 0, 0, 0.55) 45%, transparent 85%);
+  -webkit-mask-image: linear-gradient(to top, #000 0%, rgba(0, 0, 0, 0.55) 45%, transparent 85%);
 }
 
-/* the horizon: one soft light line where the plane meets the field, so the
-   lattice reads as ground rather than as a pattern */
-.hero-grid::before {
-  content: "";
-  position: absolute;
-  inset: 0 0 auto 0;
-  height: 1px;
-  background: linear-gradient(90deg, transparent, rgba(173, 196, 255, 0.5), transparent);
-}
-
-/* One reading-light pass across the environment, the spacecraft-window clue
-   without a cockpit frame (brief §44). Kept at 1.2% and steeply angled: a
-   wider or brighter streak reads as a band across the hero rather than as
-   light falling on it. */
-.hero-space::before {
-  content: "";
-  position: absolute;
-  inset: 0;
-  z-index: 3;
-  pointer-events: none;
-  background: linear-gradient(
-    108deg,
-    transparent 34%,
-    rgba(214, 226, 255, 0.012) 44%,
-    transparent 49%
-  );
-}
-
-/* hero copy that sits directly on the field: the light pair, so body text
-   and metadata clear AA against the navy base (14.6:1 and 8.3:1). */
 .hero-copy {
-  color: rgba(233, 238, 252, 0.9);
+  color: rgba(32, 33, 36, 0.78);
 }
 
 .hero-copy strong,
 .hero-copy .hero-copy-strong {
-  color: #f7f9ff;
-  font-weight: 600;
+  color: var(--color-ink);
+  font-weight: 700;
 }
 
 .hero-meta {
-  color: rgba(198, 209, 233, 0.78);
+  color: var(--color-muted);
 }
 
-/* the hero's text pane needs no gutter maths any more — the stage is
-   the whole section and the nav container alignment is kept by the
-   same padding rule as before, applied to the overlay column. */
 .hero-text-pane {
-  /* shifted a step left of the nav gutter so the headline sits visibly
-     further into the field (read request); floors keep the page gutter */
-  padding-left: max(1.25rem, calc((100% - 80rem) / 2 + 1.25rem - 3.5rem));
+  padding-left: max(1.25rem, calc((100% - 80rem) / 2 + 1.25rem));
   padding-right: 1.25rem;
 }
 
 @media (min-width: 640px) {
   .hero-text-pane {
-    padding-left: max(2rem, calc((100% - 80rem) / 2 + 2rem - 3.5rem));
+    padding-left: max(2rem, calc((100% - 80rem) / 2 + 2rem));
     padding-right: 2rem;
   }
 }
 
 /* ---------- headline letters: enter once, then obey the robot ---------- */
 
-/* The entrance animation uses `both` fill so letters hold their final
-   frame; the robot's reaction then writes inline transforms that must
-   win over the finished animation. Animations beat inline styles while
-   running, so once the intro letter animations complete we flip a data
-   attribute that removes the animation entirely. */
 .hero-display[data-settled="1"] .letter {
   animation: none !important;
 }
 
-/* ---------- the disturbance, visually (brief §6) ---------- */
-
-/* --k is the letter's smoothed influence (0..1) and --fx its signed push
-   direction, both written by the render loop for as long as the droid is
-   inside the letter's radius. With the attribute off, the type is exactly
-   the print setting again: the hard offset shadow plus the word's halo. */
 .hero-display .letter {
   --k: 0;
   --fx: 0;
 }
 
-/* Stage 1 is the bloom alone: at 0.1 influence this is a rim of colour, not
-   a fringe. Stage 2 adds the split — one warm shadow to the left, one cool
-   to the right, scaled by the same influence that drives the displacement,
-   so the colour and the movement are the same event. */
 .hero-display .letter[data-fx="1"] {
-  text-shadow:
-    calc(var(--fx) * -1.4px) 0 rgba(242, 139, 130, calc(var(--k) * 0.5)),
-    calc(var(--fx) * 1.4px) 0 rgba(138, 180, 248, calc(var(--k) * 0.55)),
-    0 0 calc(var(--k) * 0.16em) var(--word-halo, transparent),
-    0.03em 0.03em 0 rgba(3, 6, 14, 0.75);
+  text-shadow: calc(0.05em + var(--fx) * var(--k) * 0.06em) calc(0.05em + var(--k) * 0.04em) 0 var(--word-shadow);
 }
 
-/* Reduced motion never reaches this rule: DropLine returns before it
-   subscribes to the robot, so no letter carries the attribute at all. */
+/* ---------- the ticker tape ---------- */
 
-/* ---------- space ambience (site-wide readability helpers) ---------- */
-
-/* One world after the hero: sections keep their washes, but on the dark
-   base they read as atmosphere. The wash-section system stays untouched;
-   these helpers are for text sitting directly on the universe. */
-.on-space {
-  color: rgba(255, 255, 255, 0.92);
-}
-
-/* the starfield canvas: an absolute layer inside the hero, above the
-   base gradients and below every control. Pointer-transparent, so the
-   robot, the buttons and the ticker keep every event. */
-.space-bg {
-  position: absolute;
-  inset: 0;
-  z-index: 0;
-  display: block;
-  pointer-events: none;
+.ticker-strip {
+  border-top: 3px solid var(--color-ink);
+  background: var(--color-ink);
 }
 
 /* ---------- scroll hint ---------- */
@@ -655,13 +484,6 @@ body {
   background: var(--color-bg);
   border: 3px solid var(--color-ink);
   box-shadow: 4px 4px 0 var(--color-ink);
-}
-
-/* On the dark hero the plate becomes translucent glass. */
-.hero-space .gdg-logo-plate {
-  background: rgba(255, 255, 255, 0.9);
-  border-color: transparent;
-  box-shadow: 0 0 24px rgba(66, 133, 244, 0.35);
 }
 
 /* ---------- status pill ---------- */
@@ -768,19 +590,17 @@ body {
   }
 }
 
-/* The text pane sits a step left of the nav's container edge (mx-auto
-   max-w-7xl with px-5 sm:px-8): above the container width the gutter
-   opens up to match it, below it collapses to the page padding. The -3.5rem
-   is the deliberate headline shift (read request). Percentages resolve
-   against the hero, so a classic scrollbar cannot push the edges apart. */
+/* The text pane shares the nav's container edge (mx-auto max-w-7xl with
+   px-5 sm:px-8). Percentages resolve against the hero, so a classic
+   scrollbar cannot push the edges apart. */
 .hero-text-pane {
-  padding-left: max(1.25rem, calc((100% - 80rem) / 2 + 1.25rem - 3.5rem));
+  padding-left: max(1.25rem, calc((100% - 80rem) / 2 + 1.25rem));
   padding-right: 1.25rem;
 }
 
 @media (min-width: 640px) {
   .hero-text-pane {
-    padding-left: max(2rem, calc((100% - 80rem) / 2 + 2rem - 3.5rem));
+    padding-left: max(2rem, calc((100% - 80rem) / 2 + 2rem));
     padding-right: 2rem;
   }
 }
@@ -1037,6 +857,12 @@ body {
   transform: translateX(-50%) rotate(225deg);
 }
 
+@media (max-width: 767px) {
+  .ruru-bubble {
+    display: none !important;
+  }
+}
+
 /* poked: the whole droid squashes around its contact point */
 .ruru-visual.poke .ruru-head {
   animation: ruru-head-poke 0.45s cubic-bezier(0.34, 1.56, 0.64, 1);
@@ -1075,87 +901,80 @@ html.cursor-on iframe {
   transition: opacity 0.25s ease;
 }
 
-.cursor-dot {
+.cursor-dot,
+.cursor-box,
+.cursor-chip {
   position: fixed;
   top: 0;
   left: 0;
+  will-change: transform;
+}
+
+.cursor-dot {
   width: 8px;
   height: 8px;
   margin: -4px 0 0 -4px;
-  border-radius: 50%;
   background: var(--color-ink);
-  will-change: transform;
-}
-
-.cursor-ring {
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 36px;
-  height: 36px;
-  margin: -18px 0 0 -18px;
-  border: 2.5px solid var(--color-ink);
-  border-radius: 50%;
-  display: grid;
-  place-items: center;
-  will-change: transform;
-  transition: background-color 0.15s ease, border-color 0.15s ease;
-}
-.cursor-ring-dashed {
-  border-style: dashed;
-  animation: cursor-spin 7s linear infinite;
-}
-@keyframes cursor-spin {
-  to { rotate: 360deg; }
-}
-.cursor-label {
-  font-family: var(--font-display);
-  font-size: 10px;
-  font-weight: 800;
-  letter-spacing: 0.02em;
-  color: var(--color-ink);
-  opacity: 0;
   transition: opacity 0.15s ease;
-  text-transform: none;
-  user-select: none;
 }
 
-.cursor-trail {
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 7px;
-  height: 7px;
-  margin: -3.5px 0 0 -3.5px;
-  border: 1.5px solid var(--color-ink);
-  will-change: transform, opacity;
+.cursor-layer[data-mode="link"] .cursor-dot {
   opacity: 0;
 }
 
-.cursor-ripple {
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 14px;
-  height: 14px;
-  margin: -7px 0 0 -7px;
-  border: 3px solid;
-  border-radius: 50%;
-  animation: cursor-ripple 0.55s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+.cursor-box-shape {
+  display: block;
+  width: 30px;
+  height: 30px;
+  margin: -15px 0 0 -15px;
+  border: 3px solid var(--color-ink);
+  box-shadow: 3px 3px 0 var(--color-ink);
+  transition:
+    transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1),
+    box-shadow 0.2s ease;
 }
-@keyframes cursor-ripple {
-  from { transform: scale(0.4); opacity: 0.9; }
-  to { transform: scale(3.2); opacity: 0; }
+
+.cursor-layer[data-mode="link"] .cursor-box-shape {
+  transform: rotate(45deg) scale(1.35);
+  box-shadow: 4px 4px 0 var(--cursor-accent);
+}
+
+.cursor-layer[data-pressed="1"] .cursor-box-shape {
+  transform: scale(0.7);
+}
+
+.cursor-layer[data-mode="link"][data-pressed="1"] .cursor-box-shape {
+  transform: rotate(45deg) scale(1);
+}
+
+.cursor-chip-label {
+  display: inline-block;
+  border: 2px solid var(--color-ink);
+  background: var(--cursor-accent, var(--color-gyellow));
+  box-shadow: 3px 3px 0 var(--color-ink);
+  padding: 3px 8px;
+  font-family: var(--font-display);
+  font-size: 11px;
+  font-weight: 800;
+  color: var(--color-ink);
+  white-space: nowrap;
+  transform: scale(0);
+  transform-origin: top left;
+  transition: transform 0.22s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.cursor-layer[data-label="1"] .cursor-chip-label {
+  transform: scale(1);
 }
 
 .cursor-bit {
   position: fixed;
   top: 0;
   left: 0;
-  width: 8px;
-  height: 8px;
-  margin: -4px 0 0 -4px;
-  border: 1.5px solid var(--color-ink);
+  width: 9px;
+  height: 9px;
+  margin: -4.5px 0 0 -4.5px;
+  border: 2px solid var(--color-ink);
   animation: cursor-bit 0.6s cubic-bezier(0.22, 1, 0.36, 1) forwards;
 }
 @keyframes cursor-bit {
@@ -1361,4 +1180,177 @@ html.cursor-on iframe {
     animation: none !important;
     transform: rotate(-2deg) !important;
   }
+}
+
+.deck-card {
+  transition: translate 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .deck-card:hover {
+    translate: 0 -14px;
+  }
+}
+
+@media print {
+  .cursor-layer,
+  .noise-overlay {
+    display: none !important;
+  }
+}
+
+.roll-text {
+  position: relative;
+  display: inline-grid;
+  overflow: hidden;
+  vertical-align: top;
+}
+
+.roll-text-line {
+  grid-area: 1 / 1;
+  transition: transform 0.42s cubic-bezier(0.76, 0, 0.24, 1);
+}
+
+.roll-text-copy {
+  transform: translateY(105%);
+}
+
+:is(a, button):hover .roll-text-line,
+:is(a, button):focus-visible .roll-text-line {
+  transform: translateY(-105%);
+}
+
+:is(a, button):hover .roll-text-copy,
+:is(a, button):focus-visible .roll-text-copy {
+  transform: translateY(0);
+}
+
+.deal-table {
+  perspective: 1400px;
+}
+
+.deal-card {
+  transform-style: preserve-3d;
+  will-change: transform;
+}
+
+.deal-face {
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+}
+
+.deal-back {
+  transform: rotateY(180deg);
+}
+
+.wordmark-letter {
+  --pull: 0;
+  display: inline-block;
+  font-variation-settings: "wght" calc(400 + var(--pull) * 400), "opsz" 96;
+  transform: translateY(calc(var(--pull) * -6%)) scaleY(calc(1 + var(--pull) * 0.14));
+  transform-origin: 50% 100%;
+  text-shadow: calc(var(--pull) * 0.07em) calc(var(--pull) * 0.07em) 0 var(--shadow);
+}
+
+.wordmark.is-static .wordmark-letter {
+  --pull: 1;
+}
+
+.crew-card {
+  transform-style: preserve-3d;
+}
+
+.mask-word {
+  display: inline-block;
+  overflow: hidden;
+  vertical-align: top;
+  padding: 0 0.08em 0.12em 0;
+  margin: 0 -0.08em -0.12em 0;
+}
+
+.push-pin {
+  position: absolute;
+  top: -11px;
+  left: 50%;
+  z-index: 2;
+  width: 22px;
+  height: 22px;
+  margin-left: -11px;
+  border: 3px solid var(--color-ink);
+  border-radius: 50%;
+  box-shadow: 2px 3px 0 var(--color-ink);
+}
+
+.push-pin-shine {
+  position: absolute;
+  top: 3px;
+  left: 4px;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.8);
+}
+
+.pinned-note {
+  transform-origin: 50% 0;
+}
+
+@keyframes note-swing {
+  0% { rotate: 0deg; }
+  20% { rotate: -5deg; }
+  40% { rotate: 3.5deg; }
+  60% { rotate: -2deg; }
+  80% { rotate: 1deg; }
+  100% { rotate: 0deg; }
+}
+
+@media (hover: hover) and (pointer: fine) and (prefers-reduced-motion: no-preference) {
+  .pinned-note:hover {
+    animation: note-swing 1.1s cubic-bezier(0.36, 0, 0.24, 1);
+  }
+}
+
+.type-caret {
+  display: inline-block;
+  width: 0.55em;
+  height: 1.1em;
+  margin-left: 1px;
+  vertical-align: text-bottom;
+  background: var(--color-ink);
+  animation: caret-blink 0.9s steps(1) infinite;
+}
+
+@keyframes caret-blink {
+  50% {
+    opacity: 0;
+  }
+}
+
+html.world-on [data-stage] {
+  background: transparent !important;
+}
+
+html.world-on .hero-grid {
+  display: none;
+}
+
+html[data-world-stage="deal"] .oso-card,
+html[data-world-stage="domains"] .oso-card,
+html[data-world-stage="finale"] .oso-card {
+  opacity: 0 !important;
+  pointer-events: none;
+}
+
+html[data-deck-hover] .cursor-box-shape {
+  transform: rotate(45deg) scale(1.35);
+  box-shadow: 4px 4px 0 var(--color-gyellow);
+}
+
+html.deck-grabbing .cursor-box-shape {
+  transform: rotate(45deg) scale(1);
+}
+
+html.deck-grabbing,
+html.deck-grabbing * {
+  user-select: none;
 }

@@ -1,18 +1,10 @@
-import { useRef, useState } from "react";
-import { AnimatePresence, motion } from "framer-motion";
-import { ArrowLink, Reveal, SectionTag, ScrambleHeading, burstConfetti, useMagnetic } from "./ui";
-import { COLOR_HEX, PANEL_HEX, type GColor } from "../data/content";
+import { useState, type PointerEvent } from "react";
+import { motion, useReducedMotion } from "framer-motion";
+import { ArrowLink, Reveal, SectionTag, ScrambleHeading, SuitGlyph, SUIT_FOR, useMagnetic } from "./ui";
+import { CardBack } from "./DealScene";
+import { COLOR_HEX, type GColor } from "../data/content";
 import { DEMO_PERSON } from "../lib/identity";
 import { cn } from "../utils/cn";
-
-const TRACKS: { label: string; color: GColor }[] = [
-  { label: "Web", color: "gblue" },
-  { label: "Android", color: "ggreen" },
-  { label: "Cloud", color: "gyellow" },
-  { label: "AI / ML", color: "gred" },
-  { label: "UI/UX", color: "gblue" },
-  { label: "Open Source", color: "ggreen" },
-];
 
 const PERKS = [
   { color: "gblue" as GColor, text: "Weekly hands-on sessions - no lecture slides, ever" },
@@ -22,49 +14,102 @@ const PERKS = [
 ];
 
 const YEARS = ["1st year", "2nd year", "3rd year", "4th year"];
+const YEAR_COLORS: GColor[] = ["gblue", "gred", "gyellow", "ggreen"];
+
+function initialsOf(name: string) {
+  return name
+    .trim()
+    .split(/\s+/)
+    .map((word) => word[0])
+    .slice(0, 2)
+    .join("")
+    .toUpperCase();
+}
+
+function PreviewCard({ name, year }: { name: string; year: string }) {
+  const reduced = useReducedMotion();
+  const [tilt, setTilt] = useState({ x: 0, y: 0 });
+  const color = YEAR_COLORS[Math.max(0, YEARS.indexOf(year))];
+  const hex = COLOR_HEX[color];
+  const ready = name.trim().length >= 2;
+
+  const onPointerMove = (event: PointerEvent<HTMLDivElement>) => {
+    if (reduced) {
+      return;
+    }
+    const box = event.currentTarget.getBoundingClientRect();
+    setTilt({
+      x: ((event.clientY - box.top) / box.height - 0.5) * -14,
+      y: ((event.clientX - box.left) / box.width - 0.5) * 14,
+    });
+  };
+
+  return (
+    <div
+      className="w-[170px] shrink-0 [perspective:900px]"
+      onPointerMove={onPointerMove}
+      onPointerLeave={() => setTilt({ x: 0, y: 0 })}
+      aria-hidden="true"
+    >
+      <motion.div
+        className="crew-card relative aspect-[5/7]"
+        animate={{ rotateY: ready ? 0 : 180, rotateX: tilt.x, rotateZ: ready ? -4 + tilt.y * 0.2 : -4, y: ready ? -6 : 0 }}
+        transition={{ type: "spring", stiffness: 140, damping: 16 }}
+      >
+        <div className="deal-face absolute inset-0 flex flex-col justify-between overflow-hidden border-[3px] border-ink bg-bg p-4 shadow-[6px_6px_0_var(--color-ink)]">
+          <span className="absolute inset-x-0 top-0 h-2" style={{ background: hex }} />
+          <span className="mt-1 flex flex-col items-start leading-none" style={{ color: hex }}>
+            <span className="font-display text-sm font-extrabold text-ink">{initialsOf(name) || "—"}</span>
+            <SuitGlyph suit={SUIT_FOR[color]} size={11} />
+          </span>
+          <span className="pointer-events-none absolute -right-6 -bottom-6 opacity-10" style={{ color: hex }}>
+            <SuitGlyph suit={SUIT_FOR[color]} size={130} />
+          </span>
+          <div className="relative">
+            <p className="font-mono text-[9px] font-semibold tracking-[0.2em] text-muted uppercase">Member · {year}</p>
+            <p className="mt-1 font-display text-lg leading-tight font-extrabold break-words text-ink">{name.trim() || "Your name"}</p>
+          </div>
+        </div>
+        <CardBack />
+      </motion.div>
+    </div>
+  );
+}
 
 interface FormErrors {
   name?: string;
   email?: string;
-  tracks?: string;
 }
 
 export default function Join() {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [year, setYear] = useState(YEARS[0]);
-  const [tracks, setTracks] = useState<string[]>([]);
   const [errors, setErrors] = useState<FormErrors>({});
-  const [submitted, setSubmitted] = useState(false);
-  const ctaRef = useRef<HTMLButtonElement>(null);
   /* effect 6: short magnetic pull on the primary CTA (fine pointers only) */
   const magnet = useMagnetic<HTMLSpanElement>(0.22, 36);
 
-  const toggleTrack = (label: string) => {
-    setTracks((t) => (t.includes(label) ? t.filter((x) => x !== label) : [...t, label]));
-    setErrors((e) => ({ ...e, tracks: undefined }));
-  };
-
   const submit = () => {
     const next: FormErrors = {};
-    if (name.trim().length < 2) next.name = "Name required";
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) next.email = "Valid email required";
-    if (tracks.length === 0) next.tracks = "Pick at least one track";
-    setErrors(next);
-    if (Object.keys(next).length === 0) {
-      setSubmitted(true);
-      /* effect 11: four-colour confetti burst on the primary CTA */
-      burstConfetti(ctaRef.current, [COLOR_HEX.gblue, COLOR_HEX.gred, COLOR_HEX.gyellow, COLOR_HEX.ggreen]);
+    if (name.trim().length < 2) {
+      next.name = "Name required";
     }
-  };
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      next.email = "Valid email required";
+    }
 
-  const reset = () => {
-    setName("");
-    setEmail("");
-    setYear(YEARS[0]);
-    setTracks([]);
-    setErrors({});
-    setSubmitted(false);
+    setErrors(next);
+    if (Object.keys(next).length > 0) {
+      return;
+    }
+
+    const params = new URLSearchParams({
+      mode: "signup",
+      name: name.trim(),
+      email: email.trim(),
+      year: String(YEARS.indexOf(year) + 1),
+    });
+    location.hash = `#/login?${params}`;
   };
 
   const inputCls =
@@ -102,6 +147,16 @@ export default function Join() {
               ))}
             </ul>
 
+            <div className="mt-10 hidden items-center gap-6 lg:flex">
+              <PreviewCard name={name} year={year} />
+              <div>
+                <p className="font-mono text-xs font-semibold tracking-[0.25em] text-muted uppercase">Your card, live</p>
+                <p className="mt-2 max-w-[14rem] text-sm leading-relaxed text-ink/80">
+                  Type your name and pick your year. Your member card deals itself as you go.
+                </p>
+              </div>
+            </div>
+
             <div className="mt-10 flex flex-wrap gap-4">
               <ArrowLink ghost color="gblue" onClick={() => window.open("https://gdg.community.dev", "_blank", "noopener")}>
                 gdg.community.dev
@@ -125,156 +180,85 @@ export default function Join() {
                 </span>
               </div>
 
-              <AnimatePresence mode="wait">
-                {submitted ? (
-                  <motion.div
-                    key="success"
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    exit={{ opacity: 0 }}
-                    transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
-                    className="flex min-h-[420px] flex-col items-center justify-center py-10 text-center"
-                  >
-                    <svg width="72" height="72" viewBox="0 0 72 72" fill="none">
-                      <motion.circle
-                        cx="36" cy="36" r="32" stroke={COLOR_HEX.ggreen} strokeWidth="3"
-                        initial={{ pathLength: 0 }} animate={{ pathLength: 1 }}
-                        transition={{ duration: 0.8, ease: "easeInOut" }}
-                      />
-                      <motion.path
-                        d="M22 37.5 32 47l18-20" stroke={COLOR_HEX.ggreen} strokeWidth="4" strokeLinecap="square"
-                        initial={{ pathLength: 0 }} animate={{ pathLength: 1 }}
-                        transition={{ duration: 0.5, delay: 0.5, ease: "easeOut" }}
-                      />
-                    </svg>
-                    <p className="mt-6 font-display text-2xl font-extrabold text-ink">
-                      You're in the queue, {name.trim().split(" ")[0]}
-                    </p>
-                    <p className="mt-3 max-w-xs text-sm leading-relaxed text-ink/80">
-                      Watch <span className="font-semibold text-ink">{email}</span> - the crew sends onboarding before the
-                      next meetup. Meanwhile, the board is yours to explore.
-                    </p>
-                    <button
-                      type="button"
-                      onClick={reset}
-                      className="link-draw mt-8 text-sm font-bold text-ink"
-                    >
-                      Submit another response
-                    </button>
-                  </motion.div>
-                ) : (
-                  <motion.form
-                    key="form"
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    exit={{ opacity: 0 }}
-                    transition={{ duration: 0.35 }}
-                    className="flex flex-col gap-5 pt-7"
-                    onSubmit={(e) => {
-                      e.preventDefault();
-                      submit();
+              <form
+                className="flex flex-col gap-5 pt-7"
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  submit();
+                }}
+              >
+                <div>
+                  <label htmlFor="join-name" className="mb-2 block text-sm font-semibold text-ink">
+                    Full name
+                  </label>
+                  <input
+                    id="join-name"
+                    value={name}
+                    onChange={(e) => {
+                      setName(e.target.value);
+                      setErrors((er) => ({ ...er, name: undefined }));
                     }}
+                    /* DEMO DATA: replace before launch */
+                    placeholder={DEMO_PERSON.fullName}
+                    className={cn(inputCls, errors.name && "border-gred")}
+                  />
+                  {errors.name && <p className="mt-1.5 font-mono text-[11px] font-bold text-ink">{errors.name}</p>}
+                </div>
+
+                <div>
+                  <label htmlFor="join-email" className="mb-2 block text-sm font-semibold text-ink">
+                    Campus email
+                  </label>
+                  <input
+                    id="join-email"
+                    type="email"
+                    value={email}
+                    onChange={(e) => {
+                      setEmail(e.target.value);
+                      setErrors((er) => ({ ...er, email: undefined }));
+                    }}
+                    placeholder="you@psit.ac.in"
+                    className={cn(inputCls, errors.email && "border-gred")}
+                  />
+                  {errors.email && <p className="mt-1.5 font-mono text-[11px] font-bold text-ink">{errors.email}</p>}
+                </div>
+
+                <div>
+                  <label htmlFor="join-year" className="mb-2 block text-sm font-semibold text-ink">
+                    Year
+                  </label>
+                  <select id="join-year" value={year} onChange={(e) => setYear(e.target.value)} className={cn(inputCls, "appearance-none")}>
+                    {YEARS.map((y) => (
+                      <option key={y} value={y} className="bg-panel">
+                        {y}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <span
+                  ref={magnet.ref}
+                  className="block w-full"
+                  style={
+                    magnet.offset.x || magnet.offset.y
+                      ? { transform: `translate3d(${magnet.offset.x}px, ${magnet.offset.y}px, 0)` }
+                      : undefined
+                  }
+                >
+                  <button
+                    type="submit"
+                    className="hard-button group mt-2 flex w-full items-center justify-center gap-3 bg-gyellow px-6 py-4 font-display text-base font-extrabold text-ink"
                   >
-                    <div>
-                      <label htmlFor="join-name" className="mb-2 block text-sm font-semibold text-ink">
-                        Full name
-                      </label>
-                      <input
-                        id="join-name"
-                        value={name}
-                        onChange={(e) => {
-                          setName(e.target.value);
-                          setErrors((er) => ({ ...er, name: undefined }));
-                        }}
-                        /* DEMO DATA: replace before launch */
-                        placeholder={DEMO_PERSON.fullName}
-                        className={cn(inputCls, errors.name && "border-gred")}
-                      />
-                      {errors.name && <p className="mt-1.5 font-mono text-[11px] font-bold text-ink">{errors.name}</p>}
-                    </div>
-
-                    <div>
-                      <label htmlFor="join-email" className="mb-2 block text-sm font-semibold text-ink">
-                        Campus email
-                      </label>
-                      <input
-                        id="join-email"
-                        type="email"
-                        value={email}
-                        onChange={(e) => {
-                          setEmail(e.target.value);
-                          setErrors((er) => ({ ...er, email: undefined }));
-                        }}
-                        placeholder="you@psit.ac.in"
-                        className={cn(inputCls, errors.email && "border-gred")}
-                      />
-                      {errors.email && <p className="mt-1.5 font-mono text-[11px] font-bold text-ink">{errors.email}</p>}
-                    </div>
-
-                    <div>
-                      <label htmlFor="join-year" className="mb-2 block text-sm font-semibold text-ink">
-                        Year
-                      </label>
-                      <select id="join-year" value={year} onChange={(e) => setYear(e.target.value)} className={cn(inputCls, "appearance-none")}>
-                        {YEARS.map((y) => (
-                          <option key={y} value={y} className="bg-panel">
-                            {y}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-
-                    <div>
-                      <p className="mb-2.5 text-sm font-semibold text-ink">Tracks you vibe with</p>
-                      <div className="flex flex-wrap gap-2">
-                        {TRACKS.map((t) => {
-                          const active = tracks.includes(t.label);
-                          const hex = COLOR_HEX[t.color];
-                          return (
-                            <button
-                              key={t.label}
-                              type="button"
-                              onClick={() => toggleTrack(t.label)}
-                              className={cn(
-                                "border-2 border-ink px-3.5 py-2 text-sm font-semibold text-ink transition-colors duration-200",
-                                active ? "" : "bg-bg hover:bg-panel"
-                              )}
-                              style={active ? { background: PANEL_HEX[t.color], borderColor: hex } : undefined}
-                            >
-                              {t.label}
-                            </button>
-                          );
-                        })}
-                      </div>
-                      {errors.tracks && <p className="mt-1.5 font-mono text-[11px] font-bold text-ink">{errors.tracks}</p>}
-                    </div>
-
-                    <span
-                      ref={magnet.ref}
-                      className="block w-full"
-                      style={
-                        magnet.offset.x || magnet.offset.y
-                          ? { transform: `translate3d(${magnet.offset.x}px, ${magnet.offset.y}px, 0)` }
-                          : undefined
-                      }
-                    >
-                      <button
-                        ref={ctaRef}
-                        type="submit"
-                        className="hard-button group mt-2 flex w-full items-center justify-center gap-3 bg-gyellow px-6 py-4 font-display text-base font-extrabold text-ink"
-                      >
-                        Request to join
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" className="transition-transform duration-300 group-hover:translate-x-1" aria-hidden="true">
-                          <path d="M5 12h14M13 6l6 6-6 6" />
-                        </svg>
-                      </button>
-                    </span>
-                    <p className="text-center text-[11px] font-semibold text-muted">
-                      no spam · one onboarding mail · unsubscribe anytime
-                    </p>
-                  </motion.form>
-                )}
-              </AnimatePresence>
+                    Create your account
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" className="transition-transform duration-300 group-hover:translate-x-1" aria-hidden="true">
+                      <path d="M5 12h14M13 6l6 6-6 6" />
+                    </svg>
+                  </button>
+                </span>
+                <p className="text-center text-[11px] font-semibold text-muted">
+                  already a member? <a href="#/login" className="link-draw font-bold text-ink">log in</a>
+                </p>
+              </form>
             </div>
           </Reveal>
         </div>

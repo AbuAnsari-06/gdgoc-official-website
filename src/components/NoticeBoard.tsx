@@ -5,6 +5,15 @@ import { scrollToId } from "../lib/scroll";
 
 /* resting angles — a few cards sit slightly off-square and straighten on hover */
 const REST = ["rest-tilt-l", "", "rest-tilt-r", "", "rest-tilt-l", ""];
+const DROP_SPIN = [-14, 9, -7, 12, -10, 6, -8];
+
+function PushPin({ color }: { color: string }) {
+  return (
+    <span className="push-pin" style={{ background: color }} aria-hidden="true">
+      <span className="push-pin-shine" />
+    </span>
+  );
+}
 
 export default function NoticeBoard() {
   return (
@@ -32,18 +41,13 @@ export default function NoticeBoard() {
               return (
                 <motion.article
                   key={n.title}
-                  initial={{ opacity: 0, y: 26 }}
-                  whileInView={{ opacity: 1, y: 0 }}
-                  viewport={{ once: true, margin: "-60px" }}
-                  transition={{ duration: 0.55, delay: i * 0.07, ease: [0.22, 1, 0.36, 1] }}
-                  className={`hard-surface group relative flex flex-col p-6 ${REST[i % REST.length]}`}
+                  initial={{ opacity: 0, y: -120, rotate: DROP_SPIN[i % DROP_SPIN.length], scale: 1.12 }}
+                  whileInView={{ opacity: 1, y: 0, rotate: 0, scale: 1 }}
+                  viewport={{ once: true, margin: "-80px" }}
+                  transition={{ type: "spring", stiffness: 170, damping: 15, delay: i * 0.09 }}
+                  className={`pinned-note hard-surface group relative flex flex-col p-6 ${REST[i % REST.length]}`}
                 >
-                  {/* pin */}
-                  <span
-                    className="absolute -top-[3px] left-6 h-2.5 w-14 border-b-[3px] border-ink"
-                    style={{ background: hex }}
-                    aria-hidden="true"
-                  />
+                  <PushPin color={hex} />
                   <div className="flex items-start justify-between gap-3">
                     <h3 className="font-display text-lg font-extrabold text-ink">{n.title}</h3>
                     <span className="shrink-0 border-2 border-ink px-2 py-0.5 text-[11px] font-semibold text-ink">
@@ -69,16 +73,13 @@ export default function NoticeBoard() {
 
             {/* mini calendar card */}
             <motion.article
-              initial={{ opacity: 0, y: 26 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true, margin: "-60px" }}
-              transition={{ duration: 0.55, delay: 0.4, ease: [0.22, 1, 0.36, 1] }}
-              className="hard-surface relative flex flex-col p-6"
+              initial={{ opacity: 0, y: -120, rotate: 8, scale: 1.12 }}
+              whileInView={{ opacity: 1, y: 0, rotate: 0, scale: 1 }}
+              viewport={{ once: true, margin: "-80px" }}
+              transition={{ type: "spring", stiffness: 170, damping: 15, delay: 0.5 }}
+              className="pinned-note hard-surface relative flex flex-col p-6"
             >
-              <span
-                className="absolute -top-[3px] left-6 h-2.5 w-14 border-b-[3px] border-ink bg-gyellow"
-                aria-hidden="true"
-              />
+              <PushPin color={COLOR_HEX.gyellow} />
               <h3 className="font-display text-lg font-extrabold text-ink">Next on the calendar</h3>
               <ul className="mt-5 flex-1 space-y-4">
                 {UPCOMING.map((u) => (

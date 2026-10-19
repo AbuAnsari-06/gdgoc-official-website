@@ -1,5 +1,7 @@
-import { Marquee } from "./ui";
 import GdgLogo from "./GdgLogo";
+import ProximityWordmark from "./ProximityWordmark";
+import { Marquee, SuitGlyph, SUIT_FOR } from "./ui";
+import { COLOR_HEX } from "../data/content";
 import { scrollToId, scrollToTop } from "../lib/scroll";
 
 const NAV = [
@@ -30,11 +32,12 @@ export default function Footer() {
               <span className="px-6 font-display text-6xl font-extrabold tracking-tight whitespace-nowrap sm:text-8xl">
                 GDGoC PSIT
               </span>
-              <span className="flex gap-2 px-6">
-                <span className="h-4 w-4 border-2 border-ink bg-gblue" aria-hidden="true" />
-                <span className="h-4 w-4 border-2 border-ink bg-gred" aria-hidden="true" />
-                <span className="h-4 w-4 border-2 border-ink bg-gyellow" aria-hidden="true" />
-                <span className="h-4 w-4 border-2 border-ink bg-ggreen" aria-hidden="true" />
+              <span className="flex gap-3 px-6" aria-hidden="true">
+                {(["gblue", "gred", "gyellow", "ggreen"] as const).map((color) => (
+                  <span key={color} style={{ color: COLOR_HEX[color] }}>
+                    <SuitGlyph suit={SUIT_FOR[color]} size={34} />
+                  </span>
+                ))}
               </span>
             </span>
           ))}
@@ -108,6 +111,8 @@ export default function Footer() {
           </p>
         </div>
       </div>
+
+      <ProximityWordmark />
 
       {/* four-colour baseline */}
       <div className="grid h-2 grid-cols-4">
