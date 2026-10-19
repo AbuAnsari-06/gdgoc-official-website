@@ -1,6 +1,6 @@
 import { Router } from "express";
 import Event from "../models/Event.js";
-import Registration from "../models/Registration.js";
+import Registration, { newTicketId } from "../models/Registration.js";
 import { optionalAuth, requireAuth } from "../middleware/auth.js";
 import { CLOSED_MESSAGES, publicEvent, publicEventDetail, statusOf } from "../utils/events.js";
 import { publicTicket, ticketState } from "../utils/tickets.js";
@@ -24,6 +24,21 @@ function alreadyRegistered(res, registration) {
   });
 }
 
+function releaseSeat(eventId) {
+  return Event.updateOne({ _id: eventId, registeredCount: { $gt: 0 } }, { $inc: { registeredCount: -1 } });
+}
+
+function saveRegistration(userId, eventId, cancelled) {
+  if (!cancelled) {
+    return Registration.create({ user: userId, event: eventId });
+  }
+  return Registration.findOneAndUpdate(
+    { _id: cancelled._id, status: "cancelled" },
+    { status: "confirmed", ticketId: newTicketId(), attendedAt: null },
+    { returnDocument: "after" },
+  );
+}
+
 router.get("/", async (req, res) => {
   const events = await Event.find({ published: true }).sort({ startsAt: 1 });
   const now = new Date();
@@ -41,7 +56,9 @@ router.get("/:id", optionalAuth, async (req, res) => {
   if (req.user) {
     const found = await Registration.findOne({ user: req.user._id, event: event._id });
     if (found) {
-      registration = { ticketId: found.ticketId, state: ticketState(found, event) };
+      const state = ticketState(found, event);
+      const meetingUrl = state === "confirmed" ? event.meetingUrl || null : null;
+      registration = { ticketId: found.ticketId, state, meetingUrl };
     }
   }
 
@@ -58,7 +75,7 @@ router.post("/:id/register", requireAuth, async (req, res) => {
   }
 
   const existing = await Registration.findOne({ user: req.user._id, event: event._id });
-  if (existing) {
+  if (existing && existing.status !== "cancelled") {
     return alreadyRegistered(res, existing);
   }
 
@@ -91,16 +108,20 @@ router.post("/:id/register", requireAuth, async (req, res) => {
     return res.status(409).json({ message });
   }
 
-  let registration;
+  let registration = null;
   try {
-    registration = await Registration.create({ user: req.user._id, event: claimed._id });
+    registration = await saveRegistration(req.user._id, claimed._id, existing);
   } catch (error) {
-    await Event.updateOne({ _id: claimed._id }, { $inc: { registeredCount: -1 } });
-    if (error?.code === DUPLICATE_KEY) {
-      const duplicate = await Registration.findOne({ user: req.user._id, event: claimed._id });
-      return alreadyRegistered(res, duplicate);
+    if (error?.code !== DUPLICATE_KEY) {
+      await releaseSeat(claimed._id);
+      throw error;
     }
-    throw error;
+  }
+
+  if (!registration) {
+    await releaseSeat(claimed._id);
+    const current = await Registration.findOne({ user: req.user._id, event: claimed._id });
+    return alreadyRegistered(res, current);
   }
 
   registration.event = claimed;
@@ -108,6 +129,36 @@ router.post("/:id/register", requireAuth, async (req, res) => {
     event: publicEvent(claimed, now),
     ticket: publicTicket(registration, now),
   });
+});
+
+router.post("/:id/cancel", requireAuth, async (req, res) => {
+  const event = await findPublished(req.params.id);
+  if (!event) {
+    return res.status(404).json(NOT_FOUND);
+  }
+
+  if (event.startsAt <= new Date()) {
+    return res.status(409).json({ message: "This event has already started, so the registration can't be cancelled." });
+  }
+
+  const cancelled = await Registration.findOneAndUpdate(
+    { user: req.user._id, event: event._id, status: { $ne: "cancelled" }, attendedAt: null },
+    { status: "cancelled" },
+    { returnDocument: "after" },
+  );
+  if (cancelled) {
+    await releaseSeat(event._id);
+    return res.json({ ticketId: cancelled.ticketId, state: "cancelled" });
+  }
+
+  const existing = await Registration.findOne({ user: req.user._id, event: event._id });
+  if (!existing) {
+    return res.status(404).json({ message: "You aren't registered for this event." });
+  }
+  if (existing.status === "cancelled") {
+    return res.json({ ticketId: existing.ticketId, state: "cancelled" });
+  }
+  res.status(409).json({ message: "Your attendance is already recorded, so the registration can't be cancelled." });
 });
 
 export default router;

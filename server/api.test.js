@@ -323,7 +323,11 @@ test("events: listing, details and registration rules", options, async () => {
 
   const seen = await call(`/events/${open}`, { cookie: alice.cookie });
   assert.equal(seen.data.viewer.signedIn, true);
-  assert.deepEqual(seen.data.viewer.registration, { ticketId: first.data.ticket.ticketId, state: "confirmed" });
+  assert.deepEqual(seen.data.viewer.registration, {
+    ticketId: first.data.ticket.ticketId,
+    state: "confirmed",
+    meetingUrl: null,
+  });
 
   const tickets = await call("/tickets", { cookie: alice.cookie });
   assert.ok(tickets.data.tickets.some((ticket) => ticket.ticketId === first.data.ticket.ticketId));
@@ -352,6 +356,92 @@ test("events: listing, details and registration rules", options, async () => {
   assert.equal(called.data.message, "This event was cancelled.");
 
   assert.equal((await call(`/events/${draft}/register`, { method: "POST", cookie: cara.cookie })).status, 404);
+});
+
+test("events: meeting links stay private and members can cancel and register again", options, async () => {
+  const stamp = Date.now();
+  const [dana, erin, fay] = await Promise.all(
+    ["dana", "erin", "fay"].map((name) =>
+      call("/auth/register", {
+        method: "POST",
+        body: { name: `Cancel ${name}`, email: `${name}${stamp}@test.dev`, password: "secret123" },
+      }),
+    ),
+  );
+
+  const day = 24 * 60 * 60 * 1000;
+  const meetingUrl = "https://meet.google.com/abc-defg-hij";
+  const base = {
+    summary: "",
+    description: "",
+    venue: "Google Meet",
+    poster: "",
+    cancelled: false,
+    published: true,
+    category: "Talk",
+    format: "online",
+    host: "",
+    prerequisites: "",
+    capacity: 1,
+    registeredCount: 0,
+    registrationDeadline: null,
+    meetingUrl,
+    createdAt: new Date(),
+    updatedAt: new Date(),
+  };
+
+  await mongoose.connect(process.env.MONGO_URI);
+  const inserted = await mongoose.connection.collection("events").insertMany([
+    { ...base, title: `One seat ${stamp}`, startsAt: new Date(Date.now() + 3 * day) },
+    { ...base, title: `Started ${stamp}`, startsAt: new Date(Date.now() - 1000), capacity: null },
+  ]);
+  await mongoose.disconnect();
+  const [oneSeat, started] = Object.values(inserted.insertedIds).map(String);
+
+  const list = await call("/events");
+  const anonymous = await call(`/events/${oneSeat}`);
+  assert.ok(!JSON.stringify(list.data).includes(meetingUrl));
+  assert.ok(!JSON.stringify(anonymous.data).includes(meetingUrl));
+
+  const first = await call(`/events/${oneSeat}/register`, { method: "POST", cookie: dana.cookie });
+  assert.equal(first.status, 201);
+  const oldTicketId = first.data.ticket.ticketId;
+  assert.equal(first.data.ticket.event.id, oneSeat);
+
+  const seen = await call(`/events/${oneSeat}`, { cookie: dana.cookie });
+  assert.equal(seen.data.viewer.registration.meetingUrl, meetingUrl);
+  const ticket = await call(`/tickets/${oldTicketId}`, { cookie: dana.cookie });
+  assert.equal(ticket.data.meetingUrl, meetingUrl);
+  assert.ok(!JSON.stringify((await call(`/events/${oneSeat}`, { cookie: erin.cookie })).data).includes(meetingUrl));
+
+  assert.equal((await call(`/events/${oneSeat}/register`, { method: "POST", cookie: erin.cookie })).status, 409);
+  assert.equal((await call(`/events/${oneSeat}/cancel`, { method: "POST" })).status, 401);
+  assert.equal((await call(`/events/${oneSeat}/cancel`, { method: "POST", cookie: fay.cookie })).status, 404);
+
+  const cancels = await Promise.all(
+    [0, 1].map(() => call(`/events/${oneSeat}/cancel`, { method: "POST", cookie: dana.cookie })),
+  );
+  assert.deepEqual(cancels.map((r) => r.status), [200, 200]);
+  assert.equal(cancels[0].data.state, "cancelled");
+
+  const afterCancel = await call(`/events/${oneSeat}`, { cookie: dana.cookie });
+  assert.equal(afterCancel.data.seatsLeft, 1);
+  assert.deepEqual(afterCancel.data.viewer.registration, { ticketId: oldTicketId, state: "cancelled", meetingUrl: null });
+  assert.equal((await call(`/tickets/${oldTicketId}`, { cookie: dana.cookie })).data.meetingUrl, null);
+
+  assert.equal((await call(`/events/${oneSeat}/register`, { method: "POST", cookie: erin.cookie })).status, 201);
+  assert.equal((await call(`/events/${oneSeat}/register`, { method: "POST", cookie: dana.cookie })).status, 409);
+  assert.equal((await call(`/events/${oneSeat}/cancel`, { method: "POST", cookie: erin.cookie })).status, 200);
+
+  const again = await call(`/events/${oneSeat}/register`, { method: "POST", cookie: dana.cookie });
+  assert.equal(again.status, 201);
+  assert.notEqual(again.data.ticket.ticketId, oldTicketId);
+  assert.equal((await call(`/tickets/${oldTicketId}`, { cookie: dana.cookie })).status, 404);
+  assert.equal((await call(`/events/${oneSeat}`)).data.seatsLeft, 0);
+
+  const late = await call(`/events/${started}/cancel`, { method: "POST", cookie: dana.cookie });
+  assert.equal(late.status, 409);
+  assert.equal(late.data.message, "This event has already started, so the registration can't be cancelled.");
 });
 
 test("state-changing requests from other sites are blocked", options, async () => {

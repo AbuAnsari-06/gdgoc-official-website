@@ -2,6 +2,7 @@ import { afterEach, beforeEach, expect, test, vi } from "vitest";
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import EventsPage from "../src/components/EventsPage";
 import EventDetail from "../src/components/EventDetail";
+import TicketDetail from "../src/components/TicketDetail";
 import {
   applyQuery,
   DEFAULT_QUERY,
@@ -247,4 +248,86 @@ test("back link returns to the list with the same search", async () => {
   await screen.findByText("About this event");
   expect(screen.getByRole("link", { name: /all events/i }).getAttribute("href")).toBe("#/events?q=cloud");
   expect(document.title).toBe(`${shown.title} · GDGoC PSIT`);
+});
+
+test("registered members see the meeting link and can cancel after confirming", async () => {
+  const registration = { ticketId: "M".padEnd(22, "x"), state: "confirmed", meetingUrl: "https://meet.google.com/abc-defg-hij" };
+  const shown = detail({ format: "online", capacity: 10, seatsLeft: 3, viewer: { signedIn: true, registration } });
+  location.hash = `#/events/${shown.id}`;
+  const fetchMock = vi.fn()
+    .mockImplementationOnce(() => respond(200, shown))
+    .mockImplementationOnce(() => respond(200, { ticketId: registration.ticketId, state: "cancelled" }))
+    .mockImplementationOnce(() =>
+      respond(200, {
+        ...shown,
+        seatsLeft: 4,
+        viewer: { signedIn: true, registration: { ...registration, state: "cancelled", meetingUrl: null } },
+      }),
+    );
+  vi.stubGlobal("fetch", fetchMock);
+  render(<EventDetail />);
+
+  const join = await screen.findByRole("link", { name: /join online meeting/i });
+  expect(join.getAttribute("href")).toBe(registration.meetingUrl);
+  expect(join.getAttribute("rel")).toBe("noreferrer");
+
+  fireEvent.click(screen.getByRole("button", { name: /cancel registration/i }));
+  fireEvent.click(screen.getByRole("button", { name: /keep my seat/i }));
+  expect(fetchMock).toHaveBeenCalledTimes(1);
+
+  fireEvent.click(screen.getByRole("button", { name: /cancel registration/i }));
+  fireEvent.click(screen.getByRole("button", { name: /yes, cancel/i }));
+
+  expect(await screen.findByText(/you cancelled your registration/i)).toBeTruthy();
+  expect(String(fetchMock.mock.calls[1][0])).toMatch(new RegExp(`/events/${shown.id}/cancel$`));
+  expect(screen.getByRole("button", { name: /^register$/i })).toBeTruthy();
+  expect(screen.getByText(/4 of 10 seats left/i)).toBeTruthy();
+  expect(screen.queryByRole("link", { name: /join online meeting/i })).toBeNull();
+});
+
+test("a registration can't be cancelled once the event has started", async () => {
+  const registration = { ticketId: "S".padEnd(22, "x"), state: "confirmed", meetingUrl: null };
+  const shown = detail({ status: "ongoing", viewer: { signedIn: true, registration } });
+  location.hash = `#/events/${shown.id}`;
+  vi.stubGlobal("fetch", vi.fn(() => respond(200, shown)));
+  render(<EventDetail />);
+
+  expect(await screen.findByText("You're registered")).toBeTruthy();
+  expect(screen.queryByRole("button", { name: /cancel registration/i })).toBeNull();
+});
+
+test("a failed cancellation keeps the seat and explains why", async () => {
+  const registration = { ticketId: "F".padEnd(22, "x"), state: "confirmed", meetingUrl: null };
+  const shown = detail({ viewer: { signedIn: true, registration } });
+  location.hash = `#/events/${shown.id}`;
+  const fetchMock = vi.fn()
+    .mockImplementationOnce(() => respond(200, shown))
+    .mockImplementationOnce(() => respond(409, { message: "This event has already started, so the registration can't be cancelled." }));
+  vi.stubGlobal("fetch", fetchMock);
+  render(<EventDetail />);
+
+  fireEvent.click(await screen.findByRole("button", { name: /cancel registration/i }));
+  fireEvent.click(screen.getByRole("button", { name: /yes, cancel/i }));
+
+  expect(await screen.findByText(/already started/i)).toBeTruthy();
+  expect(screen.getByText("You're registered")).toBeTruthy();
+});
+
+test("a valid online ticket shows the meeting link and a way back to the event", async () => {
+  const ticket = {
+    ticketId: "T".padEnd(22, "x"),
+    state: "confirmed",
+    registeredAt: NOW.toISOString(),
+    attendedAt: null,
+    event: { id: "a1".padEnd(24, "0"), title: "Online talk", summary: "", startsAt: NOW.toISOString(), endsAt: null, venue: "Google Meet", poster: "" },
+    qrSvg: "<svg></svg>",
+    meetingUrl: "https://meet.google.com/abc-defg-hij",
+  };
+  location.hash = `#/tickets/${ticket.ticketId}`;
+  vi.stubGlobal("fetch", vi.fn(() => respond(200, ticket)));
+  render(<TicketDetail />);
+
+  const join = await screen.findByRole("link", { name: /join online meeting/i });
+  expect(join.getAttribute("href")).toBe(ticket.meetingUrl);
+  expect(screen.getByRole("link", { name: /event details and cancellation/i }).getAttribute("href")).toBe(`#/events/${ticket.event.id}`);
 });

@@ -30,18 +30,123 @@ function Row({ label, children }: { label: string; children: ReactNode }) {
   );
 }
 
-function Registered({ ticketId, state }: { ticketId: string; state: TicketState }) {
+type Registration = NonNullable<Detail["viewer"]["registration"]>;
+
+const CANCELLABLE_EVENT = ["open", "full", "closed"];
+
+function loginToReturn(eventId: string) {
+  location.hash = `#/login?next=${encodeURIComponent(`/events/${eventId}`)}`;
+}
+
+function TicketLinks({ ticketId, meetingUrl }: { ticketId: string; meetingUrl?: string | null }) {
   return (
-    <div>
-      <StatusBadge state={state} />
-      <p className="mt-3 font-display text-xl font-extrabold">You're registered</p>
-      <p className="mt-1 text-sm text-muted">{STATES[state].help}</p>
+    <>
+      {meetingUrl && (
+        <a
+          href={meetingUrl}
+          target="_blank"
+          rel="noreferrer"
+          className={`${button} mt-4 block bg-ggreen text-center`}
+        >
+          Join online meeting ↗
+        </a>
+      )}
       <a href={`#/tickets/${ticketId}`} className={`${button} mt-4 block bg-gyellow text-center`}>
         View your ticket
       </a>
       <a href="#/tickets" className="mt-3 inline-block text-sm font-bold underline">
         All my tickets
       </a>
+    </>
+  );
+}
+
+function Registered({
+  event,
+  registration,
+  fresh,
+  onCancelled,
+}: {
+  event: Detail;
+  registration: Registration;
+  fresh: boolean;
+  onCancelled: () => Promise<void>;
+}) {
+  const [confirming, setConfirming] = useState(false);
+  const [cancelling, setCancelling] = useState(false);
+  const [error, setError] = useState("");
+  const state = registration.state as TicketState;
+  const canCancel = (state === "confirmed" || state === "pending") && CANCELLABLE_EVENT.includes(event.status);
+
+  const cancel = async () => {
+    setCancelling(true);
+    setError("");
+    try {
+      await api(`/events/${event.id}/cancel`, "POST");
+      await onCancelled();
+    } catch (err) {
+      const message = (err as Error).message;
+      if (message === "401") {
+        loginToReturn(event.id);
+        return;
+      }
+      setError(message);
+    } finally {
+      setCancelling(false);
+      setConfirming(false);
+    }
+  };
+
+  return (
+    <div role={fresh ? "status" : undefined}>
+      <StatusBadge state={state} />
+      <p className="mt-3 font-display text-xl font-extrabold">{fresh ? "You're in!" : "You're registered"}</p>
+      {fresh && (
+        <p className="mt-1">
+          Your seat for <strong>{event.title}</strong> on {formatEventTime(event.startsAt)} is saved.
+        </p>
+      )}
+      <p className="mt-1 text-sm text-muted">
+        {registration.meetingUrl ? "Use the button below to join when the session starts." : STATES[state].help}
+      </p>
+      <TicketLinks ticketId={registration.ticketId} meetingUrl={registration.meetingUrl} />
+
+      {canCancel && !confirming && (
+        <button type="button" className="mt-4 block text-sm font-bold text-muted underline" onClick={() => setConfirming(true)}>
+          Cancel registration
+        </button>
+      )}
+      {confirming && (
+        <div className="mt-4 border-[3px] border-ink bg-panel p-4">
+          <p className="font-semibold">Cancel your registration?</p>
+          <p className="mt-1 text-sm text-muted">
+            Your ticket stops working and the seat goes to someone else. You can register again while seats are open.
+          </p>
+          <div className="mt-3 flex flex-wrap gap-2">
+            <button
+              type="button"
+              className="hard-button bg-gred px-4 py-2 font-display text-sm font-bold text-white disabled:opacity-60"
+              onClick={cancel}
+              disabled={cancelling}
+            >
+              {cancelling ? "Cancelling…" : "Yes, cancel"}
+            </button>
+            <button
+              type="button"
+              className="hard-button bg-bg px-4 py-2 font-display text-sm font-bold disabled:opacity-60"
+              onClick={() => setConfirming(false)}
+              disabled={cancelling}
+            >
+              Keep my seat
+            </button>
+          </div>
+        </div>
+      )}
+      {error && (
+        <p role="alert" className="mt-3 text-sm font-semibold text-gred">
+          {error}
+        </p>
+      )}
     </div>
   );
 }
@@ -55,12 +160,7 @@ function Confirmation({ ticket }: { ticket: Ticket }) {
         Your seat for <strong>{ticket.event.title}</strong> on {formatEventTime(ticket.event.startsAt)} is saved.
       </p>
       <p className="mt-2 text-sm text-muted">Your ticket and its QR code are in My tickets. Show it at the entrance.</p>
-      <a href={`#/tickets/${ticket.ticketId}`} className={`${button} mt-4 block bg-gyellow text-center`}>
-        View your ticket
-      </a>
-      <a href="#/tickets" className="mt-3 inline-block text-sm font-bold underline">
-        All my tickets
-      </a>
+      <TicketLinks ticketId={ticket.ticketId} />
     </div>
   );
 }
@@ -70,18 +170,31 @@ function RegisterPanel({ event, onChanged }: { event: Detail; onChanged: () => P
   const [error, setError] = useState("");
   const [ticket, setTicket] = useState<Ticket | null>(null);
   const registration = event.viewer.registration;
+  const cancelledBefore = registration?.state === "cancelled";
 
-  if (ticket) {
+  const onCancelled = async () => {
+    setTicket(null);
+    await onChanged();
+  };
+
+  if (registration && !cancelledBefore) {
+    return <Registered event={event} registration={registration} fresh={Boolean(ticket)} onCancelled={onCancelled} />;
+  }
+
+  if (ticket && !cancelledBefore) {
     return <Confirmation ticket={ticket} />;
   }
 
-  if (registration) {
-    return <Registered ticketId={registration.ticketId} state={registration.state as TicketState} />;
-  }
+  const cancelledNote = cancelledBefore && (
+    <p className="mb-3 border-[3px] border-ink bg-panel px-3 py-2 text-sm font-semibold">
+      You cancelled your registration for this event.
+    </p>
+  );
 
   if (event.status !== "open") {
     return (
       <div>
+        {cancelledNote}
         <Badge info={EVENT_STATUS[event.status]} />
         <p className="mt-3 font-semibold">{EVENT_STATUS[event.status].help}</p>
         {error && <p className="mt-2 text-sm text-muted">{error}</p>}
@@ -115,7 +228,7 @@ function RegisterPanel({ event, onChanged }: { event: Detail; onChanged: () => P
     } catch (err) {
       const message = (err as Error).message;
       if (message === "401") {
-        location.hash = `#/login?next=${encodeURIComponent(`/events/${event.id}`)}`;
+        loginToReturn(event.id);
         return;
       }
       setError(message);
@@ -127,7 +240,8 @@ function RegisterPanel({ event, onChanged }: { event: Detail; onChanged: () => P
 
   return (
     <div>
-      <p className="font-display text-xl font-extrabold">Register for this event</p>
+      {cancelledNote}
+      <p className="font-display text-xl font-extrabold">{cancelledBefore ? "Register again" : "Register for this event"}</p>
       <p className="mt-1 text-sm text-muted">
         One click saves your seat and adds a ticket with a QR code to My tickets.
       </p>

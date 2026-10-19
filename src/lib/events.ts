@@ -28,7 +28,7 @@ export type EventInfo = EventSummary & {
 
 export type Viewer = {
   signedIn: boolean;
-  registration: { ticketId: string; state: string } | null;
+  registration: { ticketId: string; state: string; meetingUrl: string | null } | null;
 };
 
 export type EventDetail = EventInfo & { viewer: Viewer };

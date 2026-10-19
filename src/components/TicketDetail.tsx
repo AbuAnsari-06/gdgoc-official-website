@@ -152,6 +152,16 @@ export default function TicketDetail() {
             </dl>
 
             <div className="mt-6 flex flex-wrap gap-3 print:hidden">
+              {ticket.meetingUrl && (
+                <a
+                  href={ticket.meetingUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="hard-button bg-ggreen px-5 py-2.5 font-display font-bold"
+                >
+                  Join online meeting ↗
+                </a>
+              )}
               <button
                 type="button"
                 className="hard-button bg-bg px-5 py-2.5 font-display font-bold disabled:opacity-60"
@@ -170,6 +180,11 @@ export default function TicketDetail() {
                 </button>
               )}
             </div>
+            {ticket.event.id && (
+              <a href={`#/events/${ticket.event.id}`} className="mt-4 inline-block text-sm font-bold underline print:hidden">
+                Event details and cancellation →
+              </a>
+            )}
           </div>
         </article>
       )}

@@ -192,7 +192,7 @@ gdgoc-psit/
 | Model | Key fields |
 |---|---|
 | **User** | name, email, password, role (`student` / `admin`), enrollmentNo, branch, year |
-| **Event** | title, summary, description, startsAt, endsAt, venue, poster, category, format, host, prerequisites, capacity, registeredCount, registrationDeadline, published, cancelled |
+| **Event** | title, summary, description, startsAt, endsAt, venue, poster, category, format, host, prerequisites, capacity, registeredCount, registrationDeadline, meetingUrl, published, cancelled |
 | **Registration** | user, event, ticketId (unique), qrData, attended (bool), attendedAt |
 | **Project** | title, description, techStack[], contributors[], githubUrl, liveUrl, status, image |
 | **TeamMember** | name, role, image, socials, tier (`lead` / `core` / `member`), order |
@@ -213,6 +213,7 @@ gdgoc-psit/
 | POST | `/api/events` | Create event | Admin |
 | PUT / DELETE | `/api/events/:id` | Update / delete event | Admin |
 | POST | `/api/events/:id/register` | Register and get a ticket | Member |
+| POST | `/api/events/:id/cancel` | Cancel my registration (before the event starts) | Member |
 | GET | `/api/tickets` | My tickets (only the logged-in member's) | Member |
 | GET | `/api/tickets/:ticketId` | One of my tickets, with its QR code when valid | Member |
 | POST | `/api/attendance/scan` | Verify QR and mark attendance | Admin |
@@ -278,11 +279,13 @@ gdgoc-psit/
   - `201` with `{ event, ticket }`: the ticket is the saved registration, so "View your ticket" works straight away.
   - `401` when not logged in, `404` for unknown, malformed or unpublished events.
   - `409` with a plain message when the event is full, closed, started, ended or cancelled, or when you're already registered (that response includes your `ticketId`).
+- **Cancelling** (`POST /api/events/:id/cancel`): members can cancel from the event page (with a confirm step) until the event starts. The seat goes back to the pool straight away, the old ticket stops working, and a repeated cancel returns the same `200`. Cancelling after the event has started or after check-in returns `409`; cancelling without a registration returns `404`. Registering again later gives a new ticket ID, so an old printed QR code can't be reused.
+- **Meeting links:** an online event can have a `meetingUrl` (must start with `https://`). It is never in the public listing or event details. Only a member with a valid (confirmed) ticket gets it, on the event page and on the ticket page as **Join online meeting**. It disappears once the registration is cancelled or the event has ended.
 - **Capacity and races:** a seat is claimed with one atomic database update that only succeeds while the event is open and `registeredCount < capacity`. If saving the registration then fails (for example a double click), the seat is given back. The unique user + event index stops duplicate registrations. The seat count shown on the page is a guide; only a `201` confirms a seat.
 - **Time zone:** event times are shown in IST (`Asia/Kolkata`), since every event is at PSIT Kanpur.
 - **Responses** never include database internals such as `registeredCount` or other members' registrations.
 - **Sample data:** `cd server && npm run seed:events` adds published sample events (marked "Sample:") covering open, nearly full, closed, cancelled, online and past events.
-- **Not built yet:** creating and editing events (admin panel, #8), meeting links for online events, and cancelling your own registration.
+- **Not built yet:** creating and editing events (admin panel, #8).
 
 
 
@@ -303,7 +306,7 @@ gdgoc-psit/
 - **Tests:**
   - `npm test`: auth page behaviour (validation, password toggle, switching forms, loading, network failure, redirects).
   - `npx tsx tests/profile.test.ts`: shared validation.
-  - `cd server && npm test`: ticket lifecycle unit tests, plus API tests for registration (including concurrent duplicate sign-ups), login and wrong credentials, profile updates, password changes (other sessions signed out), expired and forged sessions, logout, role escalation, CSRF, tickets, events (listing, drafts, deadlines, cancelled events, capacity races, double clicks) and rate limiting. See **Verification** for running them against a local database.
+  - `cd server && npm test`: ticket lifecycle unit tests, plus API tests for registration (including concurrent duplicate sign-ups), login and wrong credentials, profile updates, password changes (other sessions signed out), expired and forged sessions, logout, role escalation, CSRF, tickets, events (listing, drafts, deadlines, cancelled events, capacity races, double clicks, cancelling and registering again, private meeting links) and rate limiting. See **Verification** for running them against a local database.
 - **Not built yet:** refresh tokens, password recovery (needs SMTP for time-limited reset links), email verification, and admin-only routes (#8 adds a `403` role check with its first admin endpoint).
 
 ---

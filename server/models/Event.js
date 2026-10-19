@@ -18,6 +18,7 @@ const eventSchema = new mongoose.Schema(
     capacity: { type: Number, min: 1, default: null },
     registeredCount: { type: Number, min: 0, default: 0 },
     registrationDeadline: { type: Date, default: null },
+    meetingUrl: { type: String, default: "", trim: true },
   },
   { timestamps: true }
 );
@@ -29,5 +30,9 @@ eventSchema.path("endsAt").validate(function (endsAt) {
 eventSchema.path("registrationDeadline").validate(function (deadline) {
   return !deadline || deadline <= this.startsAt;
 }, "Registration must close before the event starts.");
+
+eventSchema.path("meetingUrl").validate(function (url) {
+  return !url || /^https:\/\/\S+$/.test(url);
+}, "Meeting link must start with https://.");
 
 export default mongoose.model("Event", eventSchema);

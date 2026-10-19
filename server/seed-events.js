@@ -48,6 +48,7 @@ const samples = [
     category: "Talk",
     format: "online",
     venue: "Google Meet",
+    meetingUrl: "https://meet.google.com/abc-defg-hij",
     host: "AI/ML lane",
     startsAt: at(3, 19),
     endsAt: at(3, 20),
