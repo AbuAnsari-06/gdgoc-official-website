@@ -3,6 +3,12 @@ import mongoose from "mongoose";
 import authRoutes from "./routes/auth.js";
 import userRoutes from "./routes/users.js";
 
+const missing = ["MONGO_URI", "JWT_SECRET"].filter((name) => !process.env[name]);
+if (missing.length > 0) {
+  console.error(`Missing required environment variables: ${missing.join(", ")}`);
+  process.exit(1);
+}
+
 const app = express();
 app.disable("x-powered-by");
 
@@ -37,6 +43,26 @@ app.use((req, res, next) => {
     return res.sendStatus(204);
   }
   next();
+});
+
+const SAFE_METHODS = new Set(["GET", "HEAD", "OPTIONS"]);
+
+function isTrustedRequest(req) {
+  const origin = req.headers.origin;
+  if (!origin) {
+    return req.headers["sec-fetch-site"] !== "cross-site";
+  }
+
+  const ownOrigin = `${req.protocol}://${req.get("host")}`;
+  return origin === process.env.CLIENT_URL || origin === ownOrigin;
+}
+
+app.use((req, res, next) => {
+  if (SAFE_METHODS.has(req.method) || isTrustedRequest(req)) {
+    return next();
+  }
+
+  res.status(403).json({ message: "Request blocked: it did not come from this site." });
 });
 
 app.use("/api/auth", authRoutes);

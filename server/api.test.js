@@ -1,10 +1,25 @@
-import { test } from "node:test";
+import { before, test } from "node:test";
 import assert from "node:assert/strict";
 import jwt from "jsonwebtoken";
 import mongoose from "mongoose";
 
 const API = process.env.API_URL || "http://localhost:5000/api";
+const LOCAL_DATABASE = /^mongodb:\/\/(localhost|127\.0\.0\.1)[:/]/;
+const options = {
+  skip: LOCAL_DATABASE.test(process.env.MONGO_URI ?? "")
+    ? false
+    : "API tests create accounts. Run the server and tests with a local MONGO_URI.",
+};
 const email = `t${Date.now()}@test.dev`;
+
+before(async () => {
+  if (options.skip) {
+    return;
+  }
+  await mongoose.connect(process.env.MONGO_URI);
+  await mongoose.connection.collection("authfailures").deleteMany({});
+  await mongoose.disconnect();
+});
 
 async function call(path, { method = "GET", body, cookie } = {}) {
   const headers = { "Content-Type": "application/json" };
@@ -25,7 +40,7 @@ async function call(path, { method = "GET", body, cookie } = {}) {
   };
 }
 
-test("auth and profile", async () => {
+test("auth and profile", options, async () => {
   let r = await call("/auth/register", {
     method: "POST",
     body: { name: "", email: "bad", password: "weak" },
@@ -74,7 +89,37 @@ test("auth and profile", async () => {
   assert.equal(r.cookie, "token=");
 });
 
-test("rate limit blocks repeated failed logins", async () => {
+test("state-changing requests from other sites are blocked", options, async () => {
+  const res = await fetch(`${API}/auth/logout`, {
+    method: "POST",
+    headers: { Origin: "https://evil.example" },
+  });
+  assert.equal(res.status, 403);
+
+  const noOriginCrossSite = await fetch(`${API}/auth/logout`, {
+    method: "POST",
+    headers: { "Sec-Fetch-Site": "cross-site" },
+  });
+  assert.equal(noOriginCrossSite.status, 403);
+
+  const trusted = await fetch(`${API}/auth/logout`, {
+    method: "POST",
+    headers: { Origin: process.env.CLIENT_URL },
+  });
+  assert.equal(trusted.status, 200);
+});
+
+test("form validation errors do not count toward the login limit", options, async () => {
+  for (let attempt = 0; attempt < 12; attempt++) {
+    const res = await call("/auth/register", { method: "POST", body: { name: "", email: "bad", password: "x" } });
+    assert.equal(res.status, 400);
+  }
+
+  const login = await call("/auth/login", { method: "POST", body: { email, password: "secret123" } });
+  assert.equal(login.status, 200);
+});
+
+test("rate limit blocks repeated failed logins", options, async () => {
   const statuses = [];
   for (let i = 0; i < 11; i++) {
     statuses.push(

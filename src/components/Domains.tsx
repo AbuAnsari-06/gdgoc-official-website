@@ -1,4 +1,7 @@
+import type { ReactNode } from "react";
 import { SectionTag, ScrambleHeading, TiltCard } from "./ui";
+import DomainsStage from "./world/DomainsStage";
+import { useCinematic } from "./three/Card3D";
 import { DOMAINS, COLOR_HEX, WASH_HEX, type Domain } from "../data/content";
 
 function DomainIcon({ kind, color }: { kind: Domain["icon"]; color: string }) {
@@ -50,23 +53,33 @@ function DomainIcon({ kind, color }: { kind: Domain["icon"]; color: string }) {
   }
 }
 
+function DomainsHeader({ intro }: { intro: ReactNode }) {
+  return (
+    <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+      <div>
+        <SectionTag index="05" label="Domains" color="gred" />
+        <ScrambleHeading text="Pick your lane" className="mt-5 text-h2 heading-shadow heading-shadow-red" />
+      </div>
+      <p className="max-w-sm text-[15px] leading-relaxed text-ink/80">{intro}</p>
+    </div>
+  );
+}
+
 export default function Domains() {
+  const cinematic = useCinematic();
+
+  if (cinematic) {
+    return <DomainsStage />;
+  }
+
+  return <DomainsStack />;
+}
+
+function DomainsStack() {
   return (
     <section id="domains" data-wash="red" className="wash-section relative scroll-mt-20 border-b-[3px] border-ink">
       <div className="mx-auto max-w-7xl px-5 py-24 sm:px-8 lg:py-32">
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-          <div>
-            <SectionTag index="05" label="Domains" color="gred" />
-            <ScrambleHeading
-              text="Pick your lane"
-              className="mt-5 text-h2 heading-shadow heading-shadow-red"
-            />
-          </div>
-          <p className="max-w-sm text-[15px] leading-relaxed text-ink/80">
-            Six cards in the stack, one per lane. They pile up as you scroll - hover any of them for session
-            intel.
-          </p>
-        </div>
+        <DomainsHeader intro="Six cards in the stack, one per lane. They pile up as you scroll - hover any of them for session intel." />
 
         {/* stacked sticky cards */}
         <div className="mt-14">

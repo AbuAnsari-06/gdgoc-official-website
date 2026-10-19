@@ -57,7 +57,7 @@ export default function Hacktober() {
                   <p className="text-h2 heading-shadow heading-shadow-green">Oct 8</p>
                   <p className="mt-1 pl-1 text-sm font-bold tracking-wide text-ink/60 uppercase">to</p>
                   <p className="text-h2 heading-shadow heading-shadow-green">Oct 31</p>
-                  <MonthGrid state={oso.state} day={oso.day} cols={6} className="mt-auto" />
+                  <MonthGrid state={oso.state} day={oso.day} cols={6} flip className="mt-auto" />
                 </div>
                 {/* official lockup in the poster corner, flat and unmodified;
                    decorative here, the hero and footer carry the alt text */}

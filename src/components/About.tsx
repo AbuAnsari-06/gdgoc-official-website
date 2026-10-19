@@ -1,4 +1,6 @@
-import { LineReveal, SectionTag } from "./ui";
+import { useEffect, useRef, useState } from "react";
+import { motion, useInView, useReducedMotion } from "framer-motion";
+import { SectionTag, SuitGlyph, SUIT_FOR } from "./ui";
 import { PILLARS, COLOR_HEX, PANEL_HEX } from "../data/content";
 
 const CODE: { text: string; cls: string }[] = [
@@ -13,6 +15,53 @@ const CODE: { text: string; cls: string }[] = [
   { text: "};", cls: "text-ink" },
 ];
 
+function TypedCode() {
+  const ref = useRef<HTMLPreElement>(null);
+  const inView = useInView(ref, { once: true, margin: "-80px" });
+  const reduced = useReducedMotion();
+  const total = CODE.reduce((sum, line) => sum + line.text.length, 0);
+  const [typed, setTyped] = useState(0);
+
+  useEffect(() => {
+    if (!inView) {
+      return;
+    }
+    if (reduced) {
+      setTyped(total);
+      return;
+    }
+    const timer = window.setInterval(() => {
+      setTyped((count) => {
+        if (count >= total) {
+          window.clearInterval(timer);
+          return count;
+        }
+        return count + 2;
+      });
+    }, 18);
+    return () => window.clearInterval(timer);
+  }, [inView, reduced, total]);
+
+  let remaining = typed;
+
+  return (
+    <pre ref={ref} className="overflow-x-auto p-5 font-mono text-[13px] leading-7" aria-label={CODE.map((line) => line.text).join(" ")}>
+      {CODE.map((line) => {
+        const shown = line.text.slice(0, Math.max(0, remaining));
+        const typing = remaining > 0 && remaining < line.text.length;
+        remaining -= line.text.length;
+
+        return (
+          <code key={line.text} className={`block min-h-7 ${line.cls}`} aria-hidden="true">
+            {shown}
+            {typing && <span className="type-caret" />}
+          </code>
+        );
+      })}
+    </pre>
+  );
+}
+
 export default function About() {
   return (
     <section id="about" data-wash="yellow" className="wash-section relative scroll-mt-20 border-b-[3px] border-ink">
@@ -21,11 +70,24 @@ export default function About() {
           {/* sticky intro column */}
           <div className="lg:sticky lg:top-28 lg:self-start">
             <SectionTag index="02" label="What we do" color="gblue" />
-            <h2 className="mt-6 text-h2 heading-shadow heading-shadow-blue">
-              <LineReveal>The place where</LineReveal>
-              <LineReveal delay={0.1}>PSIT ships</LineReveal>
-              <LineReveal delay={0.2}>its builders.</LineReveal>
-            </h2>
+            <motion.h2
+              className="mt-6 text-h2 heading-shadow heading-shadow-blue"
+              initial="hidden"
+              whileInView="shown"
+              viewport={{ once: true, margin: "-60px" }}
+            >
+              {["The place where", "PSIT ships", "its builders."].map((line, i) => (
+                <span key={line} className="mask-word block">
+                  <motion.span
+                    className="block"
+                    variants={{ hidden: { y: "110%" }, shown: { y: 0 } }}
+                    transition={{ duration: 0.9, ease: [0.16, 1, 0.3, 1], delay: i * 0.1 }}
+                  >
+                    {line}
+                  </motion.span>
+                </span>
+              ))}
+            </motion.h2>
             <p className="mt-7 max-w-md text-[15px] leading-relaxed text-ink/80">
               GDGoC PSIT is the campus chapter of Google Developer Groups - run entirely by students. We turn
               lecture-hall theory into working software through study jams, hackathons and a crew that reviews
@@ -40,39 +102,64 @@ export default function About() {
                 <span className="h-3 w-3 border-2 border-ink bg-ggreen" aria-hidden="true" />
                 <span className="ml-3 font-mono text-xs text-ink">chapter.config.ts</span>
               </div>
-              <pre className="overflow-x-auto p-5 font-mono text-[13px] leading-7">
-                {CODE.map((l) => (
-                  <code key={l.text} className={`block ${l.cls}`}>
-                    {l.text}
-                  </code>
-                ))}
-              </pre>
+              <TypedCode />
             </div>
           </div>
 
           {/* pillars */}
           <div className="flex flex-col">
-            {PILLARS.map((p) => {
+            {PILLARS.map((p, i) => {
               const hex = COLOR_HEX[p.color];
+
               return (
-                <LineReveal key={p.title}>
-                  <div className="group relative border-b-[3px] border-ink py-10 first:pt-0 sm:py-12">
+                <motion.div
+                  key={p.title}
+                  className="group relative overflow-hidden border-b-[3px] border-ink py-10 first:pt-0 sm:py-12"
+                  initial="hidden"
+                  whileInView="shown"
+                  viewport={{ once: true, margin: "-100px" }}
+                >
+                  <motion.span
+                    className="absolute top-0 left-0 h-full w-[5px] origin-top"
+                    style={{ background: hex }}
+                    variants={{ hidden: { scaleY: 0 }, shown: { scaleY: 1 } }}
+                    transition={{ duration: 0.8, ease: [0.76, 0, 0.24, 1] }}
+                    aria-hidden="true"
+                  />
+                  <motion.span
+                    className="pointer-events-none absolute -right-4 -bottom-10 opacity-[0.09]"
+                    style={{ color: hex }}
+                    variants={{ hidden: { rotate: -40, scale: 0.6, opacity: 0 }, shown: { rotate: i % 2 ? 12 : -12, scale: 1, opacity: 0.09 } }}
+                    transition={{ type: "spring", stiffness: 80, damping: 14, delay: 0.15 }}
+                    aria-hidden="true"
+                  >
+                    <SuitGlyph suit={SUIT_FOR[p.color]} size={170} />
+                  </motion.span>
+                  <div className="relative flex items-baseline gap-5 pl-5">
                     <span
-                      className="absolute top-0 left-0 h-full w-[5px]"
-                      style={{ background: hex }}
-                      aria-hidden="true"
-                    />
-                    <div className="flex items-baseline gap-5 pl-5">
-                      <span
-                        className="border-2 border-ink px-2 py-0.5 font-display text-sm font-extrabold text-ink"
-                        style={{ background: PANEL_HEX[p.color] }}
+                      className="border-2 border-ink px-2 py-0.5 font-display text-sm font-extrabold text-ink"
+                      style={{ background: PANEL_HEX[p.color] }}
+                    >
+                      {p.index}
+                    </span>
+                    <span className="mask-word">
+                      <motion.h3
+                        className="text-h3 text-ink"
+                        variants={{ hidden: { y: "110%" }, shown: { y: 0 } }}
+                        transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1], delay: 0.1 }}
                       >
-                        {p.index}
-                      </span>                      <h3 className="text-h3 text-ink">{p.title}</h3>
-                    </div>
-                    <p className="mt-4 max-w-lg pl-5 text-[15px] leading-relaxed text-ink/80 sm:pl-20">{p.body}</p>
+                        {p.title}
+                      </motion.h3>
+                    </span>
                   </div>
-                </LineReveal>
+                  <motion.p
+                    className="relative mt-4 max-w-lg pl-5 text-[15px] leading-relaxed text-ink/80 sm:pl-20"
+                    variants={{ hidden: { opacity: 0, y: 14 }, shown: { opacity: 1, y: 0 } }}
+                    transition={{ duration: 0.6, delay: 0.25 }}
+                  >
+                    {p.body}
+                  </motion.p>
+                </motion.div>
               );
             })}
           </div>

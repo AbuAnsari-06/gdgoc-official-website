@@ -1,4 +1,7 @@
-import { Reveal, SectionTag, ScrambleHeading, SuitGlyph, SUIT_FOR } from "./ui";
+import type { ReactNode } from "react";
+import { motion, useReducedMotion } from "framer-motion";
+import { SectionTag, ScrambleHeading, SuitGlyph, SUIT_FOR } from "./ui";
+import { CardBack } from "./DealScene";
 import { members, GRID_SLOTS, initialsOf } from "../data/members";
 import { COLOR_HEX, WASH_HEX } from "../data/content";
 import { scrollToId } from "../lib/scroll";
@@ -33,6 +36,29 @@ function MemberCard({ name, role, tag, color, since }: (typeof members)[number])
   );
 }
 
+function DealtCard({ index, children }: { index: number; children: ReactNode }) {
+  const reducedMotion = useReducedMotion();
+
+  if (reducedMotion) {
+    return <div className="h-full">{children}</div>;
+  }
+
+  return (
+    <div className="h-full [perspective:1200px]">
+      <motion.div
+        className="crew-card relative h-full"
+        initial={{ rotateY: 180, y: 50, rotate: index % 2 ? 6 : -6 }}
+        whileInView={{ rotateY: 0, y: 0, rotate: 0 }}
+        viewport={{ once: true, margin: "-120px" }}
+        transition={{ type: "spring", stiffness: 90, damping: 15, delay: (index % 4) * 0.12 }}
+      >
+        <div className="deal-face h-full">{children}</div>
+        <CardBack />
+      </motion.div>
+    </div>
+  );
+}
+
 export default function Crew() {
   const ghostCount = Math.max(0, GRID_SLOTS - members.length);
 
@@ -60,13 +86,13 @@ export default function Crew() {
           {/* keyed by index, not name: the demo roster renders the same
              placeholder name on every card and keys must stay unique. */}
           {members.map((m, i) => (
-            <Reveal key={`member-${i}`} delay={(i % 4) * 0.07}>
+            <DealtCard key={`member-${i}`} index={i}>
               <MemberCard {...m} />
-            </Reveal>
+            </DealtCard>
           ))}
 
           {Array.from({ length: ghostCount }).map((_, i) => (
-            <Reveal key={`ghost-${i}`} delay={((members.length + i) % 4) * 0.07}>
+            <DealtCard key={`ghost-${i}`} index={members.length + i}>
               <button
                 type="button"
                 onClick={() => scrollToId("join")}
@@ -80,7 +106,7 @@ export default function Crew() {
                 <span className="font-display text-base font-extrabold text-ink">Card not drawn</span>
                 <span className="text-[11px] font-semibold text-muted">this slot could be you → join</span>
               </button>
-            </Reveal>
+            </DealtCard>
           ))}
         </div>
       </div>
