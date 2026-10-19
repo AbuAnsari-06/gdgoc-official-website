@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { motion, useInView, useReducedMotion } from "framer-motion";
 import { SectionTag, SuitGlyph, SUIT_FOR } from "./ui";
 import { PILLARS, COLOR_HEX, PANEL_HEX } from "../data/content";
+import { OSO } from "../lib/oso";
 
 const CODE: { text: string; cls: string }[] = [
   { text: "chapter.config.ts", cls: "text-muted" },
@@ -11,7 +12,7 @@ const CODE: { text: string; cls: string }[] = [
   { text: '  vibe: "ship > slides",', cls: "text-ink" },
   { text: '  meetings: "Fridays · 17:00 · Block C",', cls: "text-ink" },
   { text: '  openTo: "every branch, every year",', cls: "text-ink" },
-  { text: '  hacktober: "Oct 3–4 · save the date",', cls: "text-ink" },
+  { text: `  openSourceOctober: "${OSO.dates}",`, cls: "text-ink" },
   { text: "};", cls: "text-ink" },
 ];
 

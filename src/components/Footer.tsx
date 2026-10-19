@@ -3,6 +3,7 @@ import ProximityWordmark from "./ProximityWordmark";
 import { Marquee, SuitGlyph, SUIT_FOR } from "./ui";
 import { COLOR_HEX } from "../data/content";
 import { scrollToId, scrollToTop } from "../lib/scroll";
+import { SOCIAL_LINKS } from "../data/content";
 
 const NAV = [
   { id: "board", label: "Campus board" },
@@ -12,13 +13,6 @@ const NAV = [
   { id: "domains", label: "Domains" },
   { id: "crew", label: "The crew" },
   { id: "join", label: "Join" },
-];
-
-const EXTERNALS = [
-  { label: "gdg.community.dev", href: "https://gdg.community.dev" },
-  { label: "Instagram", href: "https://instagram.com" },
-  { label: "GitHub", href: "https://github.com" },
-  { label: "Discord", href: "https://discord.com" },
 ];
 
 export default function Footer() {
@@ -78,7 +72,7 @@ export default function Footer() {
           <div>
             <p className="font-mono text-xs font-semibold text-muted">Find us</p>
             <ul className="mt-5 space-y-3">
-              {EXTERNALS.map((e) => (
+              {SOCIAL_LINKS.map((e) => (
                 <li key={e.label}>
                   <a
                     href={e.href}

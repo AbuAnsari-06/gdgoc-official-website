@@ -9,6 +9,7 @@ import {
 import { motion, useInView, useReducedMotion } from "framer-motion";
 import { cn } from "../utils/cn";
 import { OSO } from "../lib/oso";
+import { addTicker } from "../lib/loop";
 import { COLOR_HEX, ON_COLOR, PANEL_EDGE, PANEL_HEX, WASH_HEX, type GColor } from "../data/content";
 
 
@@ -377,8 +378,14 @@ export function CountUp({
 
   return (
     <span ref={ref} className={className}>
-      {val}
-      {suffix}
+      <span aria-hidden="true">
+        {val}
+        {suffix}
+      </span>
+      <span className="sr-only">
+        {to}
+        {suffix}
+      </span>
     </span>
   );
 }
@@ -396,16 +403,82 @@ export function Marquee({
   className?: string;
   mask?: boolean;
 }) {
+  const wrapRef = useRef<HTMLDivElement>(null);
+  const trackRef = useRef<HTMLDivElement>(null);
+  const reduced = useReducedMotion();
+
+  useEffect(() => {
+    const wrap = wrapRef.current;
+    const track = trackRef.current;
+    if (!wrap || !track || reduced) {
+      return;
+    }
+
+    let offset = 0;
+    let boost = 0;
+    let direction = 1;
+    let paused = false;
+    let lastScroll = window.scrollY;
+
+    const onScroll = () => {
+      const delta = window.scrollY - lastScroll;
+      lastScroll = window.scrollY;
+      if (delta === 0) {
+        return;
+      }
+      direction = delta > 0 ? 1 : -1;
+      boost = Math.min(boost + Math.abs(delta) * 4, 1400);
+    };
+
+    const pause = () => {
+      paused = true;
+    };
+
+    const resume = () => {
+      paused = false;
+    };
+
+    const stop = addTicker((dt) => {
+      const loop = track.scrollWidth / 2;
+      if (!loop || paused) {
+        return;
+      }
+
+      const speed = loop / duration + boost;
+      offset -= direction * speed * dt;
+      offset %= loop;
+      if (offset > 0) {
+        offset -= loop;
+      }
+
+      track.style.transform = `translate3d(${offset.toFixed(2)}px, 0, 0)`;
+      boost *= Math.pow(0.04, dt);
+    });
+
+    window.addEventListener("scroll", onScroll, { passive: true });
+    wrap.addEventListener("pointerenter", pause);
+    wrap.addEventListener("pointerleave", resume);
+    wrap.addEventListener("focusin", pause);
+    wrap.addEventListener("focusout", resume);
+
+    return () => {
+      stop();
+      window.removeEventListener("scroll", onScroll);
+      wrap.removeEventListener("pointerenter", pause);
+      wrap.removeEventListener("pointerleave", resume);
+      wrap.removeEventListener("focusin", pause);
+      wrap.removeEventListener("focusout", resume);
+    };
+  }, [duration, reduced]);
+
   return (
     <div
+      ref={wrapRef}
       className={cn("marquee overflow-hidden", mask && "marquee-mask", className)}
       tabIndex={0}
       aria-label="Scrolling ticker - pause with focus"
     >
-      <div
-        className="marquee-track flex w-max items-center"
-        style={{ "--marquee-dur": `${duration}s` } as CSSProperties}
-      >
+      <div ref={trackRef} className="marquee-track flex w-max items-center">
         <div className="flex items-center">{children}</div>
         <div className="flex items-center" aria-hidden="true">
           {children}
@@ -546,12 +619,19 @@ export function TiltCard({
   const hex = COLOR_HEX[color];
   const suit = SUIT_FOR[color];
   const [hover, setHover] = useState(false);
+  const [focused, setFocused] = useState(false);
+  const [pinned, setPinned] = useState(false);
+  const open = hover || focused || pinned;
 
   return (
     <div
       className={cn("hard-surface relative h-full overflow-hidden", className)}
+      tabIndex={details ? 0 : undefined}
       onMouseEnter={() => setHover(true)}
       onMouseLeave={() => setHover(false)}
+      onFocus={() => setFocused(true)}
+      onBlur={() => setFocused(false)}
+      onClick={() => setPinned((value) => !value)}
     >
       {/* colour bar */}
       <span className="absolute inset-x-0 top-0 h-2" style={{ background: hex }} aria-hidden="true" />
@@ -573,7 +653,7 @@ export function TiltCard({
       {details && (
         <motion.div
           initial={false}
-          animate={{ y: hover ? 0 : "101%" }}
+          animate={{ y: open ? 0 : "101%" }}
           transition={{ duration: 0.28, ease: [0.22, 1, 0.36, 1] }}
           className="absolute inset-x-0 bottom-0 z-[5] border-t-[3px] px-5 py-4"
           style={{

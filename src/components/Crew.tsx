@@ -74,11 +74,8 @@ export default function Crew() {
             />
           </div>
           <p className="max-w-sm text-[15px] leading-relaxed text-ink/80">
-            The roster is loaded live from{" "}
-            <code className="border-2 border-ink bg-bg px-1.5 py-0.5 font-mono text-xs text-ink">
-              src/data/members.ts
-            </code>{" "}
-            Add a name there and the deck updates itself.
+            The crew roster is being finalised. Cards fill in as leads are announced, and the open
+            slots are yours to take.
           </p>
         </div>
 

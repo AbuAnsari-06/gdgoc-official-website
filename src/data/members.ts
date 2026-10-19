@@ -15,14 +15,8 @@ import { DEMO_PERSON } from "../lib/identity";
  *    color : "gblue" | "gred" | "gyellow" | "ggreen"  (avatar ring)
  *    since : year they joined (shown as "since 'YY")
  *
- *  Ghost "reserved" slots auto-fill the grid up to 8 cards, so an
- *  empty roster never looks broken.
- *
- *  DEMO DATA: replace before launch. Every card below renders
- *  DEMO_PERSON.fullName. The names are placeholders, so all six cards
- *  read the same on purpose — real names, roles, tags and join years
- *  have to come from the club. Keep one entry per person: list order,
- *  card count and grid slots depend on the array length.
+ *  Open "this slot could be you" cards fill the grid up to GRID_SLOTS,
+ *  so a short or empty roster never looks broken.
  * ────────────────────────────────────────────────────────────────────
  */
 
@@ -35,17 +29,11 @@ export interface Member {
 }
 
 export const members: Member[] = [
-  // DEMO DATA: replace before launch — placeholder crew, not real people.
   { name: DEMO_PERSON.fullName, role: "Chapter Lead", tag: "Keeps the whole board running", color: "gblue", since: "'23" },
-  { name: DEMO_PERSON.fullName, role: "Technical Lead", tag: "Reviews every PR, kindly-ish", color: "gred", since: "'23" },
-  { name: DEMO_PERSON.fullName, role: "Open Source Lead", tag: "Good-first-issue hunter", color: "ggreen", since: "'24" },
-  { name: DEMO_PERSON.fullName, role: "Events & Community", tag: "Turns ideas into packed rooms", color: "gyellow", since: "'24" },
-  { name: DEMO_PERSON.fullName, role: "Web Lead", tag: "Ships URLs, not slide decks", color: "gblue", since: "'24" },
-  { name: DEMO_PERSON.fullName, role: "Design Lead", tag: "Figma files with feelings", color: "gred", since: "'25" },
 ];
 
 /** Number of cards the grid shows before it wraps — ghost slots fill the rest. */
-export const GRID_SLOTS = 8;
+export const GRID_SLOTS = 4;
 
 export function initialsOf(name: string) {
   return name

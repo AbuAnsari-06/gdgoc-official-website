@@ -79,7 +79,7 @@ function DomainsStack() {
   return (
     <section id="domains" data-wash="red" className="wash-section relative scroll-mt-20 border-b-[3px] border-ink">
       <div className="mx-auto max-w-7xl px-5 py-24 sm:px-8 lg:py-32">
-        <DomainsHeader intro="Six cards in the stack, one per lane. They pile up as you scroll - hover any of them for session intel." />
+        <DomainsHeader intro="Six cards in the stack, one per lane. They pile up as you scroll - tap, hover or tab to any of them for session intel." />
 
         {/* stacked sticky cards */}
         <div className="mt-14">

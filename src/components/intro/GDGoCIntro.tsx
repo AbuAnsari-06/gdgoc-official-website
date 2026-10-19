@@ -258,7 +258,7 @@ export default function GDGoCIntro() {
         ))}
 
       {!wiping && phase !== "fade" && (
-        <button type="button" className="gdg-intro-skip" onClick={() => setPhase("wipe")}>
+        <button type="button" className="gdg-intro-skip" autoFocus onClick={() => setPhase("wipe")}>
           Skip intro
         </button>
       )}
