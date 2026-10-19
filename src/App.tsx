@@ -18,6 +18,8 @@ import Profile from "./components/Profile";
 import Auth from "./components/Auth";
 import Tickets from "./components/Tickets";
 import TicketDetail from "./components/TicketDetail";
+import EventsPage from "./components/EventsPage";
+import EventDetail from "./components/EventDetail";
 import PageWipe, { usePageWipe } from "./components/PageWipe";
 import DeckTracker from "./components/DeckTracker";
 import DeckWorld from "./components/world/DeckWorld";
@@ -36,11 +38,18 @@ export default function App() {
     "#/profile": Profile,
     "#/login": Auth,
     "#/tickets": Tickets,
+    "#/events": EventsPage,
   };
   const { shownHash, wipeId } = usePageWipe(hash);
   const cinematic = useCinematic();
   const route = shownHash.split("?")[0];
-  const page = route.startsWith("#/tickets/") ? TicketDetail : pages[route as keyof typeof pages];
+  let page = pages[route as keyof typeof pages];
+  if (route.startsWith("#/tickets/")) {
+    page = TicketDetail;
+  }
+  if (route.startsWith("#/events/")) {
+    page = EventDetail;
+  }
 
   useEffect(() => {
     if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;

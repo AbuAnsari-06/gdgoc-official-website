@@ -1327,9 +1327,7 @@ html.world-on .hero-grid {
   display: none;
 }
 
-html[data-world-stage="deal"] .oso-card,
-html[data-world-stage="domains"] .oso-card,
-html[data-world-stage="finale"] .oso-card {
+html[data-world-cards="1"] .oso-card {
   opacity: 0 !important;
   pointer-events: none;
 }

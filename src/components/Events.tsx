@@ -81,7 +81,10 @@ function EventsHeader() {
       </div>
       <p className="max-w-sm text-[15px] leading-relaxed text-ink/80">
         Six cards from the deck we've played so far - workshops, study jams, watch parties and PR nights.
-        Tap, hover or tab to any card for its session report.
+        Tap, hover or tab to any card for its session report.{" "}
+        <a href="#/events" className="font-bold text-ink underline">
+          See upcoming events →
+        </a>
       </p>
     </div>
   );
@@ -142,13 +145,15 @@ function EventsGallery() {
             </motion.div>
           ))}
 
-          <motion.div
-            className="flex w-[320px] shrink-0 flex-col items-center justify-center gap-4 border-[3px] border-dashed border-ink bg-bg p-8 text-center"
+          <motion.a
+            href="#/events"
+            className="group flex w-[320px] shrink-0 flex-col items-center justify-center gap-4 border-[3px] border-dashed border-ink bg-bg p-8 text-center transition-colors hover:border-solid hover:bg-wash-green focus-visible:border-solid focus-visible:bg-wash-green"
             style={{ skewX: lean }}
           >
             <span className="font-mono text-xs font-semibold tracking-[0.3em] text-muted uppercase">Next card</span>
-            <span className="font-display text-3xl leading-tight font-extrabold text-ink">Open Source October 2026</span>
-          </motion.div>
+            <span className="font-display text-3xl leading-tight font-extrabold text-ink">Upcoming events</span>
+            <span className="hard-button bg-gyellow px-5 py-2.5 font-display text-sm font-bold">Browse and register →</span>
+          </motion.a>
         </motion.div>
 
         <div className="mx-auto mt-10 h-[5px] w-full max-w-7xl px-8" aria-hidden="true">
@@ -184,8 +189,10 @@ function EventsGrid() {
         </div>
 
         <Reveal delay={0.1}>
-          <p className="mt-10 text-center text-sm font-semibold text-ink/80">
-            next card in the deck: <span className="font-extrabold text-ink">Open Source October 2026</span>
+          <p className="mt-10 text-center">
+            <a href="#/events" className="hard-button inline-block bg-gyellow px-5 py-2.5 font-display font-bold">
+              Upcoming events: browse and register →
+            </a>
           </p>
         </Reveal>
       </div>

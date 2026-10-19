@@ -41,9 +41,11 @@ router.get("/:ticketId", async (req, res) => {
   }
 
   const ticket = publicTicket(registration);
-  const qrSvg = canAdmit(registration, registration.event) ? await qrFor(ticket.ticketId) : null;
+  const valid = canAdmit(registration, registration.event);
+  const qrSvg = valid ? await qrFor(ticket.ticketId) : null;
+  const meetingUrl = valid ? registration.event.meetingUrl || null : null;
 
-  res.json({ ...ticket, qrSvg });
+  res.json({ ...ticket, qrSvg, meetingUrl });
 });
 
 export default router;

@@ -6,6 +6,7 @@ export type Ticket = {
   registeredAt: string;
   attendedAt: string | null;
   event: {
+    id?: string;
     title: string;
     summary: string;
     startsAt: string;
@@ -15,7 +16,7 @@ export type Ticket = {
   };
 };
 
-export type TicketDetail = Ticket & { qrSvg: string | null };
+export type TicketDetail = Ticket & { qrSvg: string | null; meetingUrl?: string | null };
 
 export type TicketFilter = "all" | "upcoming" | "past" | "checked_in" | "cancelled";
 

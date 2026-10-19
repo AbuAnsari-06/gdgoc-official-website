@@ -35,6 +35,7 @@ export function publicTicket(registration, now = new Date()) {
     registeredAt: registration.createdAt,
     attendedAt: registration.attendedAt,
     event: {
+      id: event.id,
       title: event.title,
       summary: event.summary,
       startsAt: event.startsAt,

@@ -269,6 +269,10 @@ function World({ pointer, focus }: { pointer: { current: THREE.Vector2 }; focus:
     if (document.documentElement.dataset.worldStage !== dominant) {
       document.documentElement.dataset.worldStage = dominant;
     }
+    const cardsInView = stages.deal.visible > 0 || stages.domains.visible > 0 || stages.finale.visible > 0 ? "1" : "0";
+    if (document.documentElement.dataset.worldCards !== cardsInView) {
+      document.documentElement.dataset.worldCards = cardsInView;
+    }
     if (finaleVisible !== showShadows) {
       setShowShadows(finaleVisible);
     }
@@ -603,6 +607,7 @@ export default function DeckWorld() {
     return () => {
       root.classList.remove("world-on");
       delete root.dataset.worldStage;
+      delete root.dataset.worldCards;
       window.removeEventListener("scroll", update);
       window.removeEventListener("resize", update);
     };
