@@ -1,5 +1,6 @@
 import jwt from "jsonwebtoken";
 import User from "../models/User.js";
+import AuthFailure from "../models/AuthFailure.js";
 
 const WEEK = 7 * 24 * 60 * 60 * 1000;
 const PROD = process.env.NODE_ENV === "production";
@@ -35,32 +36,53 @@ export async function requireAuth(req, res, next) {
   }
 }
 
-const WINDOW = 15 * 60 * 1000;
+const WINDOW_MS = 15 * 60 * 1000;
 const MAX_FAILURES = 10;
-const failures = new Map();
 
-export function limitFailures(req, res, next) {
-  const now = Date.now();
-  const f = failures.get(req.ip);
-
-  if (f && now - f.start > WINDOW) {
-    failures.delete(req.ip);
-  } else if (f && f.count >= MAX_FAILURES) {
-    return res.status(429).json({ message: "Too many attempts. Try again in 15 minutes." });
+function failureKeys(req) {
+  const keys = [`ip:${req.ip}`];
+  const email = String(req.body?.email ?? "").trim().toLowerCase();
+  if (email) {
+    keys.push(`email:${email}`);
   }
+  return keys;
+}
 
-  res.on("finish", () => {
-    if (res.statusCode < 400) {
-      return;
-    }
-
-    const e = failures.get(req.ip);
-    if (e) {
-      e.count++;
-    } else {
-      failures.set(req.ip, { start: now, count: 1 });
-    }
+export async function limitFailures(req, res, next) {
+  const blocked = await AuthFailure.exists({
+    key: { $in: failureKeys(req) },
+    count: { $gte: MAX_FAILURES },
+    expiresAt: { $gt: new Date() },
   });
 
+  if (blocked) {
+    return res.status(429).json({ message: "Too many attempts. Try again in 15 minutes." });
+  }
   next();
+}
+
+export async function recordAuthFailure(req) {
+  const now = new Date();
+  const stillOpen = { $gt: ["$expiresAt", now] };
+
+  await Promise.all(
+    failureKeys(req).map((key) =>
+      AuthFailure.updateOne(
+        { key },
+        [
+          {
+            $set: {
+              count: { $cond: [stillOpen, { $add: ["$count", 1] }, 1] },
+              expiresAt: { $cond: [stillOpen, "$expiresAt", new Date(now.getTime() + WINDOW_MS)] },
+            },
+          },
+        ],
+        { upsert: true, updatePipeline: true },
+      ),
+    ),
+  );
+}
+
+export async function clearAuthFailures(email) {
+  await AuthFailure.deleteOne({ key: `email:${email}` });
 }

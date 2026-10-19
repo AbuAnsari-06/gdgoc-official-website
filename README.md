@@ -8,7 +8,7 @@ Learn. Build. Connect. Grow — together.
 ![Open Source October](https://img.shields.io/badge/Open%20Source-October%202026-FF5722?style=for-the-badge)
 ![MERN](https://img.shields.io/badge/stack-MERN-4285F4?style=for-the-badge)
 ![React](https://img.shields.io/badge/React-18-61DAFB?style=for-the-badge&logo=react&logoColor=black)
-![Node](https://img.shields.io/badge/Node.js-20-339933?style=for-the-badge&logo=node.js&logoColor=white)
+![Node](https://img.shields.io/badge/Node.js-22.18+-339933?style=for-the-badge&logo=node.js&logoColor=white)
 ![MongoDB](https://img.shields.io/badge/MongoDB-Atlas-47A248?style=for-the-badge&logo=mongodb&logoColor=white)
 ![PRs Welcome](https://img.shields.io/badge/PRs-welcome-34A853?style=for-the-badge)
 ![License](https://img.shields.io/badge/license-MIT-EA4335?style=for-the-badge)
@@ -224,12 +224,19 @@ gdgoc-psit/
 - **Logout** clears the cookie and returns to `/#/login`. **Changing the password** signs out every other device (`tokenVersion` on the user). An expired or invalid token gets `401`, and protected pages redirect to login.
 - **Roles:** `student` (default) and `admin`. Sign-up always creates a `student`, and no API sets a role from the request body. Make an admin directly in the database. The server checks every protected route; the frontend only decides what to show.
 - **Errors:** always `{ message, errors? }`, where `errors` maps field names to messages. Internal details are never returned.
-- **Abuse protection:** 10 failed login or sign-up attempts per IP block it for 15 minutes (in-memory). Responses use `nosniff`, `DENY` framing and `no-referrer`.
+- **Abuse protection:** only real authentication failures count — a wrong email or password at login (`401`) and signing up with an email that already exists (`409`). Form validation errors (`400`) never count. Failures are counted per IP **and** per email; 10 failures on either within 15 minutes return `429`, and a successful login clears that email's counter. Counters live in MongoDB (`authfailures` collection, removed automatically by a TTL index), so the limit holds across restarts and across several API instances. Responses also use `nosniff`, `DENY` framing and `no-referrer`.
+- **Duplicate sign-ups:** the email is unique in the database. If two sign-ups with the same email race past the "already registered" check, the database rejects the second one and the API returns the same `409 Conflict` instead of a server error.
+- **CSRF protection:** the production cookie is `SameSite=None; Secure` because the frontend and API are on different sites, so the API checks every state-changing request (`POST`, `PATCH`, …):
+  - with an `Origin` header, it must be exactly `CLIENT_URL` or the API's own origin, otherwise `403`;
+  - without `Origin`, a browser-marked cross-site request (`Sec-Fetch-Site: cross-site`) is also `403`;
+  - requests with neither header come from non-browser clients, which cannot use a visitor's cookie.
+
+  CORS only allows `CLIENT_URL` with credentials. See **Deployment** for checking this against the live API.
 - **Validation** lives in `src/lib/profile.ts` and is shared by the frontend and the server.
 - **Tests:**
   - `npm test`: auth page behaviour (validation, password toggle, switching forms, loading, network failure, redirects).
   - `npx tsx tests/profile.test.ts`: shared validation.
-  - `cd server && npm test`: API (register, login, duplicates, bad payloads, hashing, expired/forged tokens, logout, role escalation, rate limit). Needs the server running; restart it between runs, because the last test trips the rate limit.
+  - `cd server && npm test`: API tests for registration (including concurrent duplicate sign-ups), login and wrong credentials, profile updates, password changes (other sessions signed out), expired and forged sessions, logout, role escalation, CSRF and rate limiting. See **Verification** for running them against a local database.
 - **Not built yet:** refresh tokens, password recovery (needs SMTP for time-limited reset links), email verification, and admin-only routes (#8 adds a `403` role check with its first admin endpoint).
 
 ---
@@ -359,7 +366,7 @@ Pick an area, open an issue, and get it assigned.
 ## ⚙️ Local Setup
 
 ### Prerequisites
-- Node.js 18+ and npm
+- Node.js 22.18 or newer and npm (the version is pinned in `.nvmrc`; run `nvm use`). The API runs the shared TypeScript validation in `src/lib` directly, which needs Node 22.18+.
 - A MongoDB Atlas cluster or local MongoDB
 - (Optional) Cloudinary and SMTP credentials; the app should still run without them
 
@@ -408,11 +415,51 @@ The app runs at **http://localhost:5173**.
 
 | Location | Command | Purpose |
 |---|---|---|
-| `client` | `npm run dev` | Start Vite dev server |
-| `client` | `npm run build` | Production build |
-| `client` | `npm run lint` | Lint the code |
-| `server` | `npm run dev` | Start API with nodemon |
-| `server` | `npm start` | Start API in production |
+| repo root | `npm run dev` | Start the Vite dev server |
+| repo root | `npm run build` | Production build |
+| repo root | `npm test` | Frontend tests (Vitest) |
+| repo root | `npm run test:scripts` | Standalone checks: `tests/profile.test.ts`, `oso`, `ruru`, `statuscard` |
+| repo root | `npm run check` | Typecheck + all frontend tests + standalone checks + build |
+| `server` | `npm run dev` | Start the API and restart on changes (`node --watch`) |
+| `server` | `npm start` | Start the API in production |
+| `server` | `npm test` | API tests (local database only) |
+
+### Verification
+
+Run these before opening a PR; CI runs the same steps on every pull request (`.github/workflows/ci.yml`):
+
+1. **Frontend** — `npm ci && npm run check`.
+2. **API** — start a throwaway MongoDB (`docker run -d -p 27017:27017 mongo:7`), then:
+   ```bash
+   cd server
+   export MONGO_URI=mongodb://127.0.0.1:27017/gdgoc-test JWT_SECRET=dev-secret CLIENT_URL=http://localhost:5173
+   npm run dev            # in one terminal
+   npm test               # in another, with the same variables
+   ```
+   The API tests create accounts, so they refuse to run unless `MONGO_URI` points at a local database. In CI the same steps run against a MongoDB service container.
+
+### Deployment
+
+| Setting | Frontend (Vercel) | API (Render) |
+|---|---|---|
+| Node.js | 22.18+ (`.nvmrc`) | 22.18+ (`.nvmrc` / `engines`) |
+| Environment | `VITE_API_URL=https://<api-host>/api` | `NODE_ENV=production`, `MONGO_URI`, `JWT_SECRET` (long random string), `CLIENT_URL=https://<frontend-host>` (exact origin, no trailing slash) |
+
+The API refuses to start if `MONGO_URI` or `JWT_SECRET` is missing. With `NODE_ENV=production` it trusts the platform proxy for client IPs and sets the session cookie as `HttpOnly; Secure; SameSite=None`.
+
+Check the deployed API after each release:
+
+```bash
+API=https://<api-host>/api
+FRONTEND=https://<frontend-host>
+
+# allowed: the real frontend origin
+curl -s -o /dev/null -w "%{http_code}\n" -X POST -H "Origin: $FRONTEND" $API/auth/logout     # 200
+# blocked: any other origin
+curl -s -o /dev/null -w "%{http_code}\n" -X POST -H "Origin: https://evil.example" $API/auth/logout   # 403
+# CORS preflight answers only the real frontend, with credentials
+curl -s -D - -o /dev/null -X OPTIONS -H "Origin: $FRONTEND" -H "Access-Control-Request-Method: POST" $API/auth/login | grep -i access-control
+```
 
 ---
 
