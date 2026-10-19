@@ -130,7 +130,7 @@ function Filters({
               value={query.q}
               onChange={(e) => onChange({ q: e.target.value })}
               placeholder="Title, topic or venue"
-              className={`${control} w-full font-semibold`}
+              className={`${control} w-full font-semibold [&::-webkit-search-cancel-button]:hidden`}
             />
             {query.q && (
               <button
