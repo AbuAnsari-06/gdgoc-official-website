@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { Marquee, MonthGrid, Reveal, SectionTag, StatusPill, SuitGlyph, SUIT_FOR } from "./ui";
+import { Marquee, MonthGrid, Reveal, RollText, SectionTag, StatusPill, SuitGlyph, SUIT_FOR } from "./ui";
 import Robot from "./Robot";
 import { TICKER_LINES, COLOR_HEX, type GColor } from "../data/content";
 import { OSO, useOsoStatus, type OsoStatus } from "../lib/oso";
@@ -329,6 +329,7 @@ export default function Hero() {
   return (
     <section
       id="top"
+      data-stage="hero"
       className="hero-space paper-ground relative flex min-h-[100svh] flex-col overflow-clip"
       aria-label="GDGoC PSIT, Google Developer Group on Campus, PSIT Kanpur. Learn, connect, grow."
     >
@@ -400,7 +401,7 @@ export default function Hero() {
                   data-cursor-color="#FBBC04"
                   className="hard-button group inline-flex items-center gap-3 bg-gyellow px-6 py-3.5 font-display text-base font-extrabold text-ink"
                 >
-                  Join the community
+                  <RollText>Join the community</RollText>
                   {ARROW}
                 </a>
                 <a

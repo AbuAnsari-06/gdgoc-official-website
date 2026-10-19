@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { MotionConfig } from "framer-motion";
 import Lenis from "lenis";
 import Nav from "./components/Nav";
@@ -16,6 +16,11 @@ import Cursor from "./components/Cursor";
 import GDGoCIntro from "./components/intro/GDGoCIntro";
 import Profile from "./components/Profile";
 import Auth from "./components/Auth";
+import PageWipe, { usePageWipe } from "./components/PageWipe";
+import DeckTracker from "./components/DeckTracker";
+import DeckWorld from "./components/world/DeckWorld";
+import FinaleStage from "./components/world/FinaleStage";
+import { useCinematic } from "./components/three/Card3D";
 import { setLenis } from "./lib/scroll";
 
 export default function App() {
@@ -29,7 +34,9 @@ export default function App() {
     "#/profile": Profile,
     "#/login": Auth,
   };
-  const route = hash.split("?")[0] as keyof typeof pages;
+  const { shownHash, wipeId } = usePageWipe(hash);
+  const cinematic = useCinematic();
+  const route = shownHash.split("?")[0] as keyof typeof pages;
   const page = pages[route];
 
   useEffect(() => {
@@ -68,40 +75,58 @@ export default function App() {
     return () => io.disconnect();
   }, [page]);
 
+  let content: ReactNode;
   if (page) {
     const Page = page;
-    return (
-      <div className="min-h-screen bg-bg font-body text-ink">
-        <Page />
+    content = (
+      <div className="paper-ground min-h-screen bg-bg font-body text-ink">
+        <Nav key={`nav-${route}`} />
+        <Page key={`page-${route}`} />
         <Cursor />
       </div>
+    );
+  } else {
+    content = (
+      <MotionConfig reducedMotion="user">
+        <div className="relative min-h-screen bg-bg font-body text-ink">
+          {/* No page-wide starfield here: the universe belongs to the hero
+             alone (it owns and pauses the canvas), and the sections below
+             are the paper world. A full-page copy would paint 61 MB of
+             bitmap under opaque backgrounds for nothing. */}
+          {cinematic && <DeckWorld />}
+          <Nav />
+          <main className="relative z-[1]">
+            <Hero />
+            <Stats />
+            <NoticeBoard />
+            <About />
+            <Hacktober />
+            <Events />
+            <Domains />
+            <Crew />
+            <Join />
+          </main>
+          {cinematic && (
+            <div className="relative z-[1]">
+              <FinaleStage />
+            </div>
+          )}
+          <div className="relative z-[1]">
+            <Footer />
+          </div>
+          <DeckTracker />
+          <Cursor />
+          <div className="noise-overlay" aria-hidden="true" />
+          <GDGoCIntro />
+        </div>
+      </MotionConfig>
     );
   }
 
   return (
-    <MotionConfig reducedMotion="user">
-      <div className="relative min-h-screen bg-bg font-body text-ink">
-        {/* No page-wide starfield here: the universe belongs to the hero
-           alone (it owns and pauses the canvas), and the sections below
-           are the paper world. A full-page copy would paint 61 MB of
-           bitmap under opaque backgrounds for nothing. */}
-        <Nav />
-        <main>
-          <Hero />
-          <Stats />
-          <NoticeBoard />
-          <About />
-          <Hacktober />
-          <Events />
-          <Domains />
-          <Crew />
-          <Join />
-        </main>
-        <Footer />
-        <Cursor />
-        <div className="noise-overlay" aria-hidden="true" />
-        <GDGoCIntro />
-      </div>
-    </MotionConfig>
+    <>
+      {content}
+      <PageWipe wipeId={wipeId} />
+    </>
   );
 }

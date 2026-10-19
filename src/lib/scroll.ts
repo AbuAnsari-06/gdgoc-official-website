@@ -10,6 +10,7 @@ export function scrollToId(id: string) {
   const el = document.getElementById(id);
   if (!el) return;
   if (lenis) {
+    lenis.resize();
     lenis.scrollTo(el, { offset: -64, duration: 1.4 });
   } else {
     el.scrollIntoView({ behavior: "smooth", block: "start" });
