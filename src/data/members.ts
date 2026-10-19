@@ -1,4 +1,5 @@
 import type { GColor } from "./content";
+import { DEMO_PERSON } from "../lib/identity";
 
 /**
  * ────────────────────────────────────────────────────────────────────
@@ -28,7 +29,7 @@ export interface Member {
 }
 
 export const members: Member[] = [
-  { name: "Rudransh Singh", role: "Chapter Lead", tag: "Keeps the whole board running", color: "gblue", since: "'23" },
+  { name: DEMO_PERSON.fullName, role: "Chapter Lead", tag: "Keeps the whole board running", color: "gblue", since: "'23" },
 ];
 
 /** Number of cards the grid shows before it wraps — ghost slots fill the rest. */

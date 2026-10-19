@@ -3,10 +3,10 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "node --watch --env-file=.env index.js",
-    "start": "node --env-file=.env index.js",
-    "test": "node --env-file=.env --test api.test.js utils/tickets.test.js",
-    "seed:tickets": "node --env-file=.env seed-tickets.js"
+    "dev": "node --watch --env-file-if-exists=.env index.js",
+    "start": "node --env-file-if-exists=.env index.js",
+    "test": "node --env-file-if-exists=.env --test api.test.js utils/tickets.test.js",
+    "seed:tickets": "node --env-file-if-exists=.env seed-tickets.js"
   },
   "engines": {
     "node": ">=22.18"

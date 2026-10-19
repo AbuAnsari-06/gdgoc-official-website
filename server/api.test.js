@@ -1,4 +1,4 @@
-import { test } from "node:test";
+import { before, test } from "node:test";
 import assert from "node:assert/strict";
 import jwt from "jsonwebtoken";
 import mongoose from "mongoose";
@@ -12,6 +12,15 @@ const options = {
     : "API tests create accounts and events. Run the server and tests with a local MONGO_URI.",
 };
 const email = `t${Date.now()}@test.dev`;
+
+before(async () => {
+  if (options.skip) {
+    return;
+  }
+  await mongoose.connect(process.env.MONGO_URI);
+  await mongoose.connection.collection("authfailures").deleteMany({});
+  await mongoose.disconnect();
+});
 
 async function call(path, { method = "GET", body, cookie } = {}) {
   const headers = { "Content-Type": "application/json" };
@@ -153,6 +162,94 @@ test("tickets: members only see their own tickets and QR codes for valid ones", 
   assert.equal((await call("/tickets/not-a-real-id", { cookie: owner.cookie })).status, 404);
 });
 
+
+test("concurrent duplicate registrations return one 201 and clean 409s", options, async () => {
+  const raceEmail = `race${Date.now()}@test.dev`;
+  const attempts = await Promise.all(
+    Array.from({ length: 4 }, () =>
+      call("/auth/register", { method: "POST", body: { name: "Race Tester", email: raceEmail, password: "secret123" } }),
+    ),
+  );
+  const statuses = attempts.map((attempt) => attempt.status).sort();
+
+  assert.deepEqual(statuses, [201, 409, 409, 409]);
+  for (const attempt of attempts.filter((a) => a.status === 409)) {
+    assert.equal(attempt.data.errors.email, "Already registered. Log in instead.");
+  }
+});
+
+test("profile updates save allowed fields and reject invalid values", options, async () => {
+  const profileEmail = `profile${Date.now()}@test.dev`;
+  const created = await call("/auth/register", {
+    method: "POST",
+    body: { name: "Profile Tester", email: profileEmail, password: "secret123" },
+  });
+
+  const saved = await call("/users/me", {
+    method: "PATCH",
+    cookie: created.cookie,
+    body: { name: "  Asha Verma ", branch: "IT", year: "2", bio: "web + cloud", email: "x@y.zz", role: "admin" },
+  });
+  assert.equal(saved.status, 200);
+  assert.equal(saved.data.name, "Asha Verma");
+  assert.equal(saved.data.branch, "IT");
+  assert.equal(saved.data.year, 2);
+  assert.equal(saved.data.bio, "web + cloud");
+  assert.equal(saved.data.email, profileEmail);
+  assert.equal(saved.data.role, "student");
+
+  const invalid = await call("/users/me", {
+    method: "PATCH",
+    cookie: created.cookie,
+    body: { name: "Asha Verma", branch: "Hacking" },
+  });
+  assert.equal(invalid.status, 400);
+
+  const me = await call("/users/me", { cookie: created.cookie });
+  assert.equal(me.data.branch, "IT");
+});
+
+test("password change checks the current password and signs out other sessions", options, async () => {
+  const passwordEmail = `password${Date.now()}@test.dev`;
+  const thisDevice = await call("/auth/register", {
+    method: "POST",
+    body: { name: "Password Tester", email: passwordEmail, password: "secret123" },
+  });
+  const otherDevice = await call("/auth/login", {
+    method: "POST",
+    body: { email: passwordEmail, password: "secret123" },
+  });
+
+  const wrongCurrent = await call("/users/me/password", {
+    method: "PATCH",
+    cookie: thisDevice.cookie,
+    body: { currentPassword: "wrong1234", newPassword: "newpass99" },
+  });
+  assert.equal(wrongCurrent.status, 400);
+
+  const weak = await call("/users/me/password", {
+    method: "PATCH",
+    cookie: thisDevice.cookie,
+    body: { currentPassword: "secret123", newPassword: "short" },
+  });
+  assert.equal(weak.status, 400);
+
+  const changed = await call("/users/me/password", {
+    method: "PATCH",
+    cookie: thisDevice.cookie,
+    body: { currentPassword: "secret123", newPassword: "newpass99" },
+  });
+  assert.equal(changed.status, 200);
+
+  assert.equal((await call("/users/me", { cookie: changed.cookie })).status, 200);
+  assert.equal((await call("/users/me", { cookie: otherDevice.cookie })).status, 401);
+
+  const oldPassword = await call("/auth/login", { method: "POST", body: { email: passwordEmail, password: "secret123" } });
+  assert.equal(oldPassword.status, 401);
+  const newPassword = await call("/auth/login", { method: "POST", body: { email: passwordEmail, password: "newpass99" } });
+  assert.equal(newPassword.status, 200);
+});
+
 test("state-changing requests from other sites are blocked", options, async () => {
   const res = await fetch(`${API}/auth/logout`, {
     method: "POST",
@@ -160,11 +257,27 @@ test("state-changing requests from other sites are blocked", options, async () =
   });
   assert.equal(res.status, 403);
 
+  const noOriginCrossSite = await fetch(`${API}/auth/logout`, {
+    method: "POST",
+    headers: { "Sec-Fetch-Site": "cross-site" },
+  });
+  assert.equal(noOriginCrossSite.status, 403);
+
   const trusted = await fetch(`${API}/auth/logout`, {
     method: "POST",
     headers: { Origin: process.env.CLIENT_URL },
   });
   assert.equal(trusted.status, 200);
+});
+
+test("form validation errors do not count toward the login limit", options, async () => {
+  for (let attempt = 0; attempt < 12; attempt++) {
+    const res = await call("/auth/register", { method: "POST", body: { name: "", email: "bad", password: "x" } });
+    assert.equal(res.status, 400);
+  }
+
+  const login = await call("/auth/login", { method: "POST", body: { email, password: "secret123" } });
+  assert.equal(login.status, 200);
 });
 
 test("rate limit blocks repeated failed logins", options, async () => {
