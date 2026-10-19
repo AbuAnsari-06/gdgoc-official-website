@@ -209,6 +209,7 @@ gdgoc-psit/
 - **Roles:** `student` (default) and `admin`. Sign-up always creates a `student`, and no API sets a role from the request body. Make an admin directly in the database. The server checks every protected route; the frontend only decides what to show.
 - **Errors:** always `{ message, errors? }`, where `errors` maps field names to messages. Internal details are never returned.
 - **Abuse protection:** only real authentication failures count — a wrong email or password at login (`401`) and signing up with an email that already exists (`409`). Form validation errors (`400`) never count. Failures are counted per IP **and** per email; 10 failures on either within 15 minutes return `429`, and a successful login clears that email's counter. Counters live in MongoDB (`authfailures` collection, removed automatically by a TTL index), so the limit holds across restarts and across several API instances. Responses also use `nosniff`, `DENY` framing and `no-referrer`.
+- **Duplicate sign-ups:** the email is unique in the database. If two sign-ups with the same email race past the "already registered" check, the database rejects the second one and the API returns the same `409 Conflict` instead of a server error.
 - **CSRF protection:** the production cookie is `SameSite=None; Secure` because the frontend and API are on different sites, so the API checks every state-changing request (`POST`, `PATCH`, …):
   - with an `Origin` header, it must be exactly `CLIENT_URL` or the API's own origin, otherwise `403`;
   - without `Origin`, a browser-marked cross-site request (`Sec-Fetch-Site: cross-site`) is also `403`;
@@ -219,7 +220,7 @@ gdgoc-psit/
 - **Tests:**
   - `npm test`: auth page behaviour (validation, password toggle, switching forms, loading, network failure, redirects).
   - `npx tsx tests/profile.test.ts`: shared validation.
-  - `cd server && npm test`: API tests (register, login, duplicates, bad payloads, hashing, expired/forged tokens, logout, role escalation, CSRF, rate limiting). See **Verification** for running them against a local database.
+  - `cd server && npm test`: API tests for registration (including concurrent duplicate sign-ups), login and wrong credentials, profile updates, password changes (other sessions signed out), expired and forged sessions, logout, role escalation, CSRF and rate limiting. See **Verification** for running them against a local database.
 - **Not built yet:** refresh tokens, password recovery (needs SMTP for time-limited reset links), email verification, and admin-only routes (#8 adds a `403` role check with its first admin endpoint).
 
 ---

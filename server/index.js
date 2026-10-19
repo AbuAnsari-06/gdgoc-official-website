@@ -2,6 +2,7 @@ import express from "express";
 import mongoose from "mongoose";
 import authRoutes from "./routes/auth.js";
 import userRoutes from "./routes/users.js";
+import User from "./models/User.js";
 
 const missing = ["MONGO_URI", "JWT_SECRET"].filter((name) => !process.env[name]);
 if (missing.length > 0) {
@@ -79,6 +80,7 @@ app.use((err, req, res, next) => {
 });
 
 await mongoose.connect(process.env.MONGO_URI);
+await User.init();
 
 const port = process.env.PORT || 5000;
 app.listen(port, () => {
