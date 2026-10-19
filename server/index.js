@@ -40,6 +40,22 @@ app.use((req, res, next) => {
   next();
 });
 
+const SAFE_METHODS = new Set(["GET", "HEAD", "OPTIONS"]);
+
+app.use((req, res, next) => {
+  const origin = req.headers.origin;
+  if (SAFE_METHODS.has(req.method) || !origin) {
+    return next();
+  }
+
+  const ownOrigin = `${req.protocol}://${req.get("host")}`;
+  if (origin === process.env.CLIENT_URL || origin === ownOrigin) {
+    return next();
+  }
+
+  res.status(403).json({ message: "Request blocked: it did not come from this site." });
+});
+
 app.use("/api/auth", authRoutes);
 app.use("/api/users", userRoutes);
 app.use("/api/tickets", ticketRoutes);

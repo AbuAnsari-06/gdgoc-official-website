@@ -53,6 +53,15 @@ test("filters split tickets by date and status", () => {
   expect(ids("cancelled")).toEqual(["Session cancelled"]);
 });
 
+test("an event without an end time uses the same 24-hour rule as the server", () => {
+  const startedAnHourAgo = ticket("now", "confirmed", -1 / 24);
+  const startedYesterday = ticket("yesterday", "expired", -25 / 24);
+
+  expect(filterTickets([startedAnHourAgo], "upcoming", NOW)).toHaveLength(1);
+  expect(filterTickets([startedAnHourAgo], "past", NOW)).toHaveLength(0);
+  expect(filterTickets([startedYesterday], "past", NOW)).toHaveLength(1);
+});
+
 test("upcoming tickets come first, soonest first", () => {
   const order = sortTickets(SAMPLE, NOW).map((t) => t.event.title);
   expect(order).toEqual(["Session soon", "Session later", "Session cancelled", "Session attended", "Session past"]);

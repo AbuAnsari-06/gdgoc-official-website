@@ -66,22 +66,26 @@ export default function Profile() {
   const [user, setUser] = useState<P | null>(null);
   const [status, setStatus] = useState<"loading" | "error" | "ready">("loading");
 
+  const loadUser = async () => {
+    setStatus("loading");
+    try {
+      const me = await api<P>("/users/me");
+      if (!me?.name) {
+        throw new Error("bad response");
+      }
+      setUser(me);
+      setStatus("ready");
+    } catch (error) {
+      if ((error as Error).message === "401") {
+        location.hash = "#/login?next=/profile";
+      } else {
+        setStatus("error");
+      }
+    }
+  };
+
   useEffect(() => {
-    api<P>("/users/me")
-      .then((u) => {
-        if (!u?.name) {
-          throw new Error("bad response");
-        }
-        setUser(u);
-        setStatus("ready");
-      })
-      .catch((e) => {
-        if (e.message === "401") {
-          location.hash = "#/login?next=/profile";
-        } else {
-          setStatus("error");
-        }
-      });
+    loadUser();
   }, []);
 
   const [logoutMsg, setLogoutMsg] = useState<Msg>(null);
@@ -111,9 +115,13 @@ export default function Profile() {
         </p>
       )}
       {status === "error" && (
-        <p className="mt-8" role="alert">
-          We couldn't load your profile. Refresh to try again.
-        </p>
+        <div role="alert" className="mt-8 border-[3px] border-ink bg-bg p-6">
+          <p className="font-bold">We couldn't load your profile.</p>
+          <p className="mt-1 text-sm text-muted">Check your connection and try again.</p>
+          <button type="button" className={`${button} mt-4`} onClick={loadUser}>
+            Try again
+          </button>
+        </div>
       )}
 
       {user && (

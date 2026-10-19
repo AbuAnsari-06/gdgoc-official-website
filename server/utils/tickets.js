@@ -1,4 +1,4 @@
-const DAY_MS = 24 * 60 * 60 * 1000;
+import { eventEndsAt } from "../../src/lib/tickets.ts";
 
 export const TICKET_ID_PATTERN = /^[A-Za-z0-9_-]{22}$/;
 
@@ -16,11 +16,14 @@ export function ticketState(registration, event, now = new Date()) {
     return "pending";
   }
 
-  const endsAt = event.endsAt ?? new Date(event.startsAt.getTime() + DAY_MS);
-  if (endsAt < now) {
+  if (eventEndsAt(event) < now) {
     return "expired";
   }
   return "confirmed";
+}
+
+export function canAdmit(registration, event, now = new Date()) {
+  return ticketState(registration, event, now) === "confirmed";
 }
 
 export function publicTicket(registration, now = new Date()) {

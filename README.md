@@ -43,6 +43,26 @@ A companion **mobile application** is planned (see [What to Build](#-what-to-bui
 
 ---
 
+## 📌 Project Status
+
+The **Features** section below describes the full plan. This table shows what is actually built today.
+
+| Area | Status | Issue / PR |
+|---|---|---|
+| Landing page (hero, board, about, events log, domains, crew, join) | ✅ Built | #1, #3 → PR #12, #13 |
+| Sign up / log in, sessions, roles | ✅ Built | #4 → PR #10 |
+| Profile, account settings, password change | ✅ Built | #9 → PR #11 |
+| My Tickets: wallet, ticket page, QR code | ✅ Built | #7 → PR #14 |
+| Event listing and registration (creates tickets) | 🔜 Planned | #6 |
+| Member dashboard | 🔜 Planned | #5 |
+| Admin panel and QR attendance scanner | 🔜 Planned | #8 |
+| Projects page | 🔜 Planned | — |
+| Password recovery, refresh tokens, email verification | 🔜 Planned | — |
+
+**PR merge order:** #11 (profile, issue #9) → #10 (auth, issue #4) → #12 (UI, issue #1) → #13 (homepage, issue #3) → #14 (tickets, issue #7). Each builds on the one before.
+
+---
+
 ## ✨ Features
 
 ### 🌐 Landing Page
@@ -222,7 +242,7 @@ gdgoc-psit/
 - **Pages:** `/#/tickets` (ticket wallet with filters) and `/#/tickets/<ticketId>` (one ticket with its QR code). Both need a login; signed-out visitors go to login and come back.
 - **Data model:** a `Registration` is the ticket. It links a user and an `Event`, has a random `ticketId` (22 characters, unique), a `status` (`pending`, `confirmed`, `cancelled`) and `attendedAt`. One registration per user per event (unique index).
 - **Ownership:** every ticket query filters by the logged-in user. Someone else's ticket, an unknown ID and a malformed ID all return the same `404`, so nothing leaks. Responses never include database IDs or other members' data.
-- **States** (worked out on the server):
+- **States** (worked out on the server; the event-end rule lives in `src/lib/tickets.ts` and is shared by the API and the UI — an event without an end time lasts 24 hours from its start):
 
   | State | Meaning | QR shown |
   |---|---|---|
@@ -245,11 +265,12 @@ gdgoc-psit/
 - **Roles:** `student` (default) and `admin`. Sign-up always creates a `student`, and no API sets a role from the request body. Make an admin directly in the database. The server checks every protected route; the frontend only decides what to show.
 - **Errors:** always `{ message, errors? }`, where `errors` maps field names to messages. Internal details are never returned.
 - **Abuse protection:** 10 failed login or sign-up attempts per IP block it for 15 minutes (in-memory). Responses use `nosniff`, `DENY` framing and `no-referrer`.
+- **CSRF protection:** because the production cookie is sent cross-site, every state-changing request (`POST`, `PATCH`, …) with an `Origin` header must come from `CLIENT_URL` or the API's own origin, otherwise it gets `403`. Requests without `Origin` come from non-browser clients, which cannot ride a visitor's cookie.
 - **Validation** lives in `src/lib/profile.ts` and is shared by the frontend and the server.
 - **Tests:**
   - `npm test`: auth page behaviour (validation, password toggle, switching forms, loading, network failure, redirects).
   - `npx tsx tests/profile.test.ts`: shared validation.
-  - `cd server && npm test`: API (register, login, duplicates, bad payloads, hashing, expired/forged tokens, logout, role escalation, rate limit). Needs the server running; restart it between runs, because the last test trips the rate limit.
+  - `cd server && npm test`: ticket lifecycle unit tests, plus API tests (register, login, duplicates, bad payloads, hashing, expired/forged tokens, logout, role escalation, CSRF, tickets, rate limit). The API tests create accounts and events, so they only run when `MONGO_URI` is a local database, for example `MONGO_URI=mongodb://127.0.0.1:27017/gdgoc-test`, for both the server and the tests. Restart the server between runs, because the last test trips the rate limit.
 - **Not built yet:** refresh tokens, password recovery (needs SMTP for time-limited reset links), email verification, and admin-only routes (#8 adds a `403` role check with its first admin endpoint).
 
 ---

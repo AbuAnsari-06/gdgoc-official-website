@@ -66,9 +66,19 @@ export const FILTERS: { id: TicketFilter; label: string }[] = [
   { id: "cancelled", label: "Cancelled" },
 ];
 
+const DEFAULT_EVENT_LENGTH_MS = 24 * 60 * 60 * 1000;
+
+type EventTimes = { startsAt: string | Date; endsAt?: string | Date | null };
+
+export function eventEndsAt(event: EventTimes): Date {
+  if (event.endsAt) {
+    return new Date(event.endsAt);
+  }
+  return new Date(new Date(event.startsAt).getTime() + DEFAULT_EVENT_LENGTH_MS);
+}
+
 function eventHasEnded(ticket: Ticket, now: Date) {
-  const end = ticket.event.endsAt ?? ticket.event.startsAt;
-  return new Date(end) < now;
+  return eventEndsAt(ticket.event) < now;
 }
 
 export function filterTickets(tickets: Ticket[], filter: TicketFilter, now = new Date()): Ticket[] {

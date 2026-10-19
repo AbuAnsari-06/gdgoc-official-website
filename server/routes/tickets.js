@@ -2,7 +2,7 @@ import { Router } from "express";
 import QRCode from "qrcode";
 import Registration from "../models/Registration.js";
 import { requireAuth } from "../middleware/auth.js";
-import { publicTicket, TICKET_ID_PATTERN } from "../utils/tickets.js";
+import { canAdmit, publicTicket, TICKET_ID_PATTERN } from "../utils/tickets.js";
 
 const router = Router();
 router.use(requireAuth);
@@ -41,7 +41,7 @@ router.get("/:ticketId", async (req, res) => {
   }
 
   const ticket = publicTicket(registration);
-  const qrSvg = ticket.state === "confirmed" ? await qrFor(ticket.ticketId) : null;
+  const qrSvg = canAdmit(registration, registration.event) ? await qrFor(ticket.ticketId) : null;
 
   res.json({ ...ticket, qrSvg });
 });
