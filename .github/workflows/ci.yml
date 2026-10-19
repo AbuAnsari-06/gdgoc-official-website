@@ -1,0 +1,79 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  frontend:
+    name: Frontend (typecheck, tests, build)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
+      - run: npm ci
+
+      - run: npm run check
+
+  api:
+    name: API tests (MongoDB)
+    runs-on: ubuntu-latest
+
+    services:
+      mongo:
+        image: mongo:7
+        ports:
+          - 27017:27017
+        options: >-
+          --health-cmd "mongosh --quiet --eval 'db.runCommand({ ping: 1 })'"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+    env:
+      MONGO_URI: mongodb://127.0.0.1:27017/gdgoc-test
+      JWT_SECRET: ci-only-secret-not-used-anywhere-else
+      CLIENT_URL: http://localhost:5173
+      PORT: "5000"
+
+    defaults:
+      run:
+        working-directory: server
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+          cache-dependency-path: server/package-lock.json
+
+      - run: npm ci
+
+      - name: Start the API
+        run: nohup node index.js > api.log 2>&1 &
+
+      - name: Wait for the API
+        run: |
+          for attempt in $(seq 1 30); do
+            code=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:5000/api/users/me || true)
+            if [ "$code" = "401" ]; then
+              exit 0
+            fi
+            sleep 1
+          done
+          cat api.log
+          exit 1
+
+      - run: npm test
+
+      - name: Show API log on failure
+        if: failure()
+        run: cat api.log
