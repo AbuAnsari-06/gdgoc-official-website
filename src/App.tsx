@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { MotionConfig } from "framer-motion";
 import Lenis from "lenis";
 import Nav from "./components/Nav";
@@ -14,9 +14,22 @@ import Join from "./components/Join";
 import Footer from "./components/Footer";
 import Cursor from "./components/Cursor";
 import GDGoCIntro from "./components/intro/GDGoCIntro";
+import Profile from "./components/Profile";
 import { setLenis } from "./lib/scroll";
 
 export default function App() {
+  const [hash, setHash] = useState(location.hash);
+  useEffect(() => {
+    const onHash = () => setHash(location.hash);
+    window.addEventListener("hashchange", onHash);
+    return () => window.removeEventListener("hashchange", onHash);
+  }, []);
+  const pages = {
+    "#/profile": Profile,
+  };
+  const route = hash.split("?")[0] as keyof typeof pages;
+  const page = pages[route];
+
   useEffect(() => {
     if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
 
@@ -51,7 +64,17 @@ export default function App() {
     );
     for (const s of sections) io.observe(s);
     return () => io.disconnect();
-  }, []);
+  }, [page]);
+
+  if (page) {
+    const Page = page;
+    return (
+      <div className="min-h-screen bg-bg font-body text-ink">
+        <Page />
+        <Cursor />
+      </div>
+    );
+  }
 
   return (
     <MotionConfig reducedMotion="user">

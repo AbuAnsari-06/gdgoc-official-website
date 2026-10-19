@@ -1,0 +1,373 @@
+import { useEffect, useState, type FormEvent, type ReactNode } from "react";
+import {
+  api,
+  BRANCHES,
+  PASSWORD_RULE,
+  validatePassword,
+  validateProfile,
+  YEARS,
+  type Profile as P,
+  type ProfileEdit,
+} from "../lib/profile";
+
+type Msg = { ok: boolean; text: string } | null;
+
+export const input =
+  "w-full border-[3px] border-ink bg-bg px-3 py-2 text-ink disabled:bg-panel2 disabled:text-muted";
+export const button =
+  "hard-button bg-gyellow px-5 py-2.5 font-display font-bold text-ink disabled:opacity-60";
+const ghost = "hard-button bg-bg px-5 py-2.5 font-display font-bold text-ink";
+
+function Card({ title, desc, children }: { title: string; desc: string; children: ReactNode }) {
+  return (
+    <section className="border-[3px] border-ink bg-bg p-5 shadow-[6px_6px_0_var(--color-ink)] sm:p-7">
+      <h2 className="font-display text-xl font-extrabold">{title}</h2>
+      <p className="mt-1 text-sm text-muted">{desc}</p>
+      <div className="mt-5">{children}</div>
+    </section>
+  );
+}
+
+function Field({ label, hint, children }: { label: string; hint?: string; children: ReactNode }) {
+  return (
+    <label className="block">
+      <span className="text-sm font-bold">{label}</span>
+      <div className="mt-1">{children}</div>
+      {hint && <span className="mt-1 block text-xs text-muted">{hint}</span>}
+    </label>
+  );
+}
+
+function Note({ msg }: { msg: Msg }) {
+  if (!msg) {
+    return null;
+  }
+
+  return (
+    <p
+      role={msg.ok ? "status" : "alert"}
+      className={`mt-4 text-sm font-bold ${msg.ok ? "text-ggreen" : "text-gred"}`}
+    >
+      {msg.text}
+    </p>
+  );
+}
+
+function Row({ label, value }: { label: string; value?: ReactNode }) {
+  return (
+    <div className="min-w-0">
+      <dt className="text-xs font-bold text-muted uppercase">{label}</dt>
+      <dd className="mt-0.5 break-words">{value || <span className="text-muted">Not added</span>}</dd>
+    </div>
+  );
+}
+
+export default function Profile() {
+  const [user, setUser] = useState<P | null>(null);
+  const [status, setStatus] = useState<"loading" | "error" | "ready">("loading");
+
+  useEffect(() => {
+    api<P>("/users/me")
+      .then((u) => {
+        if (!u?.name) {
+          throw new Error("bad response");
+        }
+        setUser(u);
+        setStatus("ready");
+      })
+      .catch((e) => {
+        if (e.message === "401") {
+          location.hash = "#/login?next=/profile";
+        } else {
+          setStatus("error");
+        }
+      });
+  }, []);
+
+  const [logoutMsg, setLogoutMsg] = useState<Msg>(null);
+
+  const logout = async () => {
+    try {
+      await api("/auth/logout", "POST");
+      location.hash = "#/login";
+    } catch {
+      setLogoutMsg({ ok: false, text: "Couldn't log out. Try again." });
+    }
+  };
+
+  return (
+    <main className="mx-auto max-w-3xl px-4 pt-12 pb-20 sm:px-6">
+      <a href="#" className="text-sm font-bold underline">
+        ← Back to home
+      </a>
+      <h1 className="mt-4 font-display text-4xl font-extrabold sm:text-5xl">Profile & settings</h1>
+
+      {status === "loading" && (
+        <p className="mt-8" role="status">
+          Loading your profile…
+        </p>
+      )}
+      {status === "error" && (
+        <p className="mt-8" role="alert">
+          We couldn't load your profile. Refresh to try again.
+        </p>
+      )}
+
+      {user && (
+        <div className="mt-8 space-y-8">
+          <Overview user={user} />
+          <EditProfile user={user} onSaved={setUser} />
+          <ChangePassword />
+          <Card title="Session" desc="Sign out of this device.">
+            <button type="button" className={ghost} onClick={logout}>
+              Log out
+            </button>
+            <Note msg={logoutMsg} />
+          </Card>
+        </div>
+      )}
+    </main>
+  );
+}
+
+function Overview({ user }: { user: P }) {
+  const initials = user.name
+    .split(/\s+/)
+    .map((w) => w[0])
+    .slice(0, 2)
+    .join("")
+    .toUpperCase();
+
+  return (
+    <Card title="Overview" desc="Your account at a glance.">
+      <div className="flex items-center gap-4">
+        <span
+          className="grid h-16 w-16 shrink-0 place-items-center border-[3px] border-ink bg-gblue font-display text-2xl font-extrabold text-white"
+          aria-hidden="true"
+        >
+          {initials}
+        </span>
+        <div className="min-w-0">
+          <p className="font-display text-2xl font-extrabold break-words">{user.name}</p>
+          <p className="break-all text-muted">{user.email}</p>
+        </div>
+      </div>
+      <dl className="mt-6 grid gap-4 sm:grid-cols-2">
+        <Row label="Branch" value={user.branch} />
+        <Row label="Year" value={user.year && `Year ${user.year}`} />
+        <Row label="Enrollment no." value={user.enrollmentNo} />
+        <Row label="Member since" value={user.createdAt && new Date(user.createdAt).toLocaleDateString()} />
+        <div className="sm:col-span-2">
+          <Row label="Bio" value={user.bio} />
+        </div>
+      </dl>
+    </Card>
+  );
+}
+
+function EditProfile({ user, onSaved }: { user: P; onSaved: (u: P) => void }) {
+  const initial: ProfileEdit = {
+    name: user.name,
+    branch: user.branch ?? "",
+    year: user.year,
+    bio: user.bio ?? "",
+  };
+  const [form, setForm] = useState(initial);
+  const [editing, setEditing] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [msg, setMsg] = useState<Msg>(null);
+  const set = (patch: Partial<ProfileEdit>) => setForm({ ...form, ...patch });
+
+  const submit = async (e: FormEvent) => {
+    e.preventDefault();
+    const err = validateProfile(form);
+    if (err) {
+      setMsg({ ok: false, text: err });
+      return;
+    }
+
+    setSaving(true);
+    setMsg(null);
+    try {
+      const saved = await api<P>("/users/me", "PATCH", { ...form, name: form.name.trim() });
+      onSaved(saved);
+      setEditing(false);
+      setMsg({ ok: true, text: "Profile saved." });
+    } catch (e) {
+      const message = (e as Error).message;
+      const text = message === "401" ? "Your session expired. Log in again." : message;
+      setMsg({ ok: false, text });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const cancel = () => {
+    setForm(initial);
+    setEditing(false);
+    setMsg(null);
+  };
+
+  const startEditing = () => {
+    setEditing(true);
+    setMsg(null);
+  };
+
+  return (
+    <Card
+      title="Personal & academic details"
+      desc="Email and enrollment number are managed by the community team. To correct them, contact a core team member."
+    >
+      <form onSubmit={submit} className="grid gap-4 sm:grid-cols-2">
+        <div className="sm:col-span-2">
+          <Field label="Full name">
+            <input
+              className={input}
+              value={form.name}
+              disabled={!editing}
+              required
+              maxLength={60}
+              autoComplete="name"
+              onChange={(e) => set({ name: e.target.value })}
+            />
+          </Field>
+        </div>
+        <Field label="Branch">
+          <select
+            className={input}
+            value={form.branch}
+            disabled={!editing}
+            onChange={(e) => set({ branch: e.target.value })}
+          >
+            <option value="">Not set</option>
+            {BRANCHES.map((b) => (
+              <option key={b}>{b}</option>
+            ))}
+          </select>
+        </Field>
+        <Field label="Year">
+          <select
+            className={input}
+            value={form.year ?? ""}
+            disabled={!editing}
+            onChange={(e) => set({ year: Number(e.target.value) || undefined })}
+          >
+            <option value="">Not set</option>
+            {YEARS.map((y) => (
+              <option key={y} value={y}>
+                Year {y}
+              </option>
+            ))}
+          </select>
+        </Field>
+        <div className="sm:col-span-2">
+          <Field
+            label="Bio (optional)"
+            hint={`${(form.bio ?? "").length}/280 · your tech interests, in a line or two`}
+          >
+            <textarea
+              className={input}
+              rows={3}
+              maxLength={280}
+              value={form.bio}
+              disabled={!editing}
+              onChange={(e) => set({ bio: e.target.value })}
+            />
+          </Field>
+        </div>
+        <div className="flex flex-wrap gap-3 sm:col-span-2">
+          {editing ? (
+            <>
+              <button type="submit" className={button} disabled={saving}>
+                {saving ? "Saving…" : "Save changes"}
+              </button>
+              <button type="button" className={ghost} onClick={cancel} disabled={saving}>
+                Cancel
+              </button>
+            </>
+          ) : (
+            <button type="button" className={button} onClick={startEditing}>
+              Edit profile
+            </button>
+          )}
+        </div>
+      </form>
+      <Note msg={msg} />
+    </Card>
+  );
+}
+
+function ChangePassword() {
+  const empty = { current: "", next: "", confirm: "" };
+  const [pw, setPw] = useState(empty);
+  const [show, setShow] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [msg, setMsg] = useState<Msg>(null);
+  const type = show ? "text" : "password";
+
+  const submit = async (e: FormEvent) => {
+    e.preventDefault();
+    const err = validatePassword(pw.current, pw.next, pw.confirm);
+    if (err) {
+      setMsg({ ok: false, text: err });
+      return;
+    }
+
+    setSaving(true);
+    setMsg(null);
+    try {
+      await api("/users/me/password", "PATCH", { currentPassword: pw.current, newPassword: pw.next });
+      setPw(empty);
+      setMsg({ ok: true, text: "Password changed." });
+    } catch (e) {
+      const message = (e as Error).message;
+      const text = message === "401" ? "Your session expired. Log in again." : message;
+      setMsg({ ok: false, text });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <Card title="Password & security" desc={PASSWORD_RULE}>
+      <form onSubmit={submit} className="grid gap-4">
+        <Field label="Current password">
+          <input
+            className={input}
+            type={type}
+            autoComplete="current-password"
+            value={pw.current}
+            onChange={(e) => setPw({ ...pw, current: e.target.value })}
+          />
+        </Field>
+        <Field label="New password">
+          <input
+            className={input}
+            type={type}
+            autoComplete="new-password"
+            value={pw.next}
+            onChange={(e) => setPw({ ...pw, next: e.target.value })}
+          />
+        </Field>
+        <Field label="Confirm new password">
+          <input
+            className={input}
+            type={type}
+            autoComplete="new-password"
+            value={pw.confirm}
+            onChange={(e) => setPw({ ...pw, confirm: e.target.value })}
+          />
+        </Field>
+        <label className="flex items-center gap-2 text-sm">
+          <input type="checkbox" checked={show} onChange={(e) => setShow(e.target.checked)} /> Show passwords
+        </label>
+        <div>
+          <button type="submit" className={button} disabled={saving}>
+            {saving ? "Updating…" : "Change password"}
+          </button>
+        </div>
+      </form>
+      <Note msg={msg} />
+    </Card>
+  );
+}
