@@ -149,7 +149,16 @@ function EditProfile({ user, onSaved }: { user: P; onSaved: (u: P) => void }) {
   const [editing, setEditing] = useState(false);
   const [saving, setSaving] = useState(false);
   const [msg, setMsg] = useState<Msg>(null);
-  const set = (patch: Partial<ProfileEdit>) => setForm({ ...form, ...patch });
+  const set = (patch: Partial<ProfileEdit>) => setForm((prev) => ({ ...prev, ...patch }));
+
+  useEffect(() => {
+    setForm({
+      name: user.name,
+      branch: user.branch ?? "",
+      year: user.year,
+      bio: user.bio ?? "",
+    });
+  }, [user]);
 
   const submit = async (e: FormEvent) => {
     e.preventDefault();
@@ -176,12 +185,18 @@ function EditProfile({ user, onSaved }: { user: P; onSaved: (u: P) => void }) {
   };
 
   const cancel = () => {
-    setForm(initial);
+    setForm({
+      name: user.name,
+      branch: user.branch ?? "",
+      year: user.year,
+      bio: user.bio ?? "",
+    });
     setEditing(false);
     setMsg(null);
   };
 
-  const startEditing = () => {
+  const startEditing = (e: React.MouseEvent) => {
+    e.preventDefault();
     setEditing(true);
     setMsg(null);
   };
@@ -251,15 +266,15 @@ function EditProfile({ user, onSaved }: { user: P; onSaved: (u: P) => void }) {
         <div className="flex flex-wrap gap-3 sm:col-span-2">
           {editing ? (
             <>
-              <button type="submit" className={button} disabled={saving}>
+              <button key="save-button" type="submit" className={button} disabled={saving}>
                 {saving ? "Saving…" : "Save changes"}
               </button>
-              <button type="button" className={ghost} onClick={cancel} disabled={saving}>
+              <button key="cancel-button" type="button" className={ghost} onClick={cancel} disabled={saving}>
                 Cancel
               </button>
             </>
           ) : (
-            <button type="button" className={button} onClick={startEditing}>
+            <button key="edit-button" type="button" className={button} onClick={startEditing}>
               Edit profile
             </button>
           )}
