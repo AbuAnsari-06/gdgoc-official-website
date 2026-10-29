@@ -115,7 +115,7 @@ app.use("/api/v1/tickets", ticketRoutes);
 app.use("/api/v1/events", eventRoutes);
 
 // 404 handler for API routes
-app.all(["/api", "/api/*", "/api/v1/*"], (req, res) => {
+app.use("/api", (req, res) => {
   res.status(404).json({ message: "API endpoint not found." });
 });
 
