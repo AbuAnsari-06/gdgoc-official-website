@@ -2,12 +2,12 @@ import mongoose from "mongoose";
 import bcrypt from "bcryptjs";
 import User from "./models/User.js";
 
-const email = (process.env.SUPERADMIN_EMAIL || "admin@gdgoc.dev").trim().toLowerCase();
-const password = process.env.SUPERADMIN_PASSWORD || "Admin1234!";
-const name = process.env.SUPERADMIN_NAME || "GDGoC Lead Admin";
+const email = process.env.SUPERADMIN_EMAIL?.trim().toLowerCase();
+const password = process.env.SUPERADMIN_PASSWORD;
+const name = process.env.SUPERADMIN_NAME || "GDGoC Admin";
 
-if (!process.env.MONGO_URI) {
-  console.error("MONGO_URI is required.");
+if (!email || !password) {
+  console.error("SUPERADMIN_EMAIL and SUPERADMIN_PASSWORD must be defined in your .env file.");
   process.exit(1);
 }
 
