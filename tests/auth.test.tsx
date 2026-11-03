@@ -48,7 +48,7 @@ test("switching to sign up keeps the email, clears the password and focuses name
   type(/^password/i, "secret123");
   fireEvent.click(screen.getByRole("button", { name: /create an account/i }));
   expect(screen.getByRole("heading", { name: /create your account/i })).toBeTruthy();
-  expect((screen.getByLabelText(/college email/i) as HTMLInputElement).value).toBe("a@psit.ac.in");
+  expect((screen.getByLabelText(/email address/i) as HTMLInputElement).value).toBe("a@psit.ac.in");
   expect((screen.getByLabelText(/^password/i) as HTMLInputElement).value).toBe("");
   expect(document.activeElement).toBe(screen.getByLabelText(/full name/i));
 });
@@ -57,7 +57,7 @@ test("sign-up validation catches mismatched passwords", async () => {
   location.hash = "#/login?mode=signup";
   render(<Auth />);
   type(/full name/i, "Asha Verma");
-  type(/college email/i, "a@psit.ac.in");
+  type(/email address/i, "a@psit.ac.in");
   type(/^password/i, "secret123");
   type(/confirm password/i, "secret124");
   submit();
@@ -114,6 +114,37 @@ test("sign up is prefilled from the join form link", () => {
   render(<Auth />);
 
   expect((screen.getByLabelText(/full name/i) as HTMLInputElement).value).toBe("Asha Verma");
-  expect((screen.getByLabelText(/college email/i) as HTMLInputElement).value).toBe("a@psit.ac.in");
+  expect((screen.getByLabelText(/email address/i) as HTMLInputElement).value).toBe("a@psit.ac.in");
   expect((screen.getByLabelText(/year/i) as HTMLSelectElement).value).toBe("2");
+});
+
+test("sign up accepts personal email addresses like Gmail, Outlook, Yahoo", async () => {
+  location.hash = "#/login?mode=signup";
+  render(<Auth />);
+
+  // Valid Gmail
+  type(/full name/i, "Gmail User");
+  type(/email address/i, "user@gmail.com");
+  type(/^password/i, "password123");
+  type(/confirm password/i, "password123");
+  submit();
+
+  // No email validation error should appear
+  await waitFor(() => {
+    expect(screen.queryByText(/valid email address/i)).toBeNull();
+    expect(screen.queryByText(/campus email/i)).toBeNull();
+  });
+});
+
+test("sign up rejects syntactically invalid email addresses", async () => {
+  location.hash = "#/login?mode=signup";
+  render(<Auth />);
+
+  type(/full name/i, "Invalid Email User");
+  type(/email address/i, "invalid-email-without-at");
+  type(/^password/i, "password123");
+  type(/confirm password/i, "password123");
+  submit();
+
+  expect(await screen.findByText("Enter a valid email address.")).toBeTruthy();
 });

@@ -82,7 +82,7 @@ test("join form validates and hands off to sign up with details prefilled", asyn
   expect(location.hash).toBe("");
 
   fireEvent.change(screen.getByLabelText(/full name/i), { target: { value: "Asha Verma" } });
-  fireEvent.change(screen.getByLabelText(/campus email/i), { target: { value: "a@psit.ac.in" } });
+  fireEvent.change(screen.getByLabelText(/email/i), { target: { value: "a@psit.ac.in" } });
   fireEvent.change(screen.getByLabelText(/year/i), { target: { value: "2nd year" } });
   await act(async () => {
     fireEvent.click(screen.getByRole("button", { name: /create your account/i }));

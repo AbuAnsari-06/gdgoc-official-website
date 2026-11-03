@@ -49,11 +49,7 @@ router.post("/register", async (req, res) => {
     process.env.NODE_ENV !== "production" &&
     form.email.endsWith("@test.dev") &&
     req.headers["x-require-verification"] !== "true";
-  const allowedDomains = isTestBypass
-    ? [...new Set([...getAllowedEmailDomains(), "test.dev"])]
-    : getAllowedEmailDomains();
-
-  const errors = signupErrors({ ...form, confirm: form.password }, allowedDomains);
+  const errors = signupErrors({ ...form, confirm: form.password });
   if (Object.keys(errors).length) {
     return res.status(400).json({ message: "Check the highlighted fields.", errors });
   }
@@ -125,7 +121,7 @@ router.post("/register", async (req, res) => {
   // Note: Session is NOT set until email ownership is proven
   res.status(201).json({
     ...publicUser(user),
-    message: "Verification code sent to your campus email.",
+    message: "Verification code sent to your email.",
     email: user.email,
     requiresVerification: true,
     testOtp: process.env.NODE_ENV !== "production" ? otp : undefined,
@@ -190,7 +186,7 @@ router.post("/verify-email", async (req, res) => {
   // Log the user in upon successful verification
   setSession(res, user);
   res.json({
-    message: "Campus email verified successfully! Welcome to GDGoC PSIT.",
+    message: "Email verified successfully! Welcome to GDGoC PSIT.",
     user: publicUser(user),
   });
 });
@@ -241,7 +237,7 @@ router.post("/resend-verification", async (req, res) => {
   await sendVerificationEmail({ email, code: otp });
 
   res.json({
-    message: "New verification code sent to your campus email.",
+    message: "New verification code sent to your email.",
     testOtp: process.env.NODE_ENV !== "production" ? otp : undefined,
   });
 });
@@ -259,7 +255,7 @@ router.post("/login", async (req, res) => {
 
   if (!user.emailVerified) {
     return res.status(403).json({
-      message: "Please verify your campus email address before logging in.",
+      message: "Please verify your email address before logging in.",
       email: user.email,
       requiresVerification: true,
     });

@@ -343,40 +343,39 @@ describe("Security, Attendance & Event Management Remediation Suite", () => {
   });
 
   // ==========================================
-  // PHASE 5: CAMPUS EMAIL DOMAIN ENFORCEMENT
+  // PHASE 5: PUBLIC & CAMPUS EMAIL REGISTRATION SUPPORT
   // ==========================================
-  describe("Phase 5: Campus Email Domain Enforcement", () => {
-    it("Rejects non-campus domains like gmail.com", async () => {
+  describe("Phase 5: Public & Campus Email Registration Support", () => {
+    it("Accepts valid Gmail registration with OTP issuance", async () => {
+      const ts = Date.now();
       const res = await apiCall("/auth/register", {
         method: "POST",
         body: {
-          name: "Attacker User",
-          email: "attacker@gmail.com",
+          name: "Gmail Member",
+          email: `member_${ts}@gmail.com`,
           password: "SecurePassword123!",
         },
       });
-      assert.equal(res.status, 400);
-      assert.match(res.data.errors.email, /official PSIT campus email/i);
+      assert.equal(res.status, 201);
+      assert.equal(res.data.email, `member_${ts}@gmail.com`);
+      assert.equal(res.data.requiresVerification, true);
     });
 
-    it("Rejects lookalike and subdomain spoofing attempts", async () => {
-      const lookalikes = [
-        "fake@psit.ac.in.attacker.org",
-        "hacker@sub.psit.ac.in.com",
-        "spoof@evilpsit.ac.in",
-      ];
-
-      for (const email of lookalikes) {
+    it("Accepts valid Outlook, Yahoo, and external domain registrations", async () => {
+      const providers = ["outlook.com", "yahoo.com", "proton.me"];
+      for (const domain of providers) {
+        const email = `user_${Date.now()}_${Math.random().toString(36).slice(2, 6)}@${domain}`;
         const res = await apiCall("/auth/register", {
           method: "POST",
           body: {
-            name: "Spoof User",
+            name: "Diverse User",
             email,
             password: "SecurePassword123!",
           },
         });
-        assert.equal(res.status, 400);
-        assert.match(res.data.errors.email, /official PSIT campus email/i);
+        assert.equal(res.status, 201);
+        assert.equal(res.data.email, email);
+        assert.equal(res.data.requiresVerification, true);
       }
     });
 
@@ -397,6 +396,27 @@ describe("Security, Attendance & Event Management Remediation Suite", () => {
       assert.equal(res.status, 201);
       assert.equal(res.data.email, `new_student_${ts}@psit.ac.in`);
       assert.equal(res.data.requiresVerification, true);
+    });
+
+    it("Rejects invalid and syntactically malformed email addresses", async () => {
+      const malformedEmails = [
+        "not-an-email",
+        "@missinglocal.com",
+        "missingatsign.com",
+        "spaces in@address.com",
+      ];
+      for (const email of malformedEmails) {
+        const res = await apiCall("/auth/register", {
+          method: "POST",
+          body: {
+            name: "Invalid User",
+            email,
+            password: "SecurePassword123!",
+          },
+        });
+        assert.equal(res.status, 400);
+        assert.match(res.data.errors.email, /valid email address/i);
+      }
     });
   });
 
@@ -897,8 +917,14 @@ describe("Security, Attendance & Event Management Remediation Suite", () => {
           confirm: "Password123!",
         });
 
-        // Must be rejected with validation error due to campus domain policy
-        assert.equal(errors.email, "Please use your official PSIT campus email address.");
+        // Standard public registration accepts valid syntax; campus checks are optional
+        const campusErrors = signupErrors({
+          name: "Malicious Tester",
+          email: "hacker@test.dev",
+          password: "Password123!",
+          confirm: "Password123!",
+        }, { requireCampusEmail: true });
+        assert.equal(campusErrors.email, "Please use your official PSIT campus email address.");
 
         // Verification bypass condition must be strictly false in production
         const isTestBypass =
