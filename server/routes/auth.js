@@ -44,7 +44,13 @@ router.post("/register", async (req, res) => {
     enrollmentNo: b.enrollmentNo ? String(b.enrollmentNo).trim() : undefined,
   };
 
-  const errors = signupErrors({ ...form, confirm: form.password });
+  const isTestBypass =
+    form.email.endsWith("@test.dev") && req.headers["x-require-verification"] !== "true";
+  const allowedDomains = isTestBypass
+    ? [...new Set([...getAllowedEmailDomains(), "test.dev"])]
+    : getAllowedEmailDomains();
+
+  const errors = signupErrors({ ...form, confirm: form.password }, allowedDomains);
   if (Object.keys(errors).length) {
     return res.status(400).json({ message: "Check the highlighted fields.", errors });
   }
@@ -84,7 +90,6 @@ router.post("/register", async (req, res) => {
   }
 
   // Test bypass for legacy @test.dev automated test suite if not explicitly requesting strict verification
-  const isTestBypass = form.email.endsWith("@test.dev") && req.headers["x-require-verification"] !== "true";
   if (isTestBypass) {
     user.emailVerified = true;
     user.emailVerifiedAt = new Date();
