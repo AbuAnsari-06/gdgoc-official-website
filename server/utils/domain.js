@@ -25,11 +25,25 @@ export const DEFAULT_ALLOWED_EMAIL_DOMAINS = ["psit.ac.in"];
 export function getAllowedEmailDomains() {
   const envDomains = process.env.ALLOWED_EMAIL_DOMAINS || process.env.CAMPUS_EMAIL_DOMAINS;
   if (envDomains) {
-    return envDomains
+    const list = envDomains
       .split(",")
       .map((d) => d.trim().toLowerCase())
       .filter(Boolean);
+
+    // In production, strictly reject any test domains (e.g. test.dev) even if mistakenly configured in env
+    if (process.env.NODE_ENV === "production") {
+      const filtered = list.filter((d) => !d.endsWith(".dev") && !d.includes("test"));
+      return filtered.length > 0 ? filtered : DEFAULT_ALLOWED_EMAIL_DOMAINS;
+    }
+    return list;
   }
+
+  // When running in non-production environments (e.g. automated test suites or development),
+  // allow test.dev fixtures alongside the default campus domain if no custom list was specified
+  if (process.env.NODE_ENV !== "production") {
+    return ["psit.ac.in", "test.dev"];
+  }
+
   return DEFAULT_ALLOWED_EMAIL_DOMAINS;
 }
 

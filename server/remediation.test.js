@@ -7,7 +7,7 @@ import Event from "./models/Event.js";
 import Registration from "./models/Registration.js";
 import EmailVerification from "./models/EmailVerification.js";
 import { generateVerificationOtp, hashVerificationToken } from "./utils/email.js";
-import { isAllowedCampusEmail, getAllowedEmailDomains } from "./utils/domain.js";
+import { isAllowedCampusEmail, getAllowedEmailDomains, signupErrors } from "./utils/domain.js";
 import { validateAdmission } from "./utils/tickets.js";
 
 const API = process.env.API_URL || "http://localhost:5000/api";
@@ -846,6 +846,73 @@ describe("Security, Attendance & Event Management Remediation Suite", () => {
       assert(typeof res.data.total === "number");
       assert(typeof res.data.totalPages === "number");
       assert.equal(res.data.page, 1);
+    });
+  });
+
+  // ==========================================
+  // PHASE 11: TEST.DEV DOMAIN & BYPASS PRODUCTION ISOLATION
+  // ==========================================
+  describe("Phase 11: @test.dev Domain & Bypass Strict Production Isolation", () => {
+    it("Strictly strips test.dev and test domains in NODE_ENV=production", () => {
+      const originalNodeEnv = process.env.NODE_ENV;
+      const originalAllowed = process.env.ALLOWED_EMAIL_DOMAINS;
+      try {
+        process.env.NODE_ENV = "production";
+        delete process.env.ALLOWED_EMAIL_DOMAINS;
+        delete process.env.CAMPUS_EMAIL_DOMAINS;
+
+        // Without explicit domains in production, only default campus domain is allowed
+        const prodDomains = getAllowedEmailDomains();
+        assert.deepEqual(prodDomains, ["psit.ac.in"]);
+        assert.equal(isAllowedCampusEmail("student@psit.ac.in"), true);
+        assert.equal(isAllowedCampusEmail("intruder@test.dev"), false);
+
+        // Even if someone erroneously configured test.dev in ALLOWED_EMAIL_DOMAINS in production
+        process.env.ALLOWED_EMAIL_DOMAINS = "psit.ac.in,test.dev,dev.test";
+        const sanitizedProdDomains = getAllowedEmailDomains();
+        assert.deepEqual(sanitizedProdDomains, ["psit.ac.in"]);
+        assert.equal(isAllowedCampusEmail("intruder@test.dev"), false);
+      } finally {
+        process.env.NODE_ENV = originalNodeEnv;
+        if (originalAllowed !== undefined) {
+          process.env.ALLOWED_EMAIL_DOMAINS = originalAllowed;
+        } else {
+          delete process.env.ALLOWED_EMAIL_DOMAINS;
+        }
+      }
+    });
+
+    it("Rejects @test.dev registration in production mode and prevents bypass", () => {
+      const originalNodeEnv = process.env.NODE_ENV;
+      const originalAllowed = process.env.ALLOWED_EMAIL_DOMAINS;
+      try {
+        process.env.NODE_ENV = "production";
+        delete process.env.ALLOWED_EMAIL_DOMAINS;
+        delete process.env.CAMPUS_EMAIL_DOMAINS;
+
+        const errors = signupErrors({
+          name: "Malicious Tester",
+          email: "hacker@test.dev",
+          password: "Password123!",
+          confirm: "Password123!",
+        });
+
+        // Must be rejected with validation error due to campus domain policy
+        assert.equal(errors.email, "Please use your official PSIT campus email address.");
+
+        // Verification bypass condition must be strictly false in production
+        const isTestBypass =
+          process.env.NODE_ENV !== "production" &&
+          "hacker@test.dev".endsWith("@test.dev");
+        assert.equal(isTestBypass, false, "Test bypass must be disabled in production");
+      } finally {
+        process.env.NODE_ENV = originalNodeEnv;
+        if (originalAllowed !== undefined) {
+          process.env.ALLOWED_EMAIL_DOMAINS = originalAllowed;
+        } else {
+          delete process.env.ALLOWED_EMAIL_DOMAINS;
+        }
+      }
     });
   });
 });

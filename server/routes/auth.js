@@ -44,8 +44,11 @@ router.post("/register", async (req, res) => {
     enrollmentNo: b.enrollmentNo ? String(b.enrollmentNo).trim() : undefined,
   };
 
+  // Test bypass for legacy @test.dev automated test suite strictly isolated to non-production environments
   const isTestBypass =
-    form.email.endsWith("@test.dev") && req.headers["x-require-verification"] !== "true";
+    process.env.NODE_ENV !== "production" &&
+    form.email.endsWith("@test.dev") &&
+    req.headers["x-require-verification"] !== "true";
   const allowedDomains = isTestBypass
     ? [...new Set([...getAllowedEmailDomains(), "test.dev"])]
     : getAllowedEmailDomains();
@@ -89,7 +92,7 @@ router.post("/register", async (req, res) => {
     throw error;
   }
 
-  // Test bypass for legacy @test.dev automated test suite if not explicitly requesting strict verification
+  // Test bypass for legacy @test.dev automated test suite (defined above)
   if (isTestBypass) {
     user.emailVerified = true;
     user.emailVerifiedAt = new Date();
