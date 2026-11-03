@@ -13,7 +13,7 @@ import {
   type Signup,
 } from "../lib/profile";
 
-type Mode = "login" | "signup" | "verify";
+type Mode = "login" | "signup";
 
 const DECK: { word: string; color: GColor }[] = [
   { word: "Learn", color: "gblue" },
@@ -109,9 +109,6 @@ export default function Auth() {
     email: params.get("email") ?? "",
     year: Number(params.get("year")) || undefined,
   }));
-  const [otp, setOtp] = useState("");
-  const [verificationEmail, setVerificationEmail] = useState("");
-  const [resendCooldown, setResendCooldown] = useState(0);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [msg, setMsg] = useState("");
   const [busy, setBusy] = useState(false);
@@ -119,7 +116,6 @@ export default function Auth() {
   const formRef = useRef<HTMLFormElement>(null);
   const set = (patch: Partial<Signup>) => setForm((f) => ({ ...f, ...patch }));
   const signup = mode === "signup";
-  const verify = mode === "verify";
 
   useEffect(() => {
     api("/users/me")
@@ -128,14 +124,6 @@ export default function Auth() {
       })
       .catch(() => {});
   }, [next]);
-
-  useEffect(() => {
-    if (resendCooldown <= 0) return;
-    const timer = setInterval(() => {
-      setResendCooldown((c) => Math.max(0, c - 1));
-    }, 1000);
-    return () => clearInterval(timer);
-  }, [resendCooldown]);
 
   useEffect(() => {
     const first = Object.keys(errors)[0];
@@ -151,43 +139,9 @@ export default function Auth() {
     set({ password: "", confirm: "" });
   };
 
-  const handleResendOtp = async () => {
-    if (resendCooldown > 0 || !verificationEmail) return;
-    setBusy(true);
-    setMsg("");
-    try {
-      await api("/auth/resend-verification", "POST", { email: verificationEmail });
-      setResendCooldown(60);
-      setMsg("New verification code sent to your email.");
-    } catch (err) {
-      setMsg((err as Error).message);
-    } finally {
-      setBusy(false);
-    }
-  };
-
   const submit = async (e: FormEvent) => {
     e.preventDefault();
     if (busy) {
-      return;
-    }
-
-    if (verify) {
-      const code = otp.trim();
-      if (!code) {
-        setErrors({ otp: "Enter the verification code." });
-        return;
-      }
-      setBusy(true);
-      setMsg("");
-      try {
-        await api("/auth/verify-email", "POST", { email: verificationEmail, code });
-        location.hash = "#" + next;
-      } catch (err) {
-        setMsg((err as Error).message);
-      } finally {
-        setBusy(false);
-      }
       return;
     }
 
@@ -214,30 +168,12 @@ export default function Auth() {
     try {
       if (signup) {
         const { confirm: _, ...body } = form;
-        const res = await api<{ requiresVerification?: boolean; email?: string }>(
-          "/auth/register",
-          "POST",
-          body
-        );
-        if (res?.requiresVerification) {
-          setVerificationEmail(form.email.trim());
-          setMode("verify");
-          setResendCooldown(60);
-          setMsg("Verification code sent to your email.");
-          return;
-        }
+        await api("/auth/register", "POST", body);
       } else {
         await api("/auth/login", "POST", { email: form.email, password: form.password });
       }
       location.hash = "#" + next;
     } catch (err: any) {
-      if (err?.requiresVerification) {
-        setVerificationEmail(form.email.trim());
-        setMode("verify");
-        setResendCooldown(60);
-        setMsg("Please verify your email address.");
-        return;
-      }
       setMsg((err as Error).message);
       setErrors((err as { errors?: Record<string, string> }).errors ?? {});
     } finally {
@@ -246,31 +182,24 @@ export default function Auth() {
   };
 
   const pw = show ? "text" : "password";
-
-  let submitLabel = signup ? "Create account" : "Log in";
-  if (verify) {
-    submitLabel = "Verify & Complete Signup";
-  }
-  if (busy) {
-    submitLabel = verify
-      ? "Verifying…"
-      : signup
-        ? "Creating account…"
-        : "Logging in…";
-  }
+  const submitLabel = busy
+    ? signup
+      ? "Creating account…"
+      : "Logging in…"
+    : signup
+      ? "Create account"
+      : "Log in";
 
   return (
     <main className="mx-auto grid min-h-screen max-w-6xl items-center gap-14 px-4 pt-28 pb-20 sm:px-6 lg:grid-cols-[1.05fr_1fr] lg:gap-20">
       <div className="mx-auto w-full max-w-md lg:order-2">
         <h1 className="font-display text-4xl font-extrabold">
-          {verify ? "Verify your email" : signup ? "Create your account" : "Log in"}
+          {signup ? "Create your account" : "Log in"}
         </h1>
         <p className="mt-2 text-muted">
-          {verify
-            ? `We sent a 6-digit verification code to ${verificationEmail}. Enter it below to activate your account.`
-            : signup
-              ? "Join GDGoC PSIT to register for events and track your tickets."
-              : "Welcome back to GDGoC PSIT."}
+          {signup
+            ? "Join GDGoC PSIT to register for events and track your tickets."
+            : "Welcome back to GDGoC PSIT."}
         </p>
 
         <form
@@ -280,47 +209,7 @@ export default function Auth() {
           noValidate
           className="mt-8 space-y-4 border-[3px] border-ink bg-bg p-5 shadow-[6px_6px_0_var(--color-ink)] sm:p-7"
         >
-          {verify && (
-            <div>
-              <Field name="otp" label="Verification Code (OTP)" error={errors.otp}>
-                {(a) => (
-                  <input
-                    {...a}
-                    className={`${input} text-center font-mono text-xl tracking-[0.4em] font-bold`}
-                    autoFocus
-                    type="text"
-                    inputMode="numeric"
-                    autoComplete="one-time-code"
-                    maxLength={6}
-                    placeholder="123456"
-                    value={otp}
-                    onChange={(e) => setOtp(e.target.value)}
-                  />
-                )}
-              </Field>
-              <div className="mt-3 flex items-center justify-between text-xs">
-                <button
-                  type="button"
-                  disabled={resendCooldown > 0 || busy}
-                  onClick={handleResendOtp}
-                  className="font-bold underline text-ink disabled:text-muted disabled:no-underline"
-                >
-                  {resendCooldown > 0
-                    ? `Resend code (${resendCooldown}s)`
-                    : "Resend verification code"}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => switchTo("signup")}
-                  className="text-muted hover:underline"
-                >
-                  Change email
-                </button>
-              </div>
-            </div>
-          )}
-
-          {!verify && signup && (
+          {signup && (
             <Field name="name" label="Full name" error={errors.name}>
               {(a) => (
                 <input
@@ -336,24 +225,22 @@ export default function Auth() {
             </Field>
           )}
 
-          {!verify && (
-            <Field name="email" label={signup ? "Email address" : "Email"} error={errors.email}>
-              {(a) => (
-                <input
-                  {...a}
-                  className={input}
-                  autoFocus={!signup}
-                  type="email"
-                  autoComplete="email"
-                  inputMode="email"
-                  value={form.email}
-                  onChange={(e) => set({ email: e.target.value })}
-                />
-              )}
-            </Field>
-          )}
+          <Field name="email" label={signup ? "Email address" : "Email"} error={errors.email}>
+            {(a) => (
+              <input
+                {...a}
+                className={input}
+                autoFocus={!signup}
+                type="email"
+                autoComplete="email"
+                inputMode="email"
+                value={form.email}
+                onChange={(e) => set({ email: e.target.value })}
+              />
+            )}
+          </Field>
 
-          {!verify && signup && (
+          {signup && (
             <div className="grid gap-4 sm:grid-cols-2">
               <Field name="branch" label="Branch (optional)" error={errors.branch}>
                 {(a) => (
@@ -390,27 +277,25 @@ export default function Auth() {
             </div>
           )}
 
-          {!verify && (
-            <Field
-              name="password"
-              label="Password"
-              hint={signup ? PASSWORD_RULE : undefined}
-              error={errors.password}
-            >
-              {(a) => (
-                <input
-                  {...a}
-                  className={input}
-                  type={pw}
-                  autoComplete={signup ? "new-password" : "current-password"}
-                  value={form.password}
-                  onChange={(e) => set({ password: e.target.value })}
-                />
-              )}
-            </Field>
-          )}
+          <Field
+            name="password"
+            label="Password"
+            hint={signup ? PASSWORD_RULE : undefined}
+            error={errors.password}
+          >
+            {(a) => (
+              <input
+                {...a}
+                className={input}
+                type={pw}
+                autoComplete={signup ? "new-password" : "current-password"}
+                value={form.password}
+                onChange={(e) => set({ password: e.target.value })}
+              />
+            )}
+          </Field>
 
-          {!verify && signup && (
+          {signup && (
             <Field name="confirm" label="Confirm password" error={errors.confirm}>
               {(a) => (
                 <input
@@ -425,11 +310,9 @@ export default function Auth() {
             </Field>
           )}
 
-          {!verify && (
-            <label className="flex items-center gap-2 text-sm">
-              <input type="checkbox" checked={show} onChange={(e) => setShow(e.target.checked)} /> Show password
-            </label>
-          )}
+          <label className="flex items-center gap-2 text-sm">
+            <input type="checkbox" checked={show} onChange={(e) => setShow(e.target.checked)} /> Show password
+          </label>
 
           <p role="alert" className="min-h-5 text-sm font-bold text-gred">
             {msg}
@@ -441,15 +324,7 @@ export default function Auth() {
         </form>
 
         <p className="mt-6 text-center text-sm">
-          {verify ? (
-            <button
-              type="button"
-              className="font-bold underline"
-              onClick={() => switchTo("login")}
-            >
-              Back to log in
-            </button>
-          ) : signup ? (
+          {signup ? (
             <>
               Already have an account?{" "}
               <button

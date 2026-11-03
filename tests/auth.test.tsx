@@ -148,3 +148,30 @@ test("sign up rejects syntactically invalid email addresses", async () => {
 
   expect(await screen.findByText("Enter a valid email address.")).toBeTruthy();
 });
+
+test("successful sign up creates session and navigates directly to dashboard without OTP", async () => {
+  location.hash = "#/login?mode=signup";
+  vi.stubGlobal(
+    "fetch",
+    vi.fn((url: string) => {
+      if (url.endsWith("/users/me")) {
+        return json(401, {});
+      }
+      if (url.endsWith("/auth/register")) {
+        return json(201, { name: "Direct Member", email: "direct@gmail.com", role: "student" });
+      }
+      return login();
+    }),
+  );
+
+  render(<Auth />);
+  type(/full name/i, "Direct Member");
+  type(/email address/i, "direct@gmail.com");
+  type(/^password/i, "password123");
+  type(/confirm password/i, "password123");
+  submit();
+
+  await waitFor(() => expect(location.hash).toBe("#/dashboard"));
+  expect(screen.queryByText(/verification code/i)).toBeNull();
+  expect(screen.queryByText(/resend code/i)).toBeNull();
+});

@@ -42,13 +42,6 @@ export async function requireAuth(req, res, next) {
     return res.status(401).json({ message: "Please log in." });
   }
 
-  if (user.emailVerified === false) {
-    return res.status(403).json({
-      message: "Please verify your email address to access this feature.",
-      requiresVerification: true,
-    });
-  }
-
   req.user = user;
   next();
 }
@@ -58,13 +51,6 @@ export async function requireAdmin(req, res, next) {
 
   if (!user) {
     return res.status(401).json({ message: "Please log in." });
-  }
-
-  if (user.emailVerified === false) {
-    return res.status(403).json({
-      message: "Please verify your email address to access this feature.",
-      requiresVerification: true,
-    });
   }
 
   if (user.role !== "admin") {

@@ -5,8 +5,8 @@ import bcrypt from "bcryptjs";
 import User from "./models/User.js";
 import Event from "./models/Event.js";
 import Registration from "./models/Registration.js";
-import EmailVerification from "./models/EmailVerification.js";
-import { generateVerificationOtp, hashVerificationToken } from "./utils/email.js";
+
+
 import { isAllowedCampusEmail, getAllowedEmailDomains, signupErrors } from "./utils/domain.js";
 import { validateAdmission } from "./utils/tickets.js";
 
@@ -346,7 +346,7 @@ describe("Security, Attendance & Event Management Remediation Suite", () => {
   // PHASE 5: PUBLIC & CAMPUS EMAIL REGISTRATION SUPPORT
   // ==========================================
   describe("Phase 5: Public & Campus Email Registration Support", () => {
-    it("Accepts valid Gmail registration with OTP issuance", async () => {
+    it("Accepts valid Gmail registration directly with session cookie", async () => {
       const ts = Date.now();
       const res = await apiCall("/auth/register", {
         method: "POST",
@@ -358,10 +358,10 @@ describe("Security, Attendance & Event Management Remediation Suite", () => {
       });
       assert.equal(res.status, 201);
       assert.equal(res.data.email, `member_${ts}@gmail.com`);
-      assert.equal(res.data.requiresVerification, true);
+      assert.ok(res.cookie, "Session cookie created on registration");
     });
 
-    it("Accepts valid Outlook, Yahoo, and external domain registrations", async () => {
+    it("Accepts valid Outlook, Yahoo, and external domain registrations directly", async () => {
       const providers = ["outlook.com", "yahoo.com", "proton.me"];
       for (const domain of providers) {
         const email = `user_${Date.now()}_${Math.random().toString(36).slice(2, 6)}@${domain}`;
@@ -375,7 +375,7 @@ describe("Security, Attendance & Event Management Remediation Suite", () => {
         });
         assert.equal(res.status, 201);
         assert.equal(res.data.email, email);
-        assert.equal(res.data.requiresVerification, true);
+        assert.ok(res.cookie, "Session cookie created on registration");
       }
     });
 
@@ -395,7 +395,7 @@ describe("Security, Attendance & Event Management Remediation Suite", () => {
       });
       assert.equal(res.status, 201);
       assert.equal(res.data.email, `new_student_${ts}@psit.ac.in`);
-      assert.equal(res.data.requiresVerification, true);
+      assert.ok(res.cookie, "Session cookie created on registration");
     });
 
     it("Rejects invalid and syntactically malformed email addresses", async () => {
@@ -421,161 +421,67 @@ describe("Security, Attendance & Event Management Remediation Suite", () => {
   });
 
   // ==========================================
-  // PHASE 6: EMAIL VERIFICATION WITH OTP
+  // PHASE 6: SIMPLIFIED AUTHENTICATION & DIRECT SESSION
   // ==========================================
-  describe("Phase 6: Email Verification with Cryptographic OTP", () => {
+  describe("Phase 6: Simplified Authentication & Direct Session Flow", () => {
     const ts = Date.now();
-    const testEmail = `verify_target_${ts}@psit.ac.in`;
-    let deliveredOtp = "";
+    const testEmail = `direct_member_${ts}@psit.ac.in`;
+    let userSession = "";
 
-    it("Registration issues OTP stored as server-secret HMAC-SHA256 bound to email and blocks unverified login", async () => {
+    it("Registration immediately establishes session without OTP requirements", async () => {
       const regRes = await apiCall("/auth/register", {
         method: "POST",
         body: {
-          name: "Verification Candidate",
+          name: "Direct Candidate",
           email: testEmail,
           password: "Password1234!",
         },
       });
       assert.equal(regRes.status, 201);
-      deliveredOtp = regRes.data.testOtp;
-
-      // Verify DB record contains server-secret HMAC, NOT plaintext OTP
-      const record = await EmailVerification.findOne({ email: testEmail });
-      assert(record);
-      assert(record.tokenHash);
-      assert.notEqual(record.tokenHash.length, 6);
-      assert.equal(record.tokenHash.length, 64, "Must be a 64-character HMAC-SHA256 hex string");
-
-      // Unverified account cannot log in (403)
-      const loginRes = await apiCall("/auth/login", {
-        method: "POST",
-        body: { email: testEmail, password: "Password1234!" },
-      });
-      assert.equal(loginRes.status, 403);
-      assert.equal(loginRes.data.requiresVerification, true);
+      assert.ok(regRes.cookie, "Must return active session cookie immediately");
+      assert.equal(regRes.data.requiresVerification, undefined, "Must not require OTP verification");
+      userSession = regRes.cookie;
     });
 
-    it("Rejects incorrect verification code and decrements remaining attempts", async () => {
-      const res = await apiCall("/auth/verify-email", {
-        method: "POST",
-        body: {
-          email: testEmail,
-          code: "000000",
-        },
+    it("Directly accesses protected user profile using registration session cookie", async () => {
+      const meRes = await apiCall("/users/me", {
+        cookie: userSession,
       });
-      assert.equal(res.status, 400);
-      assert.match(res.data.message, /invalid verification code/i);
-      assert(res.data.attemptsRemaining <= 4);
+      assert.equal(meRes.status, 200);
+      assert.equal(meRes.data.email, testEmail);
+      assert.equal(meRes.data.role, "student");
     });
 
-    it("Enforces resend cooldown limit (60s)", async () => {
-      const res = await apiCall("/auth/resend-verification", {
-        method: "POST",
-        body: { email: testEmail },
-      });
-      // Should be rate-limited by the 60s cooldown
-      assert.equal(res.status, 429);
-      assert.match(res.data.message, /wait/i);
-    });
-
-    it("Protects low-entropy OTP codes using server-secret HMAC bound to email", () => {
-      const code = "123456";
-      const hash1 = hashVerificationToken("student1@psit.ac.in", code);
-      const hash2 = hashVerificationToken("student2@psit.ac.in", code);
-
-      assert.equal(hash1.length, 64, "HMAC must be a 64-character SHA-256 hex string");
-      assert.equal(hash2.length, 64, "HMAC must be a 64-character SHA-256 hex string");
-      assert.notEqual(hash1, hash2, "Identical codes across different emails must produce completely distinct HMACs");
-    });
-
-    it("Valid verification code marks emailVerified: true and creates valid session", async () => {
-      assert(deliveredOtp, "Should have received testOtp in development/test response");
-
-      const res = await apiCall("/auth/verify-email", {
-        method: "POST",
-        body: {
-          email: testEmail,
-          code: deliveredOtp,
-        },
-      });
-      assert.equal(res.status, 200);
-      assert(res.cookie, "Should return authentication cookie upon verification");
-
-      // Verify atomic one-time consumption: submitting the code a second time must fail
-      const replayRes = await apiCall("/auth/verify-email", {
-        method: "POST",
-        body: {
-          email: testEmail,
-          code: deliveredOtp,
-        },
-      });
-      assert.equal(replayRes.status, 400, "Replaying a consumed OTP must be rejected immediately");
-
-      // Verify in DB
-      const user = await User.findOne({ email: testEmail });
-      assert.equal(user.emailVerified, true);
-      assert(user.emailVerifiedAt instanceof Date);
-
-      // Now login succeeds
+    it("Login directly verifies password and establishes session without blocking on emailVerified", async () => {
       const loginRes = await apiCall("/auth/login", {
         method: "POST",
         body: { email: testEmail, password: "Password1234!" },
       });
       assert.equal(loginRes.status, 200);
+      assert.ok(loginRes.cookie, "Login must return valid session cookie");
+      assert.equal(loginRes.data.email, testEmail);
     });
 
-    it("Rejects expired verification OTP and does not consume record", async () => {
-      const expiredEmail = `expired_${Date.now()}@psit.ac.in`;
-      const regRes = await apiCall("/auth/register", {
+    it("Rejects duplicate registration and protects account against takeover", async () => {
+      const dupRes = await apiCall("/auth/register", {
         method: "POST",
-        body: { name: "Expired Candidate", email: expiredEmail, password: "Password1234!" },
+        body: {
+          name: "Attacker Trying Takeover",
+          email: testEmail,
+          password: "NewAttackerPassword123!",
+        },
       });
-      const validCode = regRes.data.testOtp;
-      await EmailVerification.updateOne({ email: expiredEmail }, { expiresAt: new Date(Date.now() - 5000) });
-      const verifyRes = await apiCall("/auth/verify-email", {
-        method: "POST",
-        body: { email: expiredEmail, code: validCode },
-      });
-      assert.equal(verifyRes.status, 400);
-      assert.match(verifyRes.data.message, /expired or maximum attempts/i);
+      assert.equal(dupRes.status, 409);
+      assert.match(dupRes.data.message, /already exists/i);
     });
 
-    it("Rejects verification and purges record when 5 failed attempts are reached", async () => {
-      const bruteEmail = `brute_${Date.now()}@psit.ac.in`;
-      const regRes = await apiCall("/auth/register", {
+    it("Rejects invalid credentials with generic 401 error", async () => {
+      const wrongPwRes = await apiCall("/auth/login", {
         method: "POST",
-        body: { name: "Brute Candidate", email: bruteEmail, password: "Password1234!" },
+        body: { email: testEmail, password: "WrongPassword999!" },
       });
-      const validCode = regRes.data.testOtp;
-      for (let i = 0; i < 5; i++) {
-        await apiCall("/auth/verify-email", {
-          method: "POST",
-          body: { email: bruteEmail, code: "999999" },
-        });
-      }
-      const record = await EmailVerification.findOne({ email: bruteEmail });
-      assert.equal(record, null, "Record must be deleted after max attempts");
-      const verifyRes = await apiCall("/auth/verify-email", {
-        method: "POST",
-        body: { email: bruteEmail, code: validCode },
-      });
-      assert.equal(verifyRes.status, 400);
-    });
-
-    it("Handles concurrent verification requests atomically: exactly 1 succeeds and 1 fails", async () => {
-      const raceEmail = `race_${Date.now()}@psit.ac.in`;
-      const regRes = await apiCall("/auth/register", {
-        method: "POST",
-        body: { name: "Race Candidate", email: raceEmail, password: "Password1234!" },
-      });
-      const validCode = regRes.data.testOtp;
-      const [res1, res2] = await Promise.all([
-        apiCall("/auth/verify-email", { method: "POST", body: { email: raceEmail, code: validCode } }),
-        apiCall("/auth/verify-email", { method: "POST", body: { email: raceEmail, code: validCode } }),
-      ]);
-      const statuses = [res1.status, res2.status].sort();
-      assert.deepEqual(statuses, [200, 400], "Exactly one concurrent request must succeed and one must be rejected");
+      assert.equal(wrongPwRes.status, 401);
+      assert.match(wrongPwRes.data.message, /wrong email or password/i);
     });
   });
 
