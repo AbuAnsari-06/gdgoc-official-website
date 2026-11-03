@@ -38,6 +38,8 @@ export type AdminRegistration = {
   ticketId: string;
   status: "confirmed" | "cancelled" | "pending";
   attendedAt: string | null;
+  checkedInBy?: string | null;
+  overrideReason?: string | null;
   createdAt: string;
   updatedAt: string;
   user?: {
@@ -51,7 +53,7 @@ export type AdminRegistration = {
 };
 
 export type ScanResult = {
-  status: "admitted" | "already_attended" | "cancelled" | "not_found" | "invalid";
+  status: "admitted" | "already_attended" | "cancelled" | "not_found" | "invalid" | "invalid_event" | "expired" | "pending" | "event_cancelled";
   message: string;
   registration?: AdminRegistration;
   user?: {
@@ -75,6 +77,7 @@ export type AdminUser = {
   year?: number;
   bio?: string;
   enrollmentNo?: string;
+  emailVerified?: boolean;
   createdAt: string;
 };
 
@@ -107,24 +110,34 @@ export async function getEventRegistrations(id: string): Promise<{
   return api(`/admin/events/${id}/registrations`);
 }
 
-export async function scanTicketAttendance(ticketId: string): Promise<ScanResult> {
-  return api<ScanResult>("/admin/attendance/scan", "POST", { ticketId });
+export async function scanTicketAttendance(ticketId: string, eventId?: string): Promise<ScanResult> {
+  return api<ScanResult>("/admin/attendance/scan", "POST", { ticketId, eventId });
 }
 
 export async function toggleManualAttendance(
   registrationId: string,
-  attended: boolean
+  attended: boolean,
+  reason?: string
 ): Promise<{ message: string; registration: AdminRegistration }> {
-  return api("/admin/attendance/manual", "POST", { registrationId, attended });
+  return api("/admin/attendance/manual", "POST", { registrationId, attended, reason });
 }
 
-export async function getAdminUsers(q = "", role = ""): Promise<AdminUser[]> {
+export async function getAdminUsers(
+  q = "",
+  role = "",
+  page = 1,
+  limit = 50
+): Promise<{ users: AdminUser[]; total?: number; page?: number; totalPages?: number }> {
   const params = new URLSearchParams();
   if (q) params.set("q", q);
   if (role) params.set("role", role);
+  if (page) params.set("page", String(page));
+  if (limit) params.set("limit", String(limit));
   const queryStr = params.toString() ? `?${params.toString()}` : "";
-  const res = await api<{ users: AdminUser[] }>(`/admin/users${queryStr}`);
-  return res.users;
+  const res = await api<{ users: AdminUser[]; total?: number; page?: number; totalPages?: number }>(
+    `/admin/users${queryStr}`
+  );
+  return res;
 }
 
 export async function updateUserRole(
@@ -137,4 +150,23 @@ export async function updateUserRole(
 export function getExportCsvUrl(eventId: string): string {
   const API_BASE = import.meta.env?.VITE_API_URL ?? "/api";
   return `${API_BASE}/admin/events/${eventId}/export`;
+}
+
+export async function uploadEventPoster(file: File): Promise<{ url: string; key: string }> {
+  const API_BASE = import.meta.env?.VITE_API_URL ?? "/api";
+  const res = await fetch(`${API_BASE}/admin/events/upload-poster`, {
+    method: "POST",
+    credentials: "include",
+    headers: {
+      "Content-Type": file.type || "application/octet-stream",
+    },
+    body: file,
+  });
+
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({}));
+    throw new Error(data.message || "Failed to upload event poster.");
+  }
+
+  return res.json();
 }

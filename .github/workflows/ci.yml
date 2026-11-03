@@ -41,6 +41,8 @@ jobs:
       JWT_SECRET: ci-only-secret-not-used-anywhere-else
       CLIENT_URL: http://localhost:5173
       PORT: "5000"
+      NODE_ENV: test
+      ALLOWED_EMAIL_DOMAINS: psit.ac.in,test.dev
 
     defaults:
       run:

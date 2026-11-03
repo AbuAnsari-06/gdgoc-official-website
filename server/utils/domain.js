@@ -20,6 +20,45 @@ export const YEARS = [1, 2, 3, 4];
 
 export const PASSWORD_RULE = "8 to 72 characters, with a letter and a number.";
 
+export const DEFAULT_ALLOWED_EMAIL_DOMAINS = ["psit.ac.in"];
+
+export function getAllowedEmailDomains() {
+  const envDomains = process.env.ALLOWED_EMAIL_DOMAINS || process.env.CAMPUS_EMAIL_DOMAINS;
+  if (envDomains) {
+    const list = envDomains
+      .split(",")
+      .map((d) => d.trim().toLowerCase())
+      .filter(Boolean);
+
+    // In production, strictly reject any test domains (e.g. test.dev) even if mistakenly configured in env
+    if (process.env.NODE_ENV === "production") {
+      const filtered = list.filter((d) => !d.endsWith(".dev") && !d.includes("test"));
+      return filtered.length > 0 ? filtered : DEFAULT_ALLOWED_EMAIL_DOMAINS;
+    }
+    return list;
+  }
+
+  // When running in non-production environments (e.g. automated test suites or development),
+  // allow test.dev fixtures alongside the default campus domain if no custom list was specified
+  if (process.env.NODE_ENV !== "production") {
+    return ["psit.ac.in", "test.dev"];
+  }
+
+  return DEFAULT_ALLOWED_EMAIL_DOMAINS;
+}
+
+export function isAllowedCampusEmail(email, domains = getAllowedEmailDomains()) {
+  const normalized = String(email ?? "")
+    .trim()
+    .toLowerCase();
+
+  const parts = normalized.split("@");
+  if (parts.length !== 2) return false;
+
+  const domain = parts[1];
+  return domains.some((allowed) => domain === allowed.toLowerCase());
+}
+
 const DEFAULT_EVENT_LENGTH_MS = 24 * 60 * 60 * 1000;
 
 export function eventEndsAt(event) {
@@ -111,7 +150,7 @@ export function emailError(email) {
   return null;
 }
 
-export function signupErrors(f) {
+export function signupErrors(f, allowedDomains = getAllowedEmailDomains()) {
   const errors = {};
 
   const name = validateProfile({ name: f.name });
@@ -122,6 +161,8 @@ export function signupErrors(f) {
   const email = emailError(f.email);
   if (email) {
     errors.email = email;
+  } else if (!isAllowedCampusEmail(f.email, allowedDomains)) {
+    errors.email = "Please use your official PSIT campus email address.";
   }
 
   if (f.branch && !BRANCHES.includes(f.branch)) {

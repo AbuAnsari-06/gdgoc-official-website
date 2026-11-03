@@ -1,3 +1,4 @@
+import path from "node:path";
 import express from "express";
 import mongoose from "mongoose";
 import authRoutes from "./routes/auth.js";
@@ -20,6 +21,21 @@ if (process.env.NODE_ENV === "production") {
   app.set("trust proxy", 1);
 }
 
+// Serve public uploads statically
+const uploadsPath = path.join(process.cwd(), "uploads");
+app.use("/uploads", express.static(uploadsPath));
+
+// Dedicated parsers for image upload endpoints (up to 6mb)
+app.use(
+  ["/api/admin/events/upload-poster", "/api/v1/admin/events/upload-poster"],
+  express.raw({ type: ["image/*", "application/octet-stream"], limit: "6mb" })
+);
+app.use(
+  ["/api/admin/events/upload-poster", "/api/v1/admin/events/upload-poster"],
+  express.json({ limit: "6mb" })
+);
+
+// Standard JSON limit for all other routes (DoS prevention)
 app.use(express.json({ limit: "20kb" }));
 
 app.use((req, res, next) => {

@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef, type FormEvent } from "react";
+import { useEffect, useState, useRef, type FormEvent, type ChangeEvent } from "react";
 import { api, type Profile } from "../lib/profile";
 import {
   getAdminStats,
@@ -11,6 +11,7 @@ import {
   toggleManualAttendance,
   getAdminUsers,
   updateUserRole,
+  uploadEventPoster,
   getExportCsvUrl,
   type AdminStats,
   type AdminEvent,
@@ -42,6 +43,13 @@ export default function Admin() {
   const [stats, setStats] = useState<AdminStats | null>(null);
   const [events, setEvents] = useState<AdminEvent[]>([]);
   const [users, setUsers] = useState<AdminUser[]>([]);
+  const [userPage, setUserPage] = useState(1);
+  const [userSearch, setUserSearch] = useState("");
+  const [userRoleFilter, setUserRoleFilter] = useState("");
+  const [userPagination, setUserPagination] = useState<{ total: number; totalPages: number }>({
+    total: 0,
+    totalPages: 1,
+  });
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState<{ text: string; ok: boolean } | null>(null);
 
@@ -56,6 +64,8 @@ export default function Admin() {
 
   // Event modal / editor state
   const [isEditingEvent, setIsEditingEvent] = useState(false);
+  const [isUploadingPoster, setIsUploadingPoster] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [eventFormData, setEventFormData] = useState<Partial<AdminEvent>>({
     title: "",
     summary: "",
@@ -70,10 +80,12 @@ export default function Admin() {
     capacity: 60,
     published: true,
     meetingUrl: "",
+    poster: "",
   });
 
   // Scanner state
   const [scanInput, setScanInput] = useState("");
+  const [scannerEventId, setScannerEventId] = useState<string>("");
   const [scanResult, setScanResult] = useState<ScanResult | null>(null);
   const [isScanning, setIsScanning] = useState(false);
   const [cameraActive, setCameraActive] = useState(false);
@@ -109,14 +121,22 @@ export default function Admin() {
   const loadAllData = async () => {
     setLoading(true);
     try {
-      const [s, evs, usrs] = await Promise.all([
+      const [s, evs, usrsRes] = await Promise.all([
         getAdminStats().catch(() => null),
         getAdminEvents().catch(() => []),
-        getAdminUsers().catch(() => []),
+        getAdminUsers(userSearch, userRoleFilter, userPage, 25).catch(() => ({
+          users: [],
+          total: 0,
+          totalPages: 1,
+        })),
       ]);
       if (s) setStats(s);
       setEvents(evs);
-      setUsers(usrs);
+      setUsers(usrsRes.users || []);
+      setUserPagination({
+        total: usrsRes.total ?? (usrsRes.users?.length || 0),
+        totalPages: usrsRes.totalPages ?? 1,
+      });
       if (evs.length > 0 && !selectedEventId) {
         setSelectedEventId(evs[0]._id);
       }
@@ -124,6 +144,19 @@ export default function Admin() {
       showToast("Failed to refresh admin data.", false);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const loadUsersOnly = async (page = userPage, q = userSearch, role = userRoleFilter) => {
+    try {
+      const usrsRes = await getAdminUsers(q, role, page, 25);
+      setUsers(usrsRes.users || []);
+      setUserPagination({
+        total: usrsRes.total ?? (usrsRes.users?.length || 0),
+        totalPages: usrsRes.totalPages ?? 1,
+      });
+    } catch {
+      showToast("Failed to load members list.", false);
     }
   };
 
@@ -167,7 +200,7 @@ export default function Admin() {
       }
       setCameraActive(true);
       showToast("Camera active. Point towards ticket QR.");
-    } catch (e) {
+    } catch {
       showToast("Could not access camera. Use manual ID scan below.", false);
     }
   };
@@ -178,13 +211,13 @@ export default function Admin() {
     if (!id) return;
     setIsScanning(true);
     try {
-      const res = await scanTicketAttendance(id);
+      const res = await scanTicketAttendance(id, scannerEventId || undefined);
       setScanResult(res);
       setScanInput("");
       if (res.status === "admitted") {
         showToast(`Admitted: ${res.user?.name || "Attendee"}!`);
       } else if (res.status === "already_attended") {
-        showToast(`Warning: Already checked in.`, false);
+        showToast("Warning: Already checked in.", false);
       } else {
         showToast(res.message, false);
       }
@@ -198,6 +231,33 @@ export default function Admin() {
       showToast(err.message || "Error validating ticket.", false);
     } finally {
       setIsScanning(false);
+    }
+  };
+
+  const handlePosterSelected = async (e: ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!["image/jpeg", "image/png", "image/webp"].includes(file.type)) {
+      showToast("Only JPEG, PNG, and WebP images are allowed.", false);
+      return;
+    }
+
+    if (file.size > 5 * 1024 * 1024) {
+      showToast("Poster file size must be less than 5MB.", false);
+      return;
+    }
+
+    setIsUploadingPoster(true);
+    try {
+      const uploaded = await uploadEventPoster(file);
+      setEventFormData((prev) => ({ ...prev, poster: uploaded.url }));
+      showToast("Poster uploaded successfully!");
+    } catch (err: any) {
+      showToast(err.message || "Failed to upload poster.", false);
+    } finally {
+      setIsUploadingPoster(false);
+      if (fileInputRef.current) fileInputRef.current.value = "";
     }
   };
 
@@ -257,6 +317,15 @@ export default function Admin() {
   };
 
   const handleRoleChange = async (userEmail: string, currentRole: string) => {
+    const isSelf = Boolean(
+      currentUser?.email && userEmail.toLowerCase() === currentUser.email.toLowerCase()
+    );
+
+    if (isSelf && currentRole === "admin") {
+      showToast("You cannot remove your own administrator access.", false);
+      return;
+    }
+
     const nextRole = currentRole === "admin" ? "student" : "admin";
     if (
       !confirm(
@@ -268,7 +337,7 @@ export default function Admin() {
     try {
       await updateUserRole(userEmail, nextRole as "student" | "admin");
       showToast(`Updated ${userEmail} to ${nextRole}.`);
-      getAdminUsers().then(setUsers);
+      loadUsersOnly();
     } catch (err: any) {
       showToast(err.message || "Failed to update role.", false);
     }
@@ -368,6 +437,7 @@ export default function Admin() {
                 capacity: 60,
                 published: true,
                 meetingUrl: "",
+                poster: "",
               });
               setIsEditingEvent(true);
             }}
@@ -534,6 +604,7 @@ export default function Admin() {
                   capacity: 60,
                   published: true,
                   meetingUrl: "",
+                  poster: "",
                 });
                 setIsEditingEvent(true);
               }}
@@ -611,6 +682,7 @@ export default function Admin() {
                               registrationDeadline: ev.registrationDeadline
                                 ? new Date(ev.registrationDeadline).toISOString().slice(0, 16)
                                 : "",
+                              poster: ev.poster || "",
                             });
                             setIsEditingEvent(true);
                           }}
@@ -799,6 +871,25 @@ export default function Admin() {
 
               <form onSubmit={handleScanSubmit} className="mt-6 space-y-4">
                 <div>
+                  <label className={labelClass}>Target Event Filter (Optional)</label>
+                  <select
+                    value={scannerEventId}
+                    onChange={(e) => setScannerEventId(e.target.value)}
+                    className={`${inputClass} mb-2`}
+                  >
+                    <option value="">Any Active Event (Auto-detect from ticket)</option>
+                    {events.map((ev) => (
+                      <option key={ev._id} value={ev._id}>
+                        {ev.title} ({formatEventTime(ev.startsAt)})
+                      </option>
+                    ))}
+                  </select>
+                  <p className="font-mono text-[11px] text-muted">
+                    If selected, tickets belonging to other events will be rejected with an alert.
+                  </p>
+                </div>
+
+                <div>
                   <label className={labelClass}>Ticket ID or QR string</label>
                   <input
                     type="text"
@@ -910,8 +1001,43 @@ export default function Admin() {
       {/* TAB 5: MEMBERS & ROLES */}
       {tab === "users" && (
         <section className="mt-8 space-y-6">
-          <div className="flex items-center justify-between">
-            <h2 className="font-display text-2xl font-black">Member Directory ({users.length})</h2>
+          <div className="flex flex-wrap items-center justify-between gap-4">
+            <div>
+              <h2 className="font-display text-2xl font-black">
+                Member Directory ({userPagination.total} Total)
+              </h2>
+              <p className="mt-0.5 font-mono text-xs text-muted">
+                Manage roles and view campus member credentials. Administrators cannot demote themselves.
+              </p>
+            </div>
+
+            {/* Filter and search */}
+            <div className="flex flex-wrap items-center gap-3">
+              <input
+                type="search"
+                placeholder="Search by name, email, or enrollment…"
+                value={userSearch}
+                onChange={(e) => {
+                  setUserSearch(e.target.value);
+                  setUserPage(1);
+                  loadUsersOnly(1, e.target.value, userRoleFilter);
+                }}
+                className={`${inputClass} w-64`}
+              />
+              <select
+                value={userRoleFilter}
+                onChange={(e) => {
+                  setUserRoleFilter(e.target.value);
+                  setUserPage(1);
+                  loadUsersOnly(1, userSearch, e.target.value);
+                }}
+                className={`${inputClass} w-36`}
+              >
+                <option value="">All Roles</option>
+                <option value="admin">Admins only</option>
+                <option value="student">Students only</option>
+              </select>
+            </div>
           </div>
 
           <div className="overflow-x-auto border-[3px] border-ink bg-bg shadow-[6px_6px_0_var(--color-ink)]">
@@ -919,43 +1045,133 @@ export default function Admin() {
               <thead>
                 <tr className="border-b-[3px] border-ink bg-panel2/40 font-mono text-xs uppercase text-ink">
                   <th className="p-3.5">Name</th>
-                  <th className="p-3.5">Email</th>
+                  <th className="p-3.5">Campus Email</th>
                   <th className="p-3.5">Branch & Year</th>
+                  <th className="p-3.5">Verification</th>
                   <th className="p-3.5">Current Role</th>
                   <th className="p-3.5 text-right">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y-2 divide-ink/10 font-body text-sm">
-                {users.map((u) => (
-                  <tr key={u.email} className="hover:bg-panel/40">
-                    <td className="p-3.5 font-display font-extrabold">{u.name}</td>
-                    <td className="p-3.5 font-mono text-xs text-muted">{u.email}</td>
-                    <td className="p-3.5 font-mono text-xs">
-                      {u.branch || "–"} {u.year ? `(Yr ${u.year})` : ""}
-                    </td>
-                    <td className="p-3.5">
-                      <span
-                        className={`inline-block border border-ink px-2 py-0.5 font-mono text-[11px] font-bold ${
-                          u.role === "admin" ? "bg-gred text-white" : "bg-panel2 text-ink"
-                        }`}
-                      >
-                        {u.role.toUpperCase()}
-                      </span>
-                    </td>
-                    <td className="p-3.5 text-right">
-                      <button
-                        type="button"
-                        onClick={() => handleRoleChange(u.email, u.role)}
-                        className="hard-button bg-bg px-3 py-1 font-mono text-xs font-bold"
-                      >
-                        {u.role === "admin" ? "Demote to Student" : "Promote to Admin"}
-                      </button>
+                {users.map((u) => {
+                  const isSelf = Boolean(
+                    currentUser?.email && u.email.toLowerCase() === currentUser.email.toLowerCase()
+                  );
+                  const isDemotingSelf = isSelf && u.role === "admin";
+
+                  return (
+                    <tr key={u.email} className={`hover:bg-panel/40 ${isSelf ? "bg-gyellow/10" : ""}`}>
+                      <td className="p-3.5">
+                        <span className="font-display font-extrabold">{u.name}</span>
+                        {isSelf && (
+                          <span className="ml-2 inline-block border border-ink bg-gyellow px-1.5 py-0.2 font-mono text-[10px] font-bold">
+                            You
+                          </span>
+                        )}
+                      </td>
+                      <td className="p-3.5 font-mono text-xs text-muted">{u.email}</td>
+                      <td className="p-3.5 font-mono text-xs">
+                        {u.branch || "–"} {u.year ? `(Yr ${u.year})` : ""}
+                      </td>
+                      <td className="p-3.5 font-mono text-xs">
+                        {u.emailVerified ? (
+                          <span className="text-ggreen font-bold">✓ Verified</span>
+                        ) : (
+                          <span className="text-gyellow font-bold">Pending</span>
+                        )}
+                      </td>
+                      <td className="p-3.5">
+                        <span
+                          className={`inline-block border border-ink px-2 py-0.5 font-mono text-[11px] font-bold ${
+                            u.role === "admin" ? "bg-gred text-white" : "bg-panel2 text-ink"
+                          }`}
+                        >
+                          {u.role.toUpperCase()}
+                        </span>
+                      </td>
+                      <td className="p-3.5 text-right">
+                        <div className="flex flex-col items-end gap-1">
+                          <button
+                            type="button"
+                            onClick={() => handleRoleChange(u.email, u.role)}
+                            disabled={isDemotingSelf}
+                            title={
+                              isDemotingSelf
+                                ? "You cannot remove your own administrator access."
+                                : u.role === "admin"
+                                ? "Demote to Student"
+                                : "Promote to Admin"
+                            }
+                            aria-label={
+                              isDemotingSelf
+                                ? "You cannot remove your own administrator access."
+                                : u.role === "admin"
+                                ? "Demote to Student"
+                                : "Promote to Admin"
+                            }
+                            className={`hard-button px-3 py-1 font-mono text-xs font-bold transition-all ${
+                              isDemotingSelf
+                                ? "bg-panel text-muted/50 cursor-not-allowed opacity-50"
+                                : "bg-bg text-ink cursor-pointer hover:bg-panel"
+                            }`}
+                          >
+                            {u.role === "admin" ? "Demote to Student" : "Promote to Admin"}
+                          </button>
+                          {isDemotingSelf && (
+                            <span className="font-mono text-[10px] font-bold text-gred">
+                              Self-demotion blocked
+                            </span>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+                {users.length === 0 && (
+                  <tr>
+                    <td colSpan={6} className="p-8 text-center font-mono text-sm text-muted">
+                      No members found matching your search.
                     </td>
                   </tr>
-                ))}
+                )}
               </tbody>
             </table>
           </div>
+
+          {/* Pagination Controls */}
+          {userPagination.totalPages > 1 && (
+            <div className="flex items-center justify-between border-t-2 border-ink pt-4 font-mono text-xs">
+              <span className="text-muted">
+                Page {userPage} of {userPagination.totalPages}
+              </span>
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  disabled={userPage <= 1}
+                  onClick={() => {
+                    const next = userPage - 1;
+                    setUserPage(next);
+                    loadUsersOnly(next, userSearch, userRoleFilter);
+                  }}
+                  className={`${buttonGhost} px-3 py-1 text-xs disabled:opacity-40`}
+                >
+                  ← Previous
+                </button>
+                <button
+                  type="button"
+                  disabled={userPage >= userPagination.totalPages}
+                  onClick={() => {
+                    const next = userPage + 1;
+                    setUserPage(next);
+                    loadUsersOnly(next, userSearch, userRoleFilter);
+                  }}
+                  className={`${buttonGhost} px-3 py-1 text-xs disabled:opacity-40`}
+                >
+                  Next →
+                </button>
+              </div>
+            </div>
+          )}
         </section>
       )}
 
@@ -970,7 +1186,7 @@ export default function Admin() {
               <button
                 type="button"
                 onClick={() => setIsEditingEvent(false)}
-                className="font-mono text-lg font-bold hover:text-gred"
+                className="font-mono text-lg font-bold hover:text-gred cursor-pointer"
               >
                 ✕
               </button>
@@ -998,6 +1214,52 @@ export default function Admin() {
                   className={inputClass}
                   placeholder="Hands-on labs and skill badges"
                 />
+              </div>
+
+              {/* Event Poster Upload */}
+              <div>
+                <label className={labelClass}>Event Poster (JPEG, PNG, WebP up to 5MB)</label>
+                {eventFormData.poster ? (
+                  <div className="relative mb-3 border-2 border-ink overflow-hidden max-w-md bg-panel">
+                    <img
+                      src={eventFormData.poster}
+                      alt="Event poster preview"
+                      className="aspect-[40/21] w-full object-cover"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setEventFormData({ ...eventFormData, poster: "" })}
+                      className="absolute top-2 right-2 border-2 border-ink bg-gred px-2 py-1 font-mono text-xs font-bold text-white hover:bg-gred/90 cursor-pointer"
+                      title="Remove poster"
+                    >
+                      ✕ Remove
+                    </button>
+                  </div>
+                ) : null}
+                <div className="flex items-center gap-3">
+                  <input
+                    type="file"
+                    ref={fileInputRef}
+                    accept="image/jpeg,image/png,image/webp"
+                    onChange={handlePosterSelected}
+                    className="hidden"
+                    id="poster-file-input"
+                  />
+                  <label
+                    htmlFor="poster-file-input"
+                    className="hard-button inline-flex items-center gap-2 bg-panel px-3.5 py-2 font-mono text-xs font-bold text-ink cursor-pointer hover:bg-panel2"
+                  >
+                    📁 {isUploadingPoster ? "Uploading & Verifying…" : eventFormData.poster ? "Replace Poster Image" : "Upload Poster Image"}
+                  </label>
+                  {isUploadingPoster && (
+                    <span className="font-mono text-xs text-muted animate-pulse">
+                      Checking magic byte signatures…
+                    </span>
+                  )}
+                </div>
+                <p className="mt-1 font-mono text-[11px] text-muted">
+                  Allowed formats: JPEG, PNG, WebP. Verified on server by magic byte signatures.
+                </p>
               </div>
 
               <div className="grid gap-4 sm:grid-cols-2">

@@ -2,7 +2,7 @@ import { Router } from "express";
 import QRCode from "qrcode";
 import Registration from "../models/Registration.js";
 import { requireAuth } from "../middleware/auth.js";
-import { canAdmit, publicTicket, TICKET_ID_PATTERN } from "../utils/tickets.js";
+import { canAdmit, publicTicket, TICKET_ID_PATTERN, validateAdmission } from "../utils/tickets.js";
 
 const router = Router();
 router.use(requireAuth);
@@ -61,25 +61,56 @@ router.post("/:ticketId/check-in", async (req, res) => {
     return res.status(404).json(notFound);
   }
 
-  if (registration.status === "cancelled") {
-    return res.status(409).json({ message: "This registration was cancelled." });
+  // Authorization check: In production, tickets must be scanned by gate lead/admin.
+  // In development / testing or when ALLOW_SELF_CHECKIN=true, self-check-in is allowed.
+  const isAuthorized =
+    req.user.role === "admin" ||
+    process.env.ALLOW_SELF_CHECKIN === "true" ||
+    process.env.NODE_ENV !== "production";
+
+  if (!isAuthorized) {
+    if (registration.user.equals(req.user._id)) {
+      return res.status(403).json({
+        message: "Ticket holders cannot check themselves in. Please present your ticket at the event gate.",
+      });
+    }
+    return res.status(403).json({ message: "Admin access required to record attendance." });
   }
 
-  if (registration.attendedAt) {
+  // Shared admission eligibility check
+  const validation = validateAdmission(registration, registration.event);
+  if (!validation.allowed) {
+    if (validation.status === "already_attended") {
+      return res.status(200).json({
+        message: "Ticket already checked in.",
+        ticketId,
+        attendedAt: registration.attendedAt,
+      });
+    }
+    return res.status(validation.statusCode).json({ message: validation.message });
+  }
+
+  // Concurrency-safe atomic check-in
+  const now = new Date();
+  const updated = await Registration.findOneAndUpdate(
+    { _id: registration._id, attendedAt: null, status: "confirmed" },
+    { $set: { attendedAt: now, checkedInBy: req.user._id } },
+    { returnDocument: "after" }
+  );
+
+  if (!updated) {
+    const fresh = await Registration.findById(registration._id);
     return res.status(200).json({
       message: "Ticket already checked in.",
       ticketId,
-      attendedAt: registration.attendedAt,
+      attendedAt: fresh?.attendedAt || now,
     });
   }
-
-  registration.attendedAt = new Date();
-  await registration.save();
 
   return res.status(200).json({
     message: "Attendance recorded successfully.",
     ticketId,
-    attendedAt: registration.attendedAt,
+    attendedAt: updated.attendedAt,
   });
 });
 

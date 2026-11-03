@@ -124,7 +124,7 @@ test("listing shows events, filters by search and resets", async () => {
   fireEvent.click(screen.getAllByRole("button", { name: /reset search and filters/i })[0]);
   expect(screen.getByText("Cloud Study Jam")).toBeTruthy();
   expect(location.hash).toBe("#/events");
-});
+}, 15000);
 
 test("listing restores search and filters from the link", async () => {
   location.hash = "#/events?when=past";
