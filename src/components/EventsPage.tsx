@@ -41,9 +41,16 @@ function rememberList(hash: string) {
   }
 }
 
-export function EventPoster({ event, className = "" }: { event: Pick<EventSummary, "poster" | "category">; className?: string }) {
+export function EventPoster({
+  event,
+  className = "",
+}: {
+  event: Pick<EventSummary, "poster" | "category"> & { title?: string };
+  className?: string;
+}) {
   if (event.poster) {
-    return <img src={event.poster} alt="" className={`aspect-[40/21] w-full object-cover ${className}`} />;
+    const posterAlt = event.title ? `${event.title} poster` : "Event poster";
+    return <img src={event.poster} alt={posterAlt} className={`aspect-[40/21] w-full object-cover ${className}`} />;
   }
 
   return (

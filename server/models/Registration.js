@@ -13,6 +13,8 @@ const registrationSchema = new mongoose.Schema(
     ticketId: { type: String, required: true, unique: true, default: newTicketId },
     status: { type: String, enum: ["pending", "confirmed", "cancelled"], default: "confirmed" },
     attendedAt: { type: Date, default: null },
+    checkedInBy: { type: mongoose.Schema.Types.ObjectId, ref: "User", default: null },
+    overrideReason: { type: String, default: null, maxlength: 280 },
   },
   { timestamps: true }
 );

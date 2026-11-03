@@ -47,8 +47,13 @@ router.patch("/me/password", async (req, res) => {
     return res.status(400).json({ message: "Current password is incorrect." });
   }
 
+  const isSame = await bcrypt.compare(next, user.password);
+  if (isSame) {
+    return res.status(400).json({ message: "New password must differ from the current one." });
+  }
+
   user.password = await bcrypt.hash(next, 12);
-  user.tokenVersion += 1;
+  user.tokenVersion = (user.tokenVersion || 0) + 1;
   await user.save();
 
   setSession(res, user);

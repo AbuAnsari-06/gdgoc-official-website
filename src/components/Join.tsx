@@ -4,6 +4,7 @@ import { ArrowLink, Reveal, SectionTag, ScrambleHeading, SuitGlyph, SUIT_FOR, us
 import { CardBack } from "./DealScene";
 import { COLOR_HEX, SOCIAL_LINKS, type GColor } from "../data/content";
 import { cn } from "../utils/cn";
+import { isAllowedCampusEmail } from "../lib/profile";
 
 const PERKS = [
   { color: "gblue" as GColor, text: "Weekly hands-on sessions - no lecture slides, ever" },
@@ -95,6 +96,8 @@ export default function Join() {
     }
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
       next.email = "Valid email required";
+    } else if (!isAllowedCampusEmail(email)) {
+      next.email = "Please use your official PSIT campus email address.";
     }
 
     setErrors(next);

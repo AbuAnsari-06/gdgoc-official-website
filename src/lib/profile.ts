@@ -14,6 +14,34 @@ export const BRANCHES = [
 ];
 export const YEARS = [1, 2, 3, 4];
 
+export const DEFAULT_ALLOWED_EMAIL_DOMAINS = ["psit.ac.in"];
+
+export function getAllowedEmailDomains(): string[] {
+  const envDomains = typeof import.meta !== "undefined" && import.meta.env?.VITE_ALLOWED_EMAIL_DOMAINS;
+  if (envDomains) {
+    return envDomains
+      .split(",")
+      .map((d: string) => d.trim().toLowerCase())
+      .filter(Boolean);
+  }
+  return DEFAULT_ALLOWED_EMAIL_DOMAINS;
+}
+
+export function isAllowedCampusEmail(
+  email: string,
+  domains: string[] = getAllowedEmailDomains()
+): boolean {
+  const normalized = String(email ?? "")
+    .trim()
+    .toLowerCase();
+
+  const parts = normalized.split("@");
+  if (parts.length !== 2) return false;
+
+  const domain = parts[1];
+  return domains.some((allowed) => domain === allowed.toLowerCase());
+}
+
 export type Profile = {
   name: string;
   email: string;
@@ -22,6 +50,8 @@ export type Profile = {
   year?: number;
   bio?: string;
   enrollmentNo?: string;
+  emailVerified?: boolean;
+  emailVerifiedAt?: string | null;
   createdAt?: string;
 };
 
@@ -92,7 +122,7 @@ export type Signup = {
   year?: number;
 };
 
-export function signupErrors(f: Signup): Record<string, string> {
+export function signupErrors(f: Signup, allowedDomains: string[] = getAllowedEmailDomains()): Record<string, string> {
   const errors: Record<string, string> = {};
 
   const name = validateProfile({ name: f.name });
@@ -103,6 +133,8 @@ export function signupErrors(f: Signup): Record<string, string> {
   const email = emailError(f.email.trim());
   if (email) {
     errors.email = email;
+  } else if (!isAllowedCampusEmail(f.email, allowedDomains)) {
+    errors.email = "Please use your official PSIT campus email address.";
   }
 
   if (f.branch && !BRANCHES.includes(f.branch)) {

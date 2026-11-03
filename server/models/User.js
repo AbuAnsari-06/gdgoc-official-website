@@ -12,6 +12,8 @@ const userSchema = new mongoose.Schema(
     bio: { type: String, maxlength: 280 },
     enrollmentNo: String,
     tokenVersion: { type: Number, default: 0 },
+    emailVerified: { type: Boolean, default: false },
+    emailVerifiedAt: { type: Date, default: null },
   },
   { timestamps: true },
 );
@@ -25,6 +27,8 @@ export function publicUser(u) {
     year: u.year,
     bio: u.bio,
     enrollmentNo: u.enrollmentNo,
+    emailVerified: Boolean(u.emailVerified),
+    emailVerifiedAt: u.emailVerifiedAt ?? null,
     createdAt: u.createdAt,
     updatedAt: u.updatedAt,
   };

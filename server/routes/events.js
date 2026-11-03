@@ -186,12 +186,31 @@ router.post("/", requireAdmin, async (req, res) => {
       return res.status(400).json({ message: "Title and start date/time are required." });
     }
 
+    const startDate = new Date(startsAt);
+    const endDate = endsAt ? new Date(endsAt) : undefined;
+    const deadlineDate = registrationDeadline ? new Date(registrationDeadline) : null;
+
+    if (endDate && endDate <= startDate) {
+      return res.status(400).json({ message: "End time must be after start time." });
+    }
+    if (deadlineDate && deadlineDate > startDate) {
+      return res.status(400).json({ message: "Registration deadline must be before or equal to start time." });
+    }
+
+    let parsedCapacity = null;
+    if (capacity !== null && capacity !== undefined && capacity !== "") {
+      parsedCapacity = Number(capacity);
+      if (!Number.isInteger(parsedCapacity) || parsedCapacity < 1) {
+        return res.status(400).json({ message: "Capacity must be a positive integer." });
+      }
+    }
+
     const event = await Event.create({
       title: String(title).trim(),
       summary: String(summary).trim(),
       description: String(description).trim(),
-      startsAt: new Date(startsAt),
-      endsAt: endsAt ? new Date(endsAt) : undefined,
+      startsAt: startDate,
+      endsAt: endDate,
       venue: String(venue).trim(),
       poster: String(poster).trim(),
       cancelled: Boolean(cancelled),
@@ -200,8 +219,8 @@ router.post("/", requireAdmin, async (req, res) => {
       format: format === "online" ? "online" : "in_person",
       host: String(host).trim(),
       prerequisites: String(prerequisites).trim(),
-      capacity: capacity ? Number(capacity) : null,
-      registrationDeadline: registrationDeadline ? new Date(registrationDeadline) : null,
+      capacity: parsedCapacity,
+      registrationDeadline: deadlineDate,
       meetingUrl: String(meetingUrl).trim(),
     });
 
@@ -237,11 +256,35 @@ router.put("/:id", requireAdmin, async (req, res) => {
     if (b.format !== undefined) event.format = b.format === "online" ? "online" : "in_person";
     if (b.host !== undefined) event.host = String(b.host).trim();
     if (b.prerequisites !== undefined) event.prerequisites = String(b.prerequisites).trim();
-    if (b.capacity !== undefined) event.capacity = b.capacity ? Number(b.capacity) : null;
+
+    if (b.capacity !== undefined) {
+      if (b.capacity === null || b.capacity === "") {
+        event.capacity = null;
+      } else {
+        const capNum = Number(b.capacity);
+        if (!Number.isInteger(capNum) || capNum < 1) {
+          return res.status(400).json({ message: "Capacity must be a positive integer." });
+        }
+        if (event.registeredCount > 0 && capNum < event.registeredCount) {
+          return res.status(400).json({
+            message: `Capacity cannot be reduced below current registered attendees (${event.registeredCount}).`,
+          });
+        }
+        event.capacity = capNum;
+      }
+    }
+
     if (b.registrationDeadline !== undefined) {
       event.registrationDeadline = b.registrationDeadline ? new Date(b.registrationDeadline) : null;
     }
     if (b.meetingUrl !== undefined) event.meetingUrl = String(b.meetingUrl).trim();
+
+    if (event.endsAt && event.endsAt <= event.startsAt) {
+      return res.status(400).json({ message: "End time must be after start time." });
+    }
+    if (event.registrationDeadline && event.registrationDeadline > event.startsAt) {
+      return res.status(400).json({ message: "Registration deadline must be before or equal to start time." });
+    }
 
     await event.save();
     res.json(event);
@@ -288,7 +331,7 @@ router.get("/:id/registrations", requireAdmin, async (req, res) => {
       total: registrations.length,
       confirmed: registrations.filter((r) => r.status === "confirmed").length,
       cancelled: registrations.filter((r) => r.status === "cancelled").length,
-      attended: registrations.filter((r) => r.attendedAt !== null).length,
+      attended: registrations.filter((r) => r.status === "confirmed" && r.attendedAt !== null).length,
     };
 
     res.json({ event, stats, registrations });

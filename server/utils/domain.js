@@ -20,6 +20,31 @@ export const YEARS = [1, 2, 3, 4];
 
 export const PASSWORD_RULE = "8 to 72 characters, with a letter and a number.";
 
+export const DEFAULT_ALLOWED_EMAIL_DOMAINS = ["psit.ac.in"];
+
+export function getAllowedEmailDomains() {
+  const envDomains = process.env.ALLOWED_EMAIL_DOMAINS || process.env.CAMPUS_EMAIL_DOMAINS;
+  if (envDomains) {
+    return envDomains
+      .split(",")
+      .map((d) => d.trim().toLowerCase())
+      .filter(Boolean);
+  }
+  return DEFAULT_ALLOWED_EMAIL_DOMAINS;
+}
+
+export function isAllowedCampusEmail(email, domains = getAllowedEmailDomains()) {
+  const normalized = String(email ?? "")
+    .trim()
+    .toLowerCase();
+
+  const parts = normalized.split("@");
+  if (parts.length !== 2) return false;
+
+  const domain = parts[1];
+  return domains.some((allowed) => domain === allowed.toLowerCase());
+}
+
 const DEFAULT_EVENT_LENGTH_MS = 24 * 60 * 60 * 1000;
 
 export function eventEndsAt(event) {
@@ -111,7 +136,7 @@ export function emailError(email) {
   return null;
 }
 
-export function signupErrors(f) {
+export function signupErrors(f, allowedDomains = getAllowedEmailDomains()) {
   const errors = {};
 
   const name = validateProfile({ name: f.name });
@@ -122,6 +147,8 @@ export function signupErrors(f) {
   const email = emailError(f.email);
   if (email) {
     errors.email = email;
+  } else if (!isAllowedCampusEmail(f.email, allowedDomains)) {
+    errors.email = "Please use your official PSIT campus email address.";
   }
 
   if (f.branch && !BRANCHES.includes(f.branch)) {

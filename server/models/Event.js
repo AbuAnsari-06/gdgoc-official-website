@@ -23,6 +23,15 @@ const eventSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
+eventSchema.path("capacity").validate(function (cap) {
+  if (cap === null || cap === undefined) return true;
+  if (!Number.isInteger(cap) || cap < 1) return false;
+  if (typeof this.registeredCount === "number" && this.registeredCount > 0 && cap < this.registeredCount) {
+    return false;
+  }
+  return true;
+}, "Capacity must be a positive integer and cannot be lower than the number of existing registrations.");
+
 eventSchema.path("endsAt").validate(function (endsAt) {
   return !endsAt || endsAt > this.startsAt;
 }, "End time must be after the start time.");

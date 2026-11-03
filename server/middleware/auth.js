@@ -9,6 +9,7 @@ export const COOKIE = {
   httpOnly: true,
   sameSite: PROD ? "none" : "lax",
   secure: PROD,
+  ...(process.env.COOKIE_DOMAIN ? { domain: process.env.COOKIE_DOMAIN } : {}),
 };
 
 export function setSession(res, user) {
@@ -41,6 +42,13 @@ export async function requireAuth(req, res, next) {
     return res.status(401).json({ message: "Please log in." });
   }
 
+  if (user.emailVerified === false) {
+    return res.status(403).json({
+      message: "Please verify your campus email to access this feature.",
+      requiresVerification: true,
+    });
+  }
+
   req.user = user;
   next();
 }
@@ -50,6 +58,13 @@ export async function requireAdmin(req, res, next) {
 
   if (!user) {
     return res.status(401).json({ message: "Please log in." });
+  }
+
+  if (user.emailVerified === false) {
+    return res.status(403).json({
+      message: "Please verify your campus email to access this feature.",
+      requiresVerification: true,
+    });
   }
 
   if (user.role !== "admin") {
