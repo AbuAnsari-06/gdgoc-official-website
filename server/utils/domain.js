@@ -150,7 +150,7 @@ export function emailError(email) {
   return null;
 }
 
-export function signupErrors(f, allowedDomains = getAllowedEmailDomains()) {
+export function signupErrors(f, options = {}) {
   const errors = {};
 
   const name = validateProfile({ name: f.name });
@@ -161,7 +161,13 @@ export function signupErrors(f, allowedDomains = getAllowedEmailDomains()) {
   const email = emailError(f.email);
   if (email) {
     errors.email = email;
-  } else if (!isAllowedCampusEmail(f.email, allowedDomains)) {
+  } else if (
+    options &&
+    typeof options === "object" &&
+    !Array.isArray(options) &&
+    options.requireCampusEmail &&
+    !isAllowedCampusEmail(f.email, options.allowedDomains)
+  ) {
     errors.email = "Please use your official PSIT campus email address.";
   }
 

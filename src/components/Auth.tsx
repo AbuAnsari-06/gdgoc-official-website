@@ -158,7 +158,7 @@ export default function Auth() {
     try {
       await api("/auth/resend-verification", "POST", { email: verificationEmail });
       setResendCooldown(60);
-      setMsg("New verification code sent to your campus email.");
+      setMsg("New verification code sent to your email.");
     } catch (err) {
       setMsg((err as Error).message);
     } finally {
@@ -223,7 +223,7 @@ export default function Auth() {
           setVerificationEmail(form.email.trim());
           setMode("verify");
           setResendCooldown(60);
-          setMsg("Verification code sent to your campus email.");
+          setMsg("Verification code sent to your email.");
           return;
         }
       } else {
@@ -235,7 +235,7 @@ export default function Auth() {
         setVerificationEmail(form.email.trim());
         setMode("verify");
         setResendCooldown(60);
-        setMsg("Please verify your campus email address.");
+        setMsg("Please verify your email address.");
         return;
       }
       setMsg((err as Error).message);
@@ -337,7 +337,7 @@ export default function Auth() {
           )}
 
           {!verify && (
-            <Field name="email" label={signup ? "College email" : "Email"} error={errors.email}>
+            <Field name="email" label={signup ? "Email address" : "Email"} error={errors.email}>
               {(a) => (
                 <input
                   {...a}

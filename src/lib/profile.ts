@@ -122,7 +122,10 @@ export type Signup = {
   year?: number;
 };
 
-export function signupErrors(f: Signup, allowedDomains: string[] = getAllowedEmailDomains()): Record<string, string> {
+export function signupErrors(
+  f: Signup,
+  options?: { requireCampusEmail?: boolean; allowedDomains?: string[] } | string[]
+): Record<string, string> {
   const errors: Record<string, string> = {};
 
   const name = validateProfile({ name: f.name });
@@ -133,7 +136,13 @@ export function signupErrors(f: Signup, allowedDomains: string[] = getAllowedEma
   const email = emailError(f.email.trim());
   if (email) {
     errors.email = email;
-  } else if (!isAllowedCampusEmail(f.email, allowedDomains)) {
+  } else if (
+    options &&
+    typeof options === "object" &&
+    !Array.isArray(options) &&
+    options.requireCampusEmail &&
+    !isAllowedCampusEmail(f.email, options.allowedDomains)
+  ) {
     errors.email = "Please use your official PSIT campus email address.";
   }
 

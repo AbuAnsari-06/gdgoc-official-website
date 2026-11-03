@@ -44,7 +44,7 @@ export async function requireAuth(req, res, next) {
 
   if (user.emailVerified === false) {
     return res.status(403).json({
-      message: "Please verify your campus email to access this feature.",
+      message: "Please verify your email address to access this feature.",
       requiresVerification: true,
     });
   }
@@ -62,7 +62,7 @@ export async function requireAdmin(req, res, next) {
 
   if (user.emailVerified === false) {
     return res.status(403).json({
-      message: "Please verify your campus email to access this feature.",
+      message: "Please verify your email address to access this feature.",
       requiresVerification: true,
     });
   }

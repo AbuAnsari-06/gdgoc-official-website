@@ -50,7 +50,7 @@ export async function sendVerificationEmail({ email, code }) {
   // This adapter handles real delivery without hardcoding secrets.
   if (process.env.RESEND_API_KEY) {
     try {
-      await fetch("https://api.resend.com/emails", {
+      const res = await fetch("https://api.resend.com/emails", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -61,8 +61,20 @@ export async function sendVerificationEmail({ email, code }) {
           to: [normalizedEmail],
           subject: "Your GDGoC PSIT Verification Code",
           text: `Welcome to GDGoC PSIT!\n\nYour 6-digit verification code is: ${code}\n\nThis code expires in 10 minutes. If you did not request this, please ignore this email.`,
+          html: `<div style="font-family: sans-serif; max-width: 520px; margin: 0 auto; padding: 24px; border: 3px solid #0a0a0a; background-color: #fdfaf2;">
+            <h2 style="margin-top: 0; color: #0a0a0a; font-size: 24px;">Welcome to GDGoC PSIT!</h2>
+            <p style="color: #222; font-size: 15px; line-height: 1.5;">Thank you for registering. Use the 6-digit verification code below to verify your email address and activate your account:</p>
+            <div style="margin: 24px 0; padding: 16px; background-color: #fadb39; border: 2px solid #0a0a0a; text-align: center; font-size: 32px; font-weight: bold; letter-spacing: 6px; font-family: monospace;">
+              ${code}
+            </div>
+            <p style="color: #666; font-size: 13px;">This code will expire in 10 minutes. If you did not request this account, you can safely ignore this email.</p>
+          </div>`,
         }),
       });
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => ({}));
+        console.error("[EMAIL-DELIVERY-ERROR]", res.status, errorData);
+      }
     } catch (err) {
       console.error("[EMAIL-DELIVERY-ERROR]", err.message);
     }
