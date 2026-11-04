@@ -116,3 +116,67 @@ export async function recordAuthFailure(req) {
 export async function clearAuthFailures(email) {
   await AuthFailure.deleteOne({ key: `email:${email}` });
 }
+
+const AVATAR_LIMIT = 10;
+const AVATAR_IP_LIMIT = 60;
+const AVATAR_WINDOW_MS = 15 * 60 * 1000;
+
+export async function limitAvatarUploads(req, res, next) {
+  const userId = req.user?._id;
+  const userBlocked = userId
+    ? await AuthFailure.exists({
+        key: `user:${userId}:avatar`,
+        count: { $gte: AVATAR_LIMIT },
+        expiresAt: { $gt: new Date() },
+      })
+    : false;
+
+  const ipBlocked = await AuthFailure.exists({
+    key: `ip:${req.ip}:avatar`,
+    count: { $gte: AVATAR_IP_LIMIT },
+    expiresAt: { $gt: new Date() },
+  });
+
+  if (userBlocked || ipBlocked) {
+    return res.status(429).json({ message: "Too many photo uploads. Please wait before trying again." });
+  }
+  next();
+}
+
+export async function recordAvatarUpload(req) {
+  const now = new Date();
+  const stillOpen = { $gt: ["$expiresAt", now] };
+  const userId = req.user?._id;
+  const keys = [`ip:${req.ip}:avatar`];
+  if (userId) {
+    keys.push(`user:${userId}:avatar`);
+  }
+
+  await Promise.all(
+    keys.map((key) =>
+      AuthFailure.updateOne(
+        { key },
+        [
+          {
+            $set: {
+              count: { $cond: [stillOpen, { $add: ["$count", 1] }, 1] },
+              expiresAt: { $cond: [stillOpen, "$expiresAt", new Date(now.getTime() + AVATAR_WINDOW_MS)] },
+            },
+          },
+        ],
+        { upsert: true, updatePipeline: true },
+      ),
+    ),
+  );
+}
+
+export async function clearAvatarUploads(userId, ip) {
+  const keys = [];
+  if (userId) keys.push(`user:${userId}:avatar`);
+  if (ip) keys.push(`ip:${ip}:avatar`);
+  if (keys.length) {
+    await AuthFailure.deleteMany({ key: { $in: keys } });
+  } else {
+    await AuthFailure.deleteMany({ key: { $regex: /:avatar$/ } });
+  }
+}

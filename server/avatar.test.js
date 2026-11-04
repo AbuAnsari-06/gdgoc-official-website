@@ -6,7 +6,7 @@ import crypto from "node:crypto";
 import mongoose from "mongoose";
 import bcrypt from "bcryptjs";
 import User, { publicUser } from "./models/User.js";
-import { stripImageMetadata, detectImageFormat } from "./utils/storage.js";
+import { stripImageMetadata, detectImageFormat, uploadAvatar, deleteAvatar } from "./utils/storage.js";
 
 const API = process.env.API_URL || "http://localhost:5000/api";
 const MONGO_URI = process.env.MONGO_URI || "mongodb://127.0.0.1:27017/gdgoc-test";
@@ -399,5 +399,118 @@ describe("Personal Profile Picture & Avatar Management Suite", () => {
     assert.equal(deleteRes.status, 200);
     assert.equal(deleteRes.data.user.avatarUrl, null);
   });
-});
 
+  it("13. Failed upload does not destroy the user's existing avatar", async () => {
+    // Re-upload a valid avatar for User A
+    const initialUpload = await apiCall("/users/me/avatar", {
+      method: "POST",
+      cookie: cookieA,
+      headers: { "Content-Type": "image/png" },
+      body: VALID_PNG_BUFFER,
+    });
+    assert.equal(initialUpload.status, 200);
+
+    const userWithAvatar = await User.findById(userA._id);
+    const existingPublicId = userWithAvatar.avatarPublicId;
+    const existingUrl = userWithAvatar.avatarUrl;
+    assert.ok(existingPublicId);
+
+    // Attempt a failed upload with corrupted/disguised data
+    const corruptedPayload = Buffer.from("NOT_A_VALID_IMAGE_DATA_XYZ");
+    const failRes = await apiCall("/users/me/avatar", {
+      method: "POST",
+      cookie: cookieA,
+      headers: { "Content-Type": "image/png" },
+      body: corruptedPayload,
+    });
+    assert.equal(failRes.status, 400);
+
+    // Verify existing avatar in DB is completely preserved
+    const preservedUser = await User.findById(userA._id);
+    assert.equal(preservedUser.avatarPublicId, existingPublicId);
+    assert.equal(preservedUser.avatarUrl, existingUrl);
+
+    // Verify existing file on disk still exists
+    if (preservedUser.avatarProvider === "local") {
+      const diskPath = path.join(process.cwd(), "uploads", "avatars", existingPublicId);
+      assert.equal(fs.existsSync(diskPath), true, "Existing avatar file must remain untouched on disk");
+    }
+  });
+
+  it("14. Failed storage upload and save cleans up newly uploaded assets without orphaned files", async () => {
+    // 1. Verify storage cleanup when an upload is aborted/failed after creating storage file
+    const uploaded = await uploadAvatar(VALID_PNG_BUFFER, "png");
+    assert.ok(uploaded.publicId);
+    const diskPath = path.join(process.cwd(), "uploads", "avatars", uploaded.publicId);
+    assert.equal(fs.existsSync(diskPath), true, "New avatar file must exist on disk");
+
+    // Clean up on failure (simulating catch block in routes/users.js)
+    await deleteAvatar(uploaded.publicId, uploaded.provider);
+    assert.equal(fs.existsSync(diskPath), false, "New avatar file must be cleaned up on failure");
+
+    // 2. Verify that when User A uploads and replaces avatar, old avatar is replaced and cleaned up cleanly
+    const beforeUser = await User.findById(userA._id);
+    const initialOldPublicId = beforeUser.avatarPublicId;
+
+    const replaceRes = await apiCall("/users/me/avatar", {
+      method: "POST",
+      cookie: cookieA,
+      headers: { "Content-Type": "image/png" },
+      body: VALID_PNG_BUFFER,
+    });
+    assert.equal(replaceRes.status, 200);
+
+    const afterUser = await User.findById(userA._id);
+    assert.notEqual(afterUser.avatarPublicId, initialOldPublicId);
+
+    // Old file is unlinked, new file exists on disk
+    if (initialOldPublicId) {
+      const oldPath = path.join(process.cwd(), "uploads", "avatars", initialOldPublicId);
+      assert.equal(fs.existsSync(oldPath), false, "Old avatar file must be unlinked from disk");
+    }
+    const newPath = path.join(process.cwd(), "uploads", "avatars", afterUser.avatarPublicId);
+    assert.equal(fs.existsSync(newPath), true, "New avatar file must exist on disk");
+  });
+
+  it("15. Rate limiting restricts excessive avatar uploads with 429", async () => {
+    const salt = await bcrypt.genSalt(10);
+    const password = await bcrypt.hash("Password123!", salt);
+    const rateLimitEmail = `ratelimit.${Date.now()}@psit.ac.in`;
+
+    await User.create({
+      name: "Rate Limit Tester",
+      email: rateLimitEmail,
+      password,
+      role: "student",
+      branch: "CSE",
+      year: 2,
+    });
+
+    const loginRes = await apiCall("/auth/login", {
+      method: "POST",
+      body: { email: rateLimitEmail, password: "Password123!" },
+    });
+    const rateCookie = loginRes.cookie;
+
+    // Perform uploads up to the limit (10)
+    for (let i = 0; i < 10; i++) {
+      const uploadRes = await apiCall("/users/me/avatar", {
+        method: "POST",
+        cookie: rateCookie,
+        headers: { "Content-Type": "image/png" },
+        body: VALID_PNG_BUFFER,
+      });
+      assert.equal(uploadRes.status, 200, `Upload attempt ${i + 1} should succeed`);
+    }
+
+    // 11th upload must be blocked by rate limiter with 429
+    const blockedRes = await apiCall("/users/me/avatar", {
+      method: "POST",
+      cookie: rateCookie,
+      headers: { "Content-Type": "image/png" },
+      body: VALID_PNG_BUFFER,
+    });
+    assert.equal(blockedRes.status, 429);
+    assert.match(blockedRes.data.message, /too many photo uploads/i);
+  });
+});

@@ -1,7 +1,7 @@
 import { Router } from "express";
 import bcrypt from "bcryptjs";
 import User, { publicUser } from "../models/User.js";
-import { requireAuth, setSession } from "../middleware/auth.js";
+import { requireAuth, setSession, limitAvatarUploads, recordAvatarUpload } from "../middleware/auth.js";
 import { validatePassword, validateProfile } from "../utils/domain.js";
 import { detectImageFormat, uploadAvatar, deleteAvatar } from "../utils/storage.js";
 
@@ -64,7 +64,7 @@ router.patch("/me/password", async (req, res) => {
 });
 
 // Member Profile Avatar Endpoints
-router.post("/me/avatar", async (req, res) => {
+router.post("/me/avatar", limitAvatarUploads, async (req, res) => {
   try {
     let fileBuffer = null;
 
@@ -94,22 +94,39 @@ router.post("/me/avatar", async (req, res) => {
       });
     }
 
+    await recordAvatarUpload(req);
+
     const user = await User.findById(req.user._id);
     if (!user) {
       return res.status(404).json({ message: "User not found." });
     }
 
-    // Clean up previous avatar if it exists
-    if (user.avatarPublicId) {
-      await deleteAvatar(user.avatarPublicId, user.avatarProvider);
-    }
+    const oldPublicId = user.avatarPublicId;
+    const oldProvider = user.avatarProvider;
 
+    // Upload new avatar first before deleting the old one
     const result = await uploadAvatar(fileBuffer, ext);
 
     user.avatarUrl = result.url;
     user.avatarPublicId = result.publicId;
     user.avatarProvider = result.provider;
-    await user.save();
+
+    try {
+      await user.save();
+    } catch (saveErr) {
+      // If saving fails, clean up the newly uploaded orphaned avatar
+      await deleteAvatar(result.publicId, result.provider);
+      throw saveErr;
+    }
+
+    // Clean up previous avatar only after the new one is safely uploaded and saved
+    if (oldPublicId) {
+      try {
+        await deleteAvatar(oldPublicId, oldProvider);
+      } catch (cleanupErr) {
+        console.error("Failed to clean up old avatar:", cleanupErr);
+      }
+    }
 
     res.status(200).json({
       message: "Profile photo updated successfully.",
