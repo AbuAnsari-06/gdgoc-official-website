@@ -1,6 +1,10 @@
 import path from "node:path";
 import dns from "node:dns";
-dns.setServers(["8.8.8.8", "1.1.1.1"]);
+if (process.env.DNS_SERVERS) {
+  try {
+    dns.setServers(process.env.DNS_SERVERS.split(",").map((s) => s.trim()));
+  } catch {}
+}
 import express from "express";
 import mongoose from "mongoose";
 import authRoutes from "./routes/auth.js";
