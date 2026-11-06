@@ -1,5 +1,5 @@
 import { useEffect, useState, useRef, type FormEvent, type ChangeEvent } from "react";
-import { api, type Profile } from "../lib/profile";
+import { api, resolveImageUrl, type Profile } from "../lib/profile";
 import {
   getAdminStats,
   getAdminEvents,
@@ -1222,7 +1222,7 @@ export default function Admin() {
                 {eventFormData.poster ? (
                   <div className="relative mb-3 border-2 border-ink overflow-hidden max-w-md bg-panel">
                     <img
-                      src={eventFormData.poster}
+                      src={resolveImageUrl(eventFormData.poster)}
                       alt="Event poster preview"
                       className="aspect-[40/21] w-full object-cover"
                     />

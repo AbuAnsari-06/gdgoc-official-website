@@ -1,6 +1,7 @@
 import crypto from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
+import Media from "../models/Media.js";
 
 /**
  * Storage Adapter for Posters & Member Profile Avatars
@@ -265,6 +266,29 @@ async function uploadPosterToLocalDisk(fileBuffer, ext) {
 }
 
 /**
+ * Upload media directly to MongoDB Media collection
+ */
+async function uploadToMongoDB(fileBuffer, ext, type) {
+  const mimeType = ext === "jpg" ? "image/jpeg" : `image/${ext}`;
+  const filename = `${type}_${crypto.randomBytes(16).toString("hex")}.${ext}`;
+
+  const media = await Media.create({
+    data: fileBuffer,
+    contentType: mimeType,
+    filename,
+    size: fileBuffer.length,
+    type,
+  });
+
+  return {
+    url: `/api/media/${media._id}.${ext}`,
+    key: media._id.toString(),
+    publicId: media._id.toString(),
+    provider: "mongodb",
+  };
+}
+
+/**
  * Upload poster entry point
  */
 export async function uploadPoster(fileBuffer, ext) {
@@ -274,16 +298,8 @@ export async function uploadPoster(fileBuffer, ext) {
     return uploadPosterToCloudinary(fileBuffer, ext, cloudinaryConfig);
   }
 
-  const isProduction = process.env.NODE_ENV === "production";
-  const allowLocalInProd = process.env.ALLOW_LOCAL_STORAGE_IN_PRODUCTION === "true";
-
-  if (isProduction && !allowLocalInProd) {
-    throw new Error(
-      "Ephemeral local storage is disabled in production. Please configure CLOUDINARY_URL or CLOUDINARY_CLOUD_NAME/KEY/SECRET for persistent poster storage."
-    );
-  }
-
-  return uploadPosterToLocalDisk(fileBuffer, ext);
+  // Persistent storage in MongoDB
+  return uploadToMongoDB(fileBuffer, ext, "poster");
 }
 
 /**
@@ -359,23 +375,24 @@ export async function uploadAvatar(fileBuffer, ext) {
     return uploadAvatarToCloudinary(sanitizedBuffer, ext, cloudinaryConfig);
   }
 
-  const isProduction = process.env.NODE_ENV === "production";
-  const allowLocalInProd = process.env.ALLOW_LOCAL_STORAGE_IN_PRODUCTION === "true";
-
-  if (isProduction && !allowLocalInProd) {
-    throw new Error(
-      "Ephemeral local storage is disabled in production. Please configure CLOUDINARY_URL or CLOUDINARY_CLOUD_NAME/KEY/SECRET for persistent avatar storage."
-    );
-  }
-
-  return uploadAvatarToLocalDisk(sanitizedBuffer, ext);
+  // Persistent storage in MongoDB
+  return uploadToMongoDB(sanitizedBuffer, ext, "avatar");
 }
 
 /**
- * Delete avatar from Cloudinary or local disk
+ * Delete avatar from Cloudinary, MongoDB, or local disk
  */
 export async function deleteAvatar(publicId, provider) {
   if (!publicId) return;
+
+  if (provider === "mongodb") {
+    try {
+      await Media.findByIdAndDelete(publicId);
+    } catch (err) {
+      console.error("Failed to delete avatar from MongoDB:", err);
+    }
+    return;
+  }
 
   if (provider === "cloudinary") {
     const config = getCloudinaryConfig();
@@ -412,4 +429,22 @@ export async function deleteAvatar(publicId, provider) {
   } catch {
     // Ignore cleanup errors
   }
+}
+
+/**
+ * Delete poster from Cloudinary, MongoDB, or local disk
+ */
+export async function deletePoster(key, provider) {
+  if (!key) return;
+
+  if (provider === "mongodb") {
+    try {
+      await Media.findByIdAndDelete(key);
+    } catch (err) {
+      console.error("Failed to delete poster from MongoDB:", err);
+    }
+    return;
+  }
+
+  return deleteAvatar(key, provider);
 }

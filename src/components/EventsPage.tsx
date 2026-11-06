@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { api } from "../lib/profile";
+import { api, resolveImageUrl } from "../lib/profile";
 import {
   applyQuery,
   categoriesOf,
@@ -50,7 +50,7 @@ export function EventPoster({
 }) {
   if (event.poster) {
     const posterAlt = event.title ? `${event.title} poster` : "Event poster";
-    return <img src={event.poster} alt={posterAlt} className={`aspect-[40/21] w-full object-cover ${className}`} />;
+    return <img src={resolveImageUrl(event.poster)} alt={posterAlt} className={`aspect-[40/21] w-full object-cover ${className}`} />;
   }
 
   return (

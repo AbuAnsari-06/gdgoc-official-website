@@ -1,4 +1,6 @@
 import path from "node:path";
+import dns from "node:dns";
+dns.setServers(["8.8.8.8", "1.1.1.1"]);
 import express from "express";
 import mongoose from "mongoose";
 import authRoutes from "./routes/auth.js";
@@ -7,6 +9,7 @@ import ticketRoutes from "./routes/tickets.js";
 import eventRoutes from "./routes/events.js";
 import adminRoutes from "./routes/admin.js";
 import User from "./models/User.js";
+import Media from "./models/Media.js";
 
 const missing = ["MONGO_URI", "JWT_SECRET"].filter((name) => !process.env[name]);
 if (missing.length > 0) {
@@ -24,6 +27,53 @@ if (process.env.NODE_ENV === "production") {
 // Serve public uploads statically
 const uploadsPath = path.join(process.cwd(), "uploads");
 app.use("/uploads", express.static(uploadsPath));
+
+// Stream MongoDB-backed media (avatars & posters)
+app.get(["/api/media/:id", "/api/v1/media/:id"], async (req, res) => {
+  try {
+    const rawId = req.params.id.split(".")[0];
+    if (!mongoose.Types.ObjectId.isValid(rawId)) {
+      return res.status(404).json({ message: "Media not found." });
+    }
+
+    const media = await Media.findById(rawId);
+    if (!media) {
+      return res.status(404).json({ message: "Media not found." });
+    }
+
+    res.set({
+      "Content-Type": media.contentType,
+      "Content-Length": media.data.length,
+      "Cache-Control": "public, max-age=31536000, immutable",
+      "X-Content-Type-Options": "nosniff",
+    });
+
+    res.end(media.data);
+  } catch (error) {
+    console.error("Error streaming media from MongoDB:", error);
+    res.status(500).json({ message: "Failed to load media." });
+  }
+});
+
+// Fallback for older /uploads/ paths to check MongoDB Media
+app.get(["/uploads/avatars/:id", "/uploads/:id"], async (req, res, next) => {
+  try {
+    const rawId = req.params.id.split(".")[0];
+    if (mongoose.Types.ObjectId.isValid(rawId)) {
+      const media = await Media.findById(rawId);
+      if (media) {
+        res.set({
+          "Content-Type": media.contentType,
+          "Content-Length": media.data.length,
+          "Cache-Control": "public, max-age=31536000, immutable",
+          "X-Content-Type-Options": "nosniff",
+        });
+        return res.end(media.data);
+      }
+    }
+  } catch {}
+  next();
+});
 
 // Dedicated parsers for image upload endpoints (up to 6mb)
 app.use(
