@@ -8,6 +8,7 @@ import {
   PASSWORD_RULE,
   validatePassword,
   validateProfile,
+  resolveImageUrl,
   YEARS,
   type Profile as P,
   type ProfileEdit,
@@ -225,7 +226,7 @@ function ProfilePhoto({ user, onSaved }: { user: P; onSaved: (u: P) => void }) {
         >
           {user.avatarUrl && !imgError ? (
             <img
-              src={user.avatarUrl}
+              src={resolveImageUrl(user.avatarUrl)}
               alt={user.name}
               className="h-full w-full object-cover"
               onError={() => setImgError(true)}

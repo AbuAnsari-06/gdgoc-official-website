@@ -134,7 +134,10 @@ router.post("/me/avatar", limitAvatarUploads, async (req, res) => {
     });
   } catch (error) {
     console.error("Avatar upload error:", error);
-    res.status(500).json({ message: "Failed to upload profile photo." });
+    const detail = error?.message;
+    res.status(500).json({
+      message: detail && !detail.includes("\n") ? detail : "Failed to upload profile photo.",
+    });
   }
 });
 

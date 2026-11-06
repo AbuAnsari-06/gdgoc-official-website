@@ -1,5 +1,18 @@
 const API = import.meta.env?.VITE_API_URL ?? "/api";
 
+export function resolveImageUrl(url?: string | null): string | undefined {
+  if (!url) return undefined;
+  if (url.startsWith("data:") || url.startsWith("http://") || url.startsWith("https://")) {
+    return url;
+  }
+  const apiBase = typeof import.meta !== "undefined" ? import.meta.env?.VITE_API_URL : undefined;
+  if (apiBase && (apiBase.startsWith("http://") || apiBase.startsWith("https://"))) {
+    const origin = apiBase.replace(/\/api(\/v\d+)?\/?$/, "");
+    return `${origin}${url.startsWith("/") ? "" : "/"}${url}`;
+  }
+  return url;
+}
+
 export const BRANCHES = [
   "CSE",
   "CSE (AI & ML)",

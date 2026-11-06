@@ -1,5 +1,5 @@
 import { useEffect, useState, type ReactNode } from "react";
-import { api } from "../lib/profile";
+import { api, resolveImageUrl } from "../lib/profile";
 import { formatDateTime, STATES, type TicketDetail as Detail } from "../lib/tickets";
 import { StatusBadge } from "./Tickets";
 
@@ -119,7 +119,7 @@ export default function TicketDetail() {
         >
           {ticket.event.poster && (
             <img
-              src={ticket.event.poster}
+              src={resolveImageUrl(ticket.event.poster)}
               alt=""
               className="aspect-[40/21] w-full border-b-[3px] border-ink object-cover [grid-area:poster]"
             />

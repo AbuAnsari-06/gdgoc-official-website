@@ -1,7 +1,7 @@
 import { useEffect, useState, type PointerEvent } from "react";
 import { useReducedMotion } from "framer-motion";
 import { COLOR_HEX, ON_COLOR, PANEL_HEX, type GColor } from "../data/content";
-import type { Profile } from "../lib/profile";
+import { resolveImageUrl, type Profile } from "../lib/profile";
 import { SuitGlyph, SUIT_FOR, useFinePointer } from "./ui";
 
 const YEAR_COLORS: GColor[] = ["gblue", "gred", "gyellow", "ggreen"];
@@ -119,7 +119,7 @@ export default function MemberCard({
           >
             {showAvatar ? (
               <img
-                src={user.avatarUrl!}
+                src={resolveImageUrl(user.avatarUrl)!}
                 alt={user.name}
                 className="h-full w-full object-cover"
                 onError={() => setImgError(true)}
